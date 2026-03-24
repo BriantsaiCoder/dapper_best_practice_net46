@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net46</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>DapperMySqlCrudExample</AssemblyName>
+    <RootNamespace>DapperMySqlCrudExample</RootNamespace>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="MySql.Data" Version="9.3.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+using System.Collections.Generic;
+using DapperMySqlCrudExample.Models;
+
+namespace DapperMySqlCrudExample.Repositories
+{
+    /// <summary>Site 測項統計值 Repository 介面</summary>
+    public interface ISiteTestStatisticRepository
+    {
+        IEnumerable<SiteTestStatistic> GetAll();
+        SiteTestStatistic GetById(long id);
+        IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId);
+        IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName);
+        long Insert(SiteTestStatistic entity);
+        bool Update(SiteTestStatistic entity);
+        bool Delete(long id);
+    }
+}
