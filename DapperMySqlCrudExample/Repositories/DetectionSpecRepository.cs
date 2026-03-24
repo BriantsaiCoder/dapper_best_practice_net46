@@ -54,6 +54,35 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<DetectionSpec>(sql, new { Program = program, DetectionMethodId = detectionMethodId });
         }
 
+        /// <summary>
+        /// 依 detection method name 及 program 查詢最近一個月內計算的 spec 資料。
+        /// 篩選條件：spec_calc_end_time >= NOW() - INTERVAL 1 MONTH。
+        /// </summary>
+        public IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(string program, string detectionMethodName)
+        {
+            const string sql = @"
+                SELECT ds.id                   AS Id,
+                       ds.program              AS Program,
+                       ds.test_item_name       AS TestItemName,
+                       ds.site_id              AS SiteId,
+                       ds.detection_method_id  AS DetectionMethodId,
+                       ds.spec_upper_limit     AS SpecUpperLimit,
+                       ds.spec_lower_limit     AS SpecLowerLimit,
+                       ds.spec_calc_start_time AS SpecCalcStartTime,
+                       ds.spec_calc_end_time   AS SpecCalcEndTime,
+                       ds.created_at           AS CreatedAt,
+                       ds.updated_at           AS UpdatedAt
+                FROM   detection_specs   ds
+                JOIN   detection_methods dm ON dm.id = ds.detection_method_id
+                WHERE  ds.program      = @Program
+                  AND  dm.method_name  = @DetectionMethodName
+                  AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                ORDER BY ds.spec_calc_end_time DESC";
+
+            using (var conn = _factory.Create())
+                return conn.Query<DetectionSpec>(sql, new { Program = program, DetectionMethodName = detectionMethodName });
+        }
+
         public long Insert(DetectionSpec entity)
         {
             const string sql = @"
