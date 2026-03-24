@@ -1,6 +1,14 @@
 -- =============================================================================
 -- Dapper Best Practice (.NET 4.6 + MySQL) — 資料庫 Schema
 -- 請先建立資料庫後再執行此腳本：CREATE DATABASE your_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+--
+-- MySQL 版本說明：
+--   • MySQL 5.5.3+：支援 utf8mb4 字元集。
+--   • MySQL 5.6.5 之前：每張表只允許一個 TIMESTAMP 欄位同時設定
+--     DEFAULT CURRENT_TIMESTAMP 及 ON UPDATE CURRENT_TIMESTAMP。
+--     若使用 MySQL < 5.6.5，請將各表的 created_at 改為 NOT NULL DEFAULT '0000-00-00 00:00:00'
+--     並在應用程式層寫入建立時間。
+--   • MySQL 5.7+：可直接使用 BOOLEAN (TINYINT(1) 別名)，行為一致。
 -- =============================================================================
 
 -- 1. 偵測方法主表
@@ -137,6 +145,7 @@ CREATE TABLE detection_specs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_program_method (program, detection_method_id),
     INDEX idx_program_item_method (program, test_item_name, detection_method_id),
+    INDEX idx_calc_end_time (spec_calc_end_time),
     INDEX idx_calc_time (spec_calc_start_time, spec_calc_end_time),
     CONSTRAINT fk_specs_detection_method
         FOREIGN KEY (detection_method_id)

@@ -15,53 +15,32 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory;
         }
 
+        private const string SelectColumns = @"
+            id             AS Id,
+            method_code    AS MethodCode,
+            method_name    AS MethodName,
+            has_test_item  AS HasTestItem,
+            has_unit_level AS HasUnitLevel,
+            created_at     AS CreatedAt,
+            updated_at     AS UpdatedAt";
+
         public IEnumerable<DetectionMethod> GetAll()
         {
-            const string sql = @"
-                SELECT id             AS Id,
-                       method_code    AS MethodCode,
-                       method_name    AS MethodName,
-                       has_test_item  AS HasTestItem,
-                       has_unit_level AS HasUnitLevel,
-                       created_at     AS CreatedAt,
-                       updated_at     AS UpdatedAt
-                FROM   detection_methods
-                ORDER  BY id";
-
+            const string sql = "SELECT " + SelectColumns + " FROM detection_methods ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql);
         }
 
         public DetectionMethod GetById(byte id)
         {
-            const string sql = @"
-                SELECT id             AS Id,
-                       method_code    AS MethodCode,
-                       method_name    AS MethodName,
-                       has_test_item  AS HasTestItem,
-                       has_unit_level AS HasUnitLevel,
-                       created_at     AS CreatedAt,
-                       updated_at     AS UpdatedAt
-                FROM   detection_methods
-                WHERE  id = @Id";
-
+            const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
 
         public DetectionMethod GetByCode(string methodCode)
         {
-            const string sql = @"
-                SELECT id             AS Id,
-                       method_code    AS MethodCode,
-                       method_name    AS MethodName,
-                       has_test_item  AS HasTestItem,
-                       has_unit_level AS HasUnitLevel,
-                       created_at     AS CreatedAt,
-                       updated_at     AS UpdatedAt
-                FROM   detection_methods
-                WHERE  method_code = @MethodCode";
-
+            const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE method_code = @MethodCode";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodCode = methodCode });
         }

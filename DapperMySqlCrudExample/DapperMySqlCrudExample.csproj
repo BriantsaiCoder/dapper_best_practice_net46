@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net46</TargetFramework>
+    <TargetFramework>net462</TargetFramework>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>DapperMySqlCrudExample</AssemblyName>
     <RootNamespace>DapperMySqlCrudExample</RootNamespace>
@@ -11,7 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="MySql.Data" Version="9.3.0" />
+    <!-- MySql.Data 9.x 起不再支援 MySQL 5.x；若目標資料庫為 MySQL 5.x，請使用 8.0.x。 -->
+    <PackageReference Include="MySql.Data" Version="8.0.33" />
   </ItemGroup>
 
 </Project>
