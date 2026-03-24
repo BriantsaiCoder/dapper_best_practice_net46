@@ -362,6 +362,18 @@ namespace DapperMySqlCrudExample
             int cnt = 0; foreach (var x in byProgramMethod) cnt++;
             Console.WriteLine($"  [GetByProgramAndMethod] 找到 {cnt} 筆");
 
+            var recentSpecs = _detectionSpecRepo.GetRecentByProgramAndMethodName("PROD-A", "示範偵測方法");
+            int recentCnt = 0;
+            foreach (var s in recentSpecs)
+            {
+                recentCnt++;
+                // SpecUpperLimit / SpecLowerLimit 為 decimal?，需先判斷是否有值再使用
+                string upper = s.SpecUpperLimit.HasValue ? s.SpecUpperLimit.Value.ToString("F4") : "無";
+                string lower = s.SpecLowerLimit.HasValue ? s.SpecLowerLimit.Value.ToString("F4") : "無";
+                Console.WriteLine($"    Spec#{s.Id} [{s.TestItemName}] 上限={upper}  下限={lower}  計算結束={s.SpecCalcEndTime:yyyy-MM-dd}");
+            }
+            Console.WriteLine($"  [GetRecentByProgramAndMethodName] Program=PROD-A, MethodName=示範偵測方法，最近一個月共 {recentCnt} 筆");
+
             if (getSpec != null)
             {
                 getSpec.SpecUpperLimit = 1.8m;

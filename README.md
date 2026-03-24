@@ -1,10 +1,10 @@
 # dapper_best_practice_net46
 
-> .NET Framework 4.6 + Dapper + MySQL — 業界最佳實務 CRUD Console 範例
+> .NET Framework 4.6.1 + Dapper + MySQL — 業界最佳實務 CRUD Console 範例
 
 ## 專案說明
 
-本專案以 **Console Application** 示範在 .NET 4.6 環境下，
+本專案以 **Console Application** 示範在 .NET Framework 4.6.1 環境下，
 如何使用 [Dapper](https://github.com/DapperLib/Dapper) 搭配 MySQL
 進行 CRUD（新增、查詢、更新、刪除）操作，並遵循業界最佳實務。
 
@@ -15,9 +15,11 @@
 | 項目 | 套件 | 版本 |
 |------|------|------|
 | ORM（Micro-ORM）| Dapper | 2.1.35 |
-| MySQL Driver | MySql.Data | 9.3.0 |
-| Target Framework | .NET Framework | 4.6 |
+| MySQL Driver | MySql.Data | 8.0.33 |
+| Target Framework | .NET Framework | 4.6.1 |
 | 語言版本 | C# | 7.3 |
+
+> **MySql.Data 版本說明**：MySql.Data 9.x 起已移除 MySQL 5.x 支援；本專案使用 8.0.33 以同時相容 MySQL 5.6/5.7 及 8.0+。MySql.Data 8.x 的部分間接依賴（System.Text.Json 等）宣告建議 net462+，但本專案使用的 API 範圍在 net461 執行時完全正常，已透過 `SuppressTfmSupportBuildWarnings` 抑制非功能性警告。
 
 ---
 
@@ -70,6 +72,81 @@ DapperMySqlCrudExample/
 5. **Column AS 別名對應** — SQL 使用 `column_name AS PropertyName` 對應 C# 屬性名稱，無需額外設定 Column Attribute。
 6. **`SELECT LAST_INSERT_ID()`** — Insert 後直接取回自動產生的 PK，避免額外一次 SELECT。
 7. **`QueryFirstOrDefault`** — 查詢單筆時使用，不拋例外，由呼叫端判斷 null。
+8. **`private const string SelectColumns`** — 提取共用欄位清單為常數，遵循 DRY 原則，欄位變動只需改一處。
+9. **防呆與清晰例外訊息** — `DbConnectionFactory` 對 null / 空白連線字串丟出具明確說明的例外，方便偵錯。
+
+---
+
+## 架構設計說明
+
+### 整體分層
+
+```
+Program.cs（呼叫端）
+   │  依賴介面
+   ▼
+IXxxRepository（抽象層）
+   │  建構子注入
+   ▼
+XxxRepository（資料存取層）
+   │  透過工廠取得連線
+   ▼
+IDbConnectionFactory → DbConnectionFactory → MySqlConnection → MySQL DB
+```
+
+### 各設計決策的用意
+
+#### 1. Interface + 具體實作分離
+
+**為何這樣設計？**
+- **依賴反轉原則（DIP）**：上層呼叫端只依賴介面，不依賴具體資料庫實作。日後換資料庫（如 PostgreSQL）只需替換實作類別，呼叫端不用動。
+- **可測試性**：單元測試可注入 Mock/Stub 取代真實資料庫，完全隔離 I/O 副作用。
+- **職責清晰**：介面定義「能做什麼」，實作類別定義「怎麼做」，各司其職。
+
+#### 2. IDbConnectionFactory 連線工廠
+
+**為何不直接在 Repository 內 `new MySqlConnection()`？**
+- **集中管理連線字串**：連線字串只在工廠一處讀取，不散落在各 Repository。
+- **可測試性**：測試時注入 `FakeDbConnectionFactory`，讓 Repository 接到記憶體假連線，不需真實 MySQL。
+- **生命週期明確**：工廠每次 `Create()` 回傳已開啟的連線，呼叫端以 `using` 管理，確保連線用完即釋放。
+
+#### 3. 每個方法用 `using` 短連線
+
+**為何不持有長連線？**
+- **防止連線洩漏**：`using` 保證 `Dispose()` 一定被呼叫，即使拋出例外也不例外。
+- **連線池效率**：MySql.Data 內建連線池，短連線用完歸還池，下次請求重用。
+- **無狀態 Repository**：天然執行緒安全，可作單例或多次實例化使用。
+
+#### 4. Parameterized Query
+
+**為何不字串拼接 SQL？**
+- **防止 SQL Injection**：Dapper 將參數值與 SQL 分離傳送，攻擊者無法透過輸入值破壞 SQL 結構。
+- **效能**：資料庫可對相同結構 SQL 快取執行計畫（Query Plan Cache）。
+
+#### 5. `private const string SelectColumns`
+
+**為何提取欄位清單為常數？**
+- **DRY 原則**：欄位清單只定義一次，新增/刪除欄位時只改一處。
+- **可維護性**：閱讀各查詢方法時，不需逐行比對欄位是否一致。
+- **零執行時開銷**：`const string` 在編譯期合併，不產生執行時字串拼接。
+
+---
+
+## 過度設計分析
+
+本專案定位為「最佳實務範本」，各設計層次皆有對應的工程理由，**整體架構並未過度設計**。以下為評估細節：
+
+| 設計元素 | 評估結果 | 說明 |
+|---------|---------|------|
+| Repository Pattern | ✅ 合理 | 9 張表各自獨立，每個 Repository 職責單一，並非為了抽象而抽象 |
+| `IXxxRepository` 介面 | ✅ 合理 | 支援 Mock 測試；若後續升級至 DI 容器（如 Autofac）可直接使用 |
+| `IDbConnectionFactory` | ✅ 合理 | 隔離基礎設施，讓測試不需真實資料庫 |
+| `SelectColumns` 常數 | ✅ 合理 | DRY 原則，減少維護成本 |
+| `using` 短連線模式 | ✅ 合理 | 防洩漏、利用連線池，最佳實務標準做法 |
+| `Program.cs` 手動組裝 | ✅ 合理 | Console 範例不需 DI 框架，手動 `new` 更易讀、更易學 |
+| 個別 `const SelectColumns`（各 Repo）| ⚠️ 可接受 | 若欄位重複率高，可考慮提取至 base class，但目前各表欄位差異大，分開維護反而清晰 |
+
+> **結論**：本專案的架構設計與其「可測試、可替換、職責分離」的目標一致，不存在為複雜而複雜的設計，適合作為中小型專案的最佳實務參考範本。
 
 ---
 
@@ -103,7 +180,7 @@ dotnet restore
 dotnet run
 ```
 
-> 需 .NET Framework 4.6 執行環境（Windows）或安裝 Mono（Linux/macOS）。
+> 需 .NET Framework 4.6.1 執行環境（Windows）或安裝相容的 Mono（Linux/macOS）。
 
 ---
 

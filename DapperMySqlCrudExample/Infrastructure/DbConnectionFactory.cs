@@ -1,3 +1,4 @@
+using System;
 using System.Configuration;
 using System.Data;
 using MySql.Data.MySqlClient;
@@ -15,13 +16,19 @@ namespace DapperMySqlCrudExample.Infrastructure
 
         public DbConnectionFactory()
         {
-            _connectionString = ConfigurationManager
-                .ConnectionStrings["DefaultConnection"]
-                .ConnectionString;
+            var entry = ConfigurationManager.ConnectionStrings["DefaultConnection"];
+            if (entry == null || string.IsNullOrWhiteSpace(entry.ConnectionString))
+                throw new InvalidOperationException(
+                    "App.config 中找不到連線字串 'DefaultConnection'，請確認設定正確。");
+
+            _connectionString = entry.ConnectionString;
         }
 
         public DbConnectionFactory(string connectionString)
         {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentNullException(nameof(connectionString), "連線字串不可為 null 或空白。");
+
             _connectionString = connectionString;
         }
 
