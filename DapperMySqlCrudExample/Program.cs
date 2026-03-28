@@ -1,4 +1,5 @@
 using System;
+using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
@@ -51,6 +52,7 @@ namespace DapperMySqlCrudExample
                 DemoDetectionSpec();
                 DemoSiteTestStatistic();
                 DemoGoodLot();
+                DemoTransaction();
 
                 Console.WriteLine("\n========== 所有 CRUD 示範完成 ==========");
             }
@@ -456,6 +458,121 @@ namespace DapperMySqlCrudExample
             }
 
             Console.WriteLine($"  [Delete] 結果: {_goodLotRepo.Delete(goodLotId)}");
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // 10. 交易模式示範
+        // ─────────────────────────────────────────────────────────────────────
+        private static void DemoTransaction()
+        {
+            PrintSection("10. Transaction（交易模式）示範");
+
+            // 示範交易的 Commit（成功情境）
+            Console.WriteLine("\n  [情境一] 交易成功提交");
+            using (var transaction = _factory.BeginTransaction())
+            {
+                try
+                {
+                    // 在交易中新增多筆資料
+                    var lot = new AnomalyLot
+                    {
+                        LotsInfoId = 20001,
+                        DetectionMethodId = 1,
+                        SpecUpperLimit = 1.0m,
+                        SpecLowerLimit = 0.9m,
+                        SpecCalcStartTime = new DateTime(2024, 1, 1),
+                        SpecCalcEndTime = new DateTime(2024, 12, 31)
+                    };
+
+                    // 使用交易連線執行插入
+                    var lotId = transaction.Connection.ExecuteScalar<long>(
+                        @"INSERT INTO anomaly_lots
+                          (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
+                           spec_calc_start_time, spec_calc_end_time)
+                          VALUES (@LotsInfoId, @DetectionMethodId, @SpecUpperLimit, @SpecLowerLimit,
+                                  @SpecCalcStartTime, @SpecCalcEndTime);
+                          SELECT LAST_INSERT_ID();",
+                        lot,
+                        transaction);
+
+                    Console.WriteLine($"    在交易中新增 AnomalyLot，ID = {lotId}");
+
+                    var testItem = new AnomalyTestItem
+                    {
+                        AnomalyLotId = lotId,
+                        TestItemName = "TransactionTest",
+                        DetectionValue = 0.95m,
+                        SpecUpperLimit = 1.0m,
+                        SpecLowerLimit = 0.9m,
+                        SpecCalcStartTime = new DateTime(2024, 1, 1),
+                        SpecCalcEndTime = new DateTime(2024, 12, 31)
+                    };
+
+                    var itemId = transaction.Connection.ExecuteScalar<long>(
+                        @"INSERT INTO anomaly_test_items
+                          (anomaly_lot_id, test_item_name, detection_value,
+                           spec_upper_limit, spec_lower_limit,
+                           spec_calc_start_time, spec_calc_end_time)
+                          VALUES (@AnomalyLotId, @TestItemName, @DetectionValue,
+                                  @SpecUpperLimit, @SpecLowerLimit,
+                                  @SpecCalcStartTime, @SpecCalcEndTime);
+                          SELECT LAST_INSERT_ID();",
+                        testItem,
+                        transaction);
+
+                    Console.WriteLine($"    在交易中新增 AnomalyTestItem，ID = {itemId}");
+
+                    // 提交交易
+                    transaction.Commit();
+                    Console.WriteLine("    ✅ 交易已成功提交");
+
+                    // 清理測試資料
+                    _anomalyTestItemRepo.Delete(itemId);
+                    _anomalyLotRepo.Delete(lotId);
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine($"    ❌ 交易失敗並已回復：{ex.Message}");
+                }
+            }
+
+            // 示範交易的 Rollback（失敗情境）
+            Console.WriteLine("\n  [情境二] 交易失敗回復");
+            using (var transaction = _factory.BeginTransaction())
+            {
+                try
+                {
+                    var lot = new AnomalyLot
+                    {
+                        LotsInfoId = 20002,
+                        DetectionMethodId = 1,
+                        SpecCalcStartTime = new DateTime(2024, 1, 1),
+                        SpecCalcEndTime = new DateTime(2024, 12, 31)
+                    };
+
+                    var lotId = transaction.Connection.ExecuteScalar<long>(
+                        @"INSERT INTO anomaly_lots
+                          (lots_info_id, detection_method_id, spec_calc_start_time, spec_calc_end_time)
+                          VALUES (@LotsInfoId, @DetectionMethodId, @SpecCalcStartTime, @SpecCalcEndTime);
+                          SELECT LAST_INSERT_ID();",
+                        lot,
+                        transaction);
+
+                    Console.WriteLine($"    在交易中新增 AnomalyLot，ID = {lotId}");
+
+                    // 模擬錯誤：故意拋出例外
+                    throw new InvalidOperationException("模擬業務邏輯錯誤");
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine($"    ✅ 交易已回復（預期行為）：{ex.Message}");
+                    Console.WriteLine("    資料未寫入資料庫");
+                }
+            }
+
+            Console.WriteLine("\n  交易模式示範完成");
         }
 
         // ─────────────────────────────────────────────────────────────────────

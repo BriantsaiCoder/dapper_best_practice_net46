@@ -9,6 +9,7 @@ namespace DapperMySqlCrudExample.Infrastructure
     /// 資料庫連線工廠。
     /// 每次呼叫 Create() 均回傳新的、已開啟的連線物件，
     /// 呼叫端需自行以 using 區塊管理連線的生命週期。
+    /// 支援交易模式，透過 BeginTransaction() 開啟交易。
     /// </summary>
     public class DbConnectionFactory : IDbConnectionFactory
     {
@@ -38,6 +39,22 @@ namespace DapperMySqlCrudExample.Infrastructure
             var conn = new MySqlConnection(_connectionString);
             conn.Open();
             return conn;
+        }
+
+        /// <inheritdoc/>
+        public IDbTransaction BeginTransaction()
+        {
+            var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            return conn.BeginTransaction();
+        }
+
+        /// <inheritdoc/>
+        public IDbTransaction BeginTransaction(IsolationLevel isolationLevel)
+        {
+            var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            return conn.BeginTransaction(isolationLevel);
         }
     }
 }
