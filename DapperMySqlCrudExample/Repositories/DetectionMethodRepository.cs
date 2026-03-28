@@ -26,21 +26,21 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<DetectionMethod> GetAll()
         {
-            const string sql = "SELECT " + SelectColumns + " FROM detection_methods ORDER BY id";
+            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql);
         }
 
         public DetectionMethod GetById(byte id)
         {
-            const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE id = @Id";
+            var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
 
         public DetectionMethod GetByCode(string methodCode)
         {
-            const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE method_code = @MethodCode";
+            var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE method_code = @MethodCode";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodCode = methodCode });
         }
