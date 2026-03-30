@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dapper;
-using MathNet.Numerics.Statistics;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
+using MathNet.Numerics.Statistics;
 
 namespace DapperMySqlCrudExample.Repositories
 {
@@ -201,9 +201,17 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         private IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
-            string programName, uint siteId, string testItemName)
+            string programName,
+            uint siteId,
+            string testItemName
+        )
         {
-            var p = new { ProgramName = programName, SiteId = siteId, TestItemName = testItemName };
+            var p = new
+            {
+                ProgramName = programName,
+                SiteId = siteId,
+                TestItemName = testItemName,
+            };
             using (var conn = _factory.Create())
             {
                 const string sql1 =
@@ -216,7 +224,8 @@ namespace DapperMySqlCrudExample.Repositories
                         AND  mean_value    IS NOT NULL
                       ORDER BY start_time DESC";
                 var rows = conn.Query<SiteMeanRow>(sql1, p).ToList();
-                if (rows.Count >= 30) return rows;
+                if (rows.Count >= 30)
+                    return rows;
 
                 const string sql2 =
                     @"SELECT mean_value AS MeanValue, start_time AS StartTime
@@ -232,63 +241,69 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         public long ComputeAndInsertSiteMeanSpec(
-            string programName, uint siteId, string testItemName)
+            string programName,
+            uint siteId,
+            string testItemName
+        )
         {
             var rows = QuerySiteMeanRows(programName, siteId, testItemName);
 
             if (rows.Count == 0)
                 throw new InvalidOperationException(
-                    $"No site_test_statistics data for program={programName}, " +
-                    $"siteId={siteId}, testItem={testItemName}.");
+                    $"No site_test_statistics data for program={programName}, "
+                        + $"siteId={siteId}, testItem={testItemName}."
+                );
 
-            double mean, std;
+            double mean,
+                std;
             if (rows.Count >= 2)
             {
                 var values = rows.Select(r => (double)r.MeanValue).ToList();
                 mean = Statistics.Mean(values);
-                std  = Statistics.StandardDeviation(values);
+                std = Statistics.StandardDeviation(values);
             }
             else
             {
                 mean = (double)rows[0].MeanValue;
-                std  = 0.0;
+                std = 0.0;
             }
 
             var ucl = (decimal)(mean + 6.0 * std);
             var lcl = (decimal)(mean - 6.0 * std);
 
-            var timesWithValue = rows
-                .Where(r => r.StartTime.HasValue)
+            var timesWithValue = rows.Where(r => r.StartTime.HasValue)
                 .Select(r => r.StartTime.Value)
                 .ToList();
 
             if (!timesWithValue.Any())
                 throw new InvalidOperationException(
-                    "All start_time values are NULL in site_test_statistics; " +
-                    "cannot determine SpecCalcStartTime / SpecCalcEndTime.");
+                    "All start_time values are NULL in site_test_statistics; "
+                        + "cannot determine SpecCalcStartTime / SpecCalcEndTime."
+                );
 
             var specCalcStart = timesWithValue.Min();
-            var specCalcEnd   = timesWithValue.Max();
+            var specCalcEnd = timesWithValue.Max();
 
             byte methodId;
             using (var conn = _factory.Create())
             {
                 methodId = conn.ExecuteScalar<byte>(
-                    "SELECT id FROM detection_methods WHERE method_code = 'SITE_MEAN' LIMIT 1");
+                    "SELECT id FROM detection_methods WHERE method_code = 'SITE_MEAN' LIMIT 1"
+                );
             }
 
             var spec = new DetectionSpec
             {
-                Program           = programName,
-                TestItemName      = testItemName,
-                SiteId            = siteId,
+                Program = programName,
+                TestItemName = testItemName,
+                SiteId = siteId,
                 DetectionMethodId = methodId,
-                SpecUpperLimit    = ucl,
-                SpecLowerLimit    = lcl,
+                SpecUpperLimit = ucl,
+                SpecLowerLimit = lcl,
                 SpecCalcStartTime = specCalcStart,
-                SpecCalcEndTime   = specCalcEnd,
-                SpecCalcMean      = (decimal)mean,
-                SpecCalcStd       = (decimal)std,
+                SpecCalcEndTime = specCalcEnd,
+                SpecCalcMean = (decimal)mean,
+                SpecCalcStd = (decimal)std,
             };
 
             return this.Insert(spec);

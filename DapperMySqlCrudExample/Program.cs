@@ -464,24 +464,31 @@ namespace DapperMySqlCrudExample
             try
             {
                 long newSpecId = _detectionSpecRepo.ComputeAndInsertSiteMeanSpec(
-                    programName:  "PROD-A",
-                    siteId:       1,
-                    testItemName: "Vth");
-                Console.WriteLine($"  [ComputeAndInsertSiteMeanSpec] 新 DetectionSpec ID = {newSpecId}");
+                    programName: "PROD-A",
+                    siteId: 1,
+                    testItemName: "Vth"
+                );
+                Console.WriteLine(
+                    $"  [ComputeAndInsertSiteMeanSpec] 新 DetectionSpec ID = {newSpecId}"
+                );
 
                 var spec = _detectionSpecRepo.GetById(newSpecId);
                 if (spec != null)
                 {
                     Console.WriteLine(
-                        $"  [GetById] Program={spec.Program}, Site={spec.SiteId}, " +
-                        $"Mean={spec.SpecCalcMean:F6}, Std={spec.SpecCalcStd:F6}, " +
-                        $"UCL={spec.SpecUpperLimit:F6}, LCL={spec.SpecLowerLimit:F6}");
+                        $"  [GetById] Program={spec.Program}, Site={spec.SiteId}, "
+                            + $"Mean={spec.SpecCalcMean:F6}, Std={spec.SpecCalcStd:F6}, "
+                            + $"UCL={spec.SpecUpperLimit:F6}, LCL={spec.SpecLowerLimit:F6}"
+                    );
                     Console.WriteLine(
-                        $"  [GetById] CalcStart={spec.SpecCalcStartTime:yyyy-MM-dd}, " +
-                        $"CalcEnd={spec.SpecCalcEndTime:yyyy-MM-dd}");
+                        $"  [GetById] CalcStart={spec.SpecCalcStartTime:yyyy-MM-dd}, "
+                            + $"CalcEnd={spec.SpecCalcEndTime:yyyy-MM-dd}"
+                    );
                 }
 
-                Console.WriteLine($"  [Delete] 清理測試資料: {_detectionSpecRepo.Delete(newSpecId)}");
+                Console.WriteLine(
+                    $"  [Delete] 清理測試資料: {_detectionSpecRepo.Delete(newSpecId)}"
+                );
             }
             catch (InvalidOperationException ex)
             {

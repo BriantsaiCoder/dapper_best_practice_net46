@@ -16,7 +16,10 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="program">產品程式名稱</param>
         /// <param name="detectionMethodName">偵測方法名稱（對應 detection_methods.method_name）</param>
         /// <returns>符合條件的 DetectionSpec 集合</returns>
-        IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(string program, string detectionMethodName);
+        IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(
+            string program,
+            string detectionMethodName
+        );
 
         /// <summary>
         /// 取最近一個月內 spec_calc_end_time 最大的單筆記錄（最新有效規格）。
