@@ -4,10 +4,8 @@
 --
 -- MySQL 版本說明：
 --   • MySQL 5.5.3+：支援 utf8mb4 字元集。
---   • MySQL 5.6.5 之前：每張表只允許一個 TIMESTAMP 欄位同時設定
---     DEFAULT CURRENT_TIMESTAMP 及 ON UPDATE CURRENT_TIMESTAMP。
---     若使用 MySQL < 5.6.5，請將各表的 created_at 改為 NOT NULL DEFAULT '0000-00-00 00:00:00'
---     並在應用程式層寫入建立時間。
+--   • 所有時間欄位統一使用 DATETIME（非 TIMESTAMP），避免 2038 年溢位及
+--     時區自動轉換問題，確保製造業本地事件時間的一致性。
 --   • MySQL 5.7+：可直接使用 BOOLEAN (TINYINT(1) 別名)，行為一致。
 -- =============================================================================
 
@@ -18,8 +16,8 @@ CREATE TABLE detection_methods (
     method_name VARCHAR(50) NOT NULL,
     has_test_item BOOLEAN DEFAULT FALSE,
     has_unit_level BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO detection_methods (method_code, method_name, has_test_item, has_unit_level) VALUES
@@ -36,10 +34,10 @@ CREATE TABLE anomaly_lots (
     detection_method_id TINYINT NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time TIMESTAMP NULL,
-    spec_calc_end_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    spec_calc_start_time DATETIME NULL,
+    spec_calc_end_time DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_created_at (created_at),
     UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
     CONSTRAINT fk_anomaly_lots_info
@@ -59,10 +57,10 @@ CREATE TABLE anomaly_test_items (
     detection_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time TIMESTAMP NULL,
-    spec_calc_end_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    spec_calc_start_time DATETIME NULL,
+    spec_calc_end_time DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_test_item_name (test_item_name),
     UNIQUE INDEX unq_lot_item (anomaly_lot_id, test_item_name),
     CONSTRAINT fk_test_items_anomaly_lot
@@ -79,10 +77,10 @@ CREATE TABLE anomaly_units (
     detection_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time TIMESTAMP NULL,
-    spec_calc_end_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    spec_calc_start_time DATETIME NULL,
+    spec_calc_end_time DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_unit (unit_id),
     UNIQUE INDEX unq_item_unit (anomaly_test_item_id, unit_id),
     CONSTRAINT fk_units_test_item
@@ -97,9 +95,9 @@ CREATE TABLE anomaly_lot_process_mapping (
     anomaly_lot_id BIGINT NOT NULL,
     station_name VARCHAR(100) NOT NULL,
     equipment_id VARCHAR(50) NOT NULL,
-    process_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    process_time DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_lot (anomaly_lot_id),
     INDEX idx_equipment (equipment_id),
     INDEX idx_station_equipment (station_name, equipment_id),
@@ -116,11 +114,11 @@ CREATE TABLE anomaly_unit_process_mapping (
     boat_id VARCHAR(50) NOT NULL,
     position_x SMALLINT NOT NULL,
     position_y SMALLINT NOT NULL,
-    process_time TIMESTAMP NULL,
+    process_time DATETIME NULL,
     station_name VARCHAR(100),
     equipment_id VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_unit (anomaly_unit_id),
     INDEX idx_boat_position (boat_id, position_x, position_y),
     INDEX idx_station_equipment (station_name, equipment_id),
@@ -139,10 +137,10 @@ CREATE TABLE detection_specs (
     detection_method_id TINYINT NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time TIMESTAMP NOT NULL,
-    spec_calc_end_time TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    spec_calc_start_time DATETIME NOT NULL,
+    spec_calc_end_time DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_program_method (program, detection_method_id),
     INDEX idx_program_item_method (program, test_item_name, detection_method_id),
     INDEX idx_calc_end_time (spec_calc_end_time),
@@ -167,10 +165,13 @@ CREATE TABLE site_test_statistics (
     cp_value DECIMAL(18,9),
     cpk_value DECIMAL(18,9),
     tester_id VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    start_time DATETIME NULL,
+    end_time   DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_site (site_id),
     INDEX idx_program_item (program, test_item_name),
+    INDEX idx_start_time (start_time),
     UNIQUE INDEX unq_lot_site_item (lots_info_id, site_id, test_item_name),
     CONSTRAINT fk_site_test_statistics_lots_info
         FOREIGN KEY (lots_info_id)
@@ -185,10 +186,10 @@ CREATE TABLE good_lots (
     detection_method_id TINYINT NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time TIMESTAMP NULL,
-    spec_calc_end_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    spec_calc_start_time DATETIME NULL,
+    spec_calc_end_time DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_method (detection_method_id),
     UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
     CONSTRAINT fk_good_lots_info

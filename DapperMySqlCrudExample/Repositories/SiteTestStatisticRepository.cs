@@ -15,7 +15,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory;
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id             AS Id,
             lots_info_id   AS LotsInfoId,
             program        AS Program,
@@ -28,6 +29,8 @@ namespace DapperMySqlCrudExample.Repositories
             cp_value       AS CpValue,
             cpk_value      AS CpkValue,
             tester_id      AS TesterId,
+            start_time     AS StartTime,
+            end_time       AS EndTime,
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
 
@@ -47,34 +50,42 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId)
         {
-            var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
+            var sql =
+                $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql, new { LotsInfoId = lotsInfoId });
         }
 
         public IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName)
         {
-            var sql = $@"
+            var sql =
+                $@"
                 SELECT {SelectColumns}
                 FROM   site_test_statistics
                 WHERE  site_id = @SiteId
                   AND  test_item_name = @TestItemName";
 
             using (var conn = _factory.Create())
-                return conn.Query<SiteTestStatistic>(sql, new { SiteId = siteId, TestItemName = testItemName });
+                return conn.Query<SiteTestStatistic>(
+                    sql,
+                    new { SiteId = siteId, TestItemName = testItemName }
+                );
         }
 
         public long Insert(SiteTestStatistic entity)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO site_test_statistics
                     (lots_info_id, program, site_id, test_item_name,
                      mean_value, max_value, min_value, std_value,
-                     cp_value, cpk_value, tester_id)
+                     cp_value, cpk_value, tester_id,
+                     start_time, end_time)
                 VALUES
                     (@LotsInfoId, @Program, @SiteId, @TestItemName,
                      @MeanValue, @MaxValue, @MinValue, @StdValue,
-                     @CpValue, @CpkValue, @TesterId);
+                     @CpValue, @CpkValue, @TesterId,
+                     @StartTime, @EndTime);
                 SELECT LAST_INSERT_ID();";
 
             using (var conn = _factory.Create())
@@ -83,7 +94,8 @@ namespace DapperMySqlCrudExample.Repositories
 
         public bool Update(SiteTestStatistic entity)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE site_test_statistics
                 SET    lots_info_id   = @LotsInfoId,
                        program        = @Program,
@@ -95,7 +107,9 @@ namespace DapperMySqlCrudExample.Repositories
                        std_value      = @StdValue,
                        cp_value       = @CpValue,
                        cpk_value      = @CpkValue,
-                       tester_id      = @TesterId
+                       tester_id      = @TesterId,
+                       start_time     = @StartTime,
+                       end_time       = @EndTime
                 WHERE  id = @Id";
 
             using (var conn = _factory.Create())
@@ -105,7 +119,10 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Delete(long id)
         {
             using (var conn = _factory.Create())
-                return conn.Execute("DELETE FROM site_test_statistics WHERE id = @Id", new { Id = id }) > 0;
+                return conn.Execute(
+                        "DELETE FROM site_test_statistics WHERE id = @Id",
+                        new { Id = id }
+                    ) > 0;
         }
     }
 }

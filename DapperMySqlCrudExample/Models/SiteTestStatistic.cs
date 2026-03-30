@@ -17,6 +17,8 @@ namespace DapperMySqlCrudExample.Models
         public decimal? CpValue { get; set; }
         public decimal? CpkValue { get; set; }
         public string TesterId { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

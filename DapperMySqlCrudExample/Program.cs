@@ -15,31 +15,31 @@ namespace DapperMySqlCrudExample
     {
         private static IDbConnectionFactory _factory;
 
-        private static IDetectionMethodRepository          _detectionMethodRepo;
-        private static IAnomalyLotRepository               _anomalyLotRepo;
-        private static IAnomalyTestItemRepository          _anomalyTestItemRepo;
-        private static IAnomalyUnitRepository              _anomalyUnitRepo;
+        private static IDetectionMethodRepository _detectionMethodRepo;
+        private static IAnomalyLotRepository _anomalyLotRepo;
+        private static IAnomalyTestItemRepository _anomalyTestItemRepo;
+        private static IAnomalyUnitRepository _anomalyUnitRepo;
         private static IAnomalyLotProcessMappingRepository _lotProcessRepo;
         private static IAnomalyUnitProcessMappingRepository _unitProcessRepo;
-        private static IDetectionSpecRepository            _detectionSpecRepo;
-        private static ISiteTestStatisticRepository        _siteStatRepo;
-        private static IGoodLotRepository                  _goodLotRepo;
+        private static IDetectionSpecRepository _detectionSpecRepo;
+        private static ISiteTestStatisticRepository _siteStatRepo;
+        private static IGoodLotRepository _goodLotRepo;
 
         private static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
             // 初始化連線工廠與所有 Repository
-            _factory             = new DbConnectionFactory();
+            _factory = new DbConnectionFactory();
             _detectionMethodRepo = new DetectionMethodRepository(_factory);
-            _anomalyLotRepo      = new AnomalyLotRepository(_factory);
+            _anomalyLotRepo = new AnomalyLotRepository(_factory);
             _anomalyTestItemRepo = new AnomalyTestItemRepository(_factory);
-            _anomalyUnitRepo     = new AnomalyUnitRepository(_factory);
-            _lotProcessRepo      = new AnomalyLotProcessMappingRepository(_factory);
-            _unitProcessRepo     = new AnomalyUnitProcessMappingRepository(_factory);
-            _detectionSpecRepo   = new DetectionSpecRepository(_factory);
-            _siteStatRepo        = new SiteTestStatisticRepository(_factory);
-            _goodLotRepo         = new GoodLotRepository(_factory);
+            _anomalyUnitRepo = new AnomalyUnitRepository(_factory);
+            _lotProcessRepo = new AnomalyLotProcessMappingRepository(_factory);
+            _unitProcessRepo = new AnomalyUnitProcessMappingRepository(_factory);
+            _detectionSpecRepo = new DetectionSpecRepository(_factory);
+            _siteStatRepo = new SiteTestStatisticRepository(_factory);
+            _goodLotRepo = new GoodLotRepository(_factory);
 
             try
             {
@@ -76,10 +76,10 @@ namespace DapperMySqlCrudExample
             // Create
             var newMethod = new DetectionMethod
             {
-                MethodCode    = "DEMO_METHOD",
-                MethodName    = "示範偵測方法",
-                HasTestItem   = true,
-                HasUnitLevel  = false
+                MethodCode = "DEMO_METHOD",
+                MethodName = "示範偵測方法",
+                HasTestItem = true,
+                HasUnitLevel = false,
             };
             byte insertedId = _detectionMethodRepo.Insert(newMethod);
             Console.WriteLine($"  [Insert] 新增成功，ID = {insertedId}");
@@ -87,12 +87,15 @@ namespace DapperMySqlCrudExample
             // Read (all)
             var allMethods = _detectionMethodRepo.GetAll();
             int count = 0;
-            foreach (var m in allMethods) count++;
+            foreach (var m in allMethods)
+                count++;
             Console.WriteLine($"  [GetAll] 共 {count} 筆");
 
             // Read (by id)
             var found = _detectionMethodRepo.GetById(insertedId);
-            Console.WriteLine($"  [GetById] MethodCode={found?.MethodCode}, MethodName={found?.MethodName}");
+            Console.WriteLine(
+                $"  [GetById] MethodCode={found?.MethodCode}, MethodName={found?.MethodName}"
+            );
 
             // Read (by code)
             var byCode = _detectionMethodRepo.GetByCode("DEMO_METHOD");
@@ -119,26 +122,30 @@ namespace DapperMySqlCrudExample
             PrintSection("2. AnomalyLot（異常批號）CRUD");
 
             // 取得一個有效的 DetectionMethod ID（需先確保 detection_methods 資料存在）
-            const byte methodId  = 1;  // YIELD
-            const int  lotsInfoId = 10001;
+            const byte methodId = 1; // YIELD
+            const int lotsInfoId = 10001;
 
             var newLot = new AnomalyLot
             {
-                LotsInfoId          = lotsInfoId,
-                DetectionMethodId   = methodId,
-                SpecUpperLimit      = 1.000000000m,
-                SpecLowerLimit      = 0.950000000m,
-                SpecCalcStartTime   = new DateTime(2024, 1, 1),
-                SpecCalcEndTime     = new DateTime(2024, 3, 31)
+                LotsInfoId = lotsInfoId,
+                DetectionMethodId = methodId,
+                SpecUpperLimit = 1.000000000m,
+                SpecLowerLimit = 0.950000000m,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 3, 31),
             };
             long lotId = _anomalyLotRepo.Insert(newLot);
             Console.WriteLine($"  [Insert] AnomalyLot ID = {lotId}");
 
             var getLot = _anomalyLotRepo.GetById(lotId);
-            Console.WriteLine($"  [GetById] LotsInfoId={getLot?.LotsInfoId}, MethodId={getLot?.DetectionMethodId}");
+            Console.WriteLine(
+                $"  [GetById] LotsInfoId={getLot?.LotsInfoId}, MethodId={getLot?.DetectionMethodId}"
+            );
 
             var byLots = _anomalyLotRepo.GetByLotsInfoId(lotsInfoId);
-            int cnt = 0; foreach (var x in byLots) cnt++;
+            int cnt = 0;
+            foreach (var x in byLots)
+                cnt++;
             Console.WriteLine($"  [GetByLotsInfoId] 找到 {cnt} 筆");
 
             if (getLot != null)
@@ -160,30 +167,32 @@ namespace DapperMySqlCrudExample
             // 需先建立 AnomalyLot 父資料
             var lot = new AnomalyLot
             {
-                LotsInfoId        = 10002,
+                LotsInfoId = 10002,
                 DetectionMethodId = 2, // STD
-                SpecUpperLimit    = 5.0m,
-                SpecLowerLimit    = 0.0m,
+                SpecUpperLimit = 5.0m,
+                SpecLowerLimit = 0.0m,
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
-                SpecCalcEndTime   = new DateTime(2024, 6, 30)
+                SpecCalcEndTime = new DateTime(2024, 6, 30),
             };
             long lotId = _anomalyLotRepo.Insert(lot);
 
             var item = new AnomalyTestItem
             {
-                AnomalyLotId       = lotId,
-                TestItemName       = "Vth",
-                DetectionValue     = 3.14159m,
-                SpecUpperLimit     = 5.0m,
-                SpecLowerLimit     = 0.0m,
-                SpecCalcStartTime  = new DateTime(2024, 1, 1),
-                SpecCalcEndTime    = new DateTime(2024, 6, 30)
+                AnomalyLotId = lotId,
+                TestItemName = "Vth",
+                DetectionValue = 3.14159m,
+                SpecUpperLimit = 5.0m,
+                SpecLowerLimit = 0.0m,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 6, 30),
             };
             long itemId = _anomalyTestItemRepo.Insert(item);
             Console.WriteLine($"  [Insert] AnomalyTestItem ID = {itemId}");
 
             var getItem = _anomalyTestItemRepo.GetById(itemId);
-            Console.WriteLine($"  [GetById] TestItemName={getItem?.TestItemName}, Value={getItem?.DetectionValue}");
+            Console.WriteLine(
+                $"  [GetById] TestItemName={getItem?.TestItemName}, Value={getItem?.DetectionValue}"
+            );
 
             if (getItem != null)
             {
@@ -204,35 +213,44 @@ namespace DapperMySqlCrudExample
 
             var lot = new AnomalyLot
             {
-                LotsInfoId = 10003, DetectionMethodId = 3,
-                SpecUpperLimit = 5.0m, SpecLowerLimit = 0.0m,
-                SpecCalcStartTime = new DateTime(2024, 1, 1), SpecCalcEndTime = new DateTime(2024, 12, 31)
+                LotsInfoId = 10003,
+                DetectionMethodId = 3,
+                SpecUpperLimit = 5.0m,
+                SpecLowerLimit = 0.0m,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long lotId = _anomalyLotRepo.Insert(lot);
 
             var testItem = new AnomalyTestItem
             {
-                AnomalyLotId = lotId, TestItemName = "Ioff",
-                DetectionValue = 1.23m, SpecUpperLimit = 2.0m, SpecLowerLimit = 0.5m,
-                SpecCalcStartTime = new DateTime(2024, 1, 1), SpecCalcEndTime = new DateTime(2024, 12, 31)
+                AnomalyLotId = lotId,
+                TestItemName = "Ioff",
+                DetectionValue = 1.23m,
+                SpecUpperLimit = 2.0m,
+                SpecLowerLimit = 0.5m,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long itemId = _anomalyTestItemRepo.Insert(testItem);
 
             var unit = new AnomalyUnit
             {
                 AnomalyTestItemId = itemId,
-                UnitId            = "WAFER-001-DIE-01",
-                DetectionValue    = 1.99m,
-                SpecUpperLimit    = 2.0m,
-                SpecLowerLimit    = 0.5m,
+                UnitId = "WAFER-001-DIE-01",
+                DetectionValue = 1.99m,
+                SpecUpperLimit = 2.0m,
+                SpecLowerLimit = 0.5m,
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
-                SpecCalcEndTime   = new DateTime(2024, 12, 31)
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long unitId = _anomalyUnitRepo.Insert(unit);
             Console.WriteLine($"  [Insert] AnomalyUnit ID = {unitId}");
 
             var getUnit = _anomalyUnitRepo.GetById(unitId);
-            Console.WriteLine($"  [GetById] UnitId={getUnit?.UnitId}, Value={getUnit?.DetectionValue}");
+            Console.WriteLine(
+                $"  [GetById] UnitId={getUnit?.UnitId}, Value={getUnit?.DetectionValue}"
+            );
 
             if (getUnit != null)
             {
@@ -254,23 +272,27 @@ namespace DapperMySqlCrudExample
 
             var lot = new AnomalyLot
             {
-                LotsInfoId = 10004, DetectionMethodId = 1,
-                SpecCalcStartTime = new DateTime(2024, 1, 1), SpecCalcEndTime = new DateTime(2024, 12, 31)
+                LotsInfoId = 10004,
+                DetectionMethodId = 1,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long lotId = _anomalyLotRepo.Insert(lot);
 
             var mapping = new AnomalyLotProcessMapping
             {
                 AnomalyLotId = lotId,
-                StationName  = "Diffusion",
-                EquipmentId  = "EQP-D-001",
-                ProcessTime  = new DateTime(2024, 3, 15, 8, 30, 0)
+                StationName = "Diffusion",
+                EquipmentId = "EQP-D-001",
+                ProcessTime = new DateTime(2024, 3, 15, 8, 30, 0),
             };
             long mappingId = _lotProcessRepo.Insert(mapping);
             Console.WriteLine($"  [Insert] Mapping ID = {mappingId}");
 
             var getMapping = _lotProcessRepo.GetById(mappingId);
-            Console.WriteLine($"  [GetById] Station={getMapping?.StationName}, Equip={getMapping?.EquipmentId}");
+            Console.WriteLine(
+                $"  [GetById] Station={getMapping?.StationName}, Equip={getMapping?.EquipmentId}"
+            );
 
             if (getMapping != null)
             {
@@ -291,38 +313,46 @@ namespace DapperMySqlCrudExample
 
             var lot = new AnomalyLot
             {
-                LotsInfoId = 10005, DetectionMethodId = 3,
-                SpecCalcStartTime = new DateTime(2024, 1, 1), SpecCalcEndTime = new DateTime(2024, 12, 31)
+                LotsInfoId = 10005,
+                DetectionMethodId = 3,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long lotId = _anomalyLotRepo.Insert(lot);
             var ti = new AnomalyTestItem
             {
-                AnomalyLotId = lotId, TestItemName = "Idsat",
-                SpecCalcStartTime = new DateTime(2024, 1, 1), SpecCalcEndTime = new DateTime(2024, 12, 31)
+                AnomalyLotId = lotId,
+                TestItemName = "Idsat",
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long tiId = _anomalyTestItemRepo.Insert(ti);
             var au = new AnomalyUnit
             {
-                AnomalyTestItemId = tiId, UnitId = "W01-D05",
-                SpecCalcStartTime = new DateTime(2024, 1, 1), SpecCalcEndTime = new DateTime(2024, 12, 31)
+                AnomalyTestItemId = tiId,
+                UnitId = "W01-D05",
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long auId = _anomalyUnitRepo.Insert(au);
 
             var upMapping = new AnomalyUnitProcessMapping
             {
                 AnomalyUnitId = auId,
-                BoatId        = "BOAT-A-01",
-                PositionX     = 3,
-                PositionY     = 7,
-                ProcessTime   = new DateTime(2024, 3, 15, 9, 0, 0),
-                StationName   = "Diffusion",
-                EquipmentId   = "EQP-D-001"
+                BoatId = "BOAT-A-01",
+                PositionX = 3,
+                PositionY = 7,
+                ProcessTime = new DateTime(2024, 3, 15, 9, 0, 0),
+                StationName = "Diffusion",
+                EquipmentId = "EQP-D-001",
             };
             long upId = _unitProcessRepo.Insert(upMapping);
             Console.WriteLine($"  [Insert] UnitProcessMapping ID = {upId}");
 
             var getUp = _unitProcessRepo.GetById(upId);
-            Console.WriteLine($"  [GetById] BoatId={getUp?.BoatId}, X={getUp?.PositionX}, Y={getUp?.PositionY}");
+            Console.WriteLine(
+                $"  [GetById] BoatId={getUp?.BoatId}, X={getUp?.PositionX}, Y={getUp?.PositionY}"
+            );
 
             if (getUp != null)
             {
@@ -345,43 +375,67 @@ namespace DapperMySqlCrudExample
 
             var spec = new DetectionSpec
             {
-                Program             = "PROD-A",
-                TestItemName        = "Vth",
-                SiteId              = 1,
-                DetectionMethodId   = 2, // STD
-                SpecUpperLimit      = 1.5m,
-                SpecLowerLimit      = 0.5m,
-                SpecCalcStartTime   = new DateTime(2024, 1, 1),
-                SpecCalcEndTime     = new DateTime(2024, 12, 31)
+                Program = "PROD-A",
+                TestItemName = "Vth",
+                SiteId = 1,
+                DetectionMethodId = 2, // STD
+                SpecUpperLimit = 1.5m,
+                SpecLowerLimit = 0.5m,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
             long specId = _detectionSpecRepo.Insert(spec);
             Console.WriteLine($"  [Insert] DetectionSpec ID = {specId}");
 
             var getSpec = _detectionSpecRepo.GetById(specId);
-            Console.WriteLine($"  [GetById] Program={getSpec?.Program}, Item={getSpec?.TestItemName}");
+            Console.WriteLine(
+                $"  [GetById] Program={getSpec?.Program}, Item={getSpec?.TestItemName}"
+            );
 
             var byProgramMethod = _detectionSpecRepo.GetByProgramAndMethod("PROD-A", 2);
-            int cnt = 0; foreach (var x in byProgramMethod) cnt++;
+            int cnt = 0;
+            foreach (var x in byProgramMethod)
+                cnt++;
             Console.WriteLine($"  [GetByProgramAndMethod] 找到 {cnt} 筆");
 
-            var recentSpecs = _detectionSpecRepo.GetRecentByProgramAndMethodName("PROD-A", "示範偵測方法");
+            var recentSpecs = _detectionSpecRepo.GetRecentByProgramAndMethodName(
+                "PROD-A",
+                "示範偵測方法"
+            );
             int recentCnt = 0;
             foreach (var s in recentSpecs)
             {
                 recentCnt++;
                 // SpecUpperLimit / SpecLowerLimit 為 decimal?，需先判斷是否有值再使用
-                string upper = s.SpecUpperLimit.HasValue ? s.SpecUpperLimit.Value.ToString("F4") : "無";
-                string lower = s.SpecLowerLimit.HasValue ? s.SpecLowerLimit.Value.ToString("F4") : "無";
-                Console.WriteLine($"    Spec#{s.Id} [{s.TestItemName}] 上限={upper}  下限={lower}  計算結束={s.SpecCalcEndTime:yyyy-MM-dd}");
+                string upper = s.SpecUpperLimit.HasValue
+                    ? s.SpecUpperLimit.Value.ToString("F4")
+                    : "無";
+                string lower = s.SpecLowerLimit.HasValue
+                    ? s.SpecLowerLimit.Value.ToString("F4")
+                    : "無";
+                Console.WriteLine(
+                    $"    Spec#{s.Id} [{s.TestItemName}] 上限={upper}  下限={lower}  計算結束={s.SpecCalcEndTime:yyyy-MM-dd}"
+                );
             }
-            Console.WriteLine($"  [GetRecentByProgramAndMethodName] Program=PROD-A, MethodName=示範偵測方法，最近一個月共 {recentCnt} 筆");
+            Console.WriteLine(
+                $"  [GetRecentByProgramAndMethodName] Program=PROD-A, MethodName=示範偵測方法，最近一個月共 {recentCnt} 筆"
+            );
 
-            var latestSpec = _detectionSpecRepo.GetLatestByProgramAndMethodName("PROD-A", "示範偵測方法");
+            var latestSpec = _detectionSpecRepo.GetLatestByProgramAndMethodName(
+                "PROD-A",
+                "示範偵測方法"
+            );
             if (latestSpec != null)
             {
-                string latestUpper = latestSpec.SpecUpperLimit.HasValue ? latestSpec.SpecUpperLimit.Value.ToString("F4") : "無";
-                string latestLower = latestSpec.SpecLowerLimit.HasValue ? latestSpec.SpecLowerLimit.Value.ToString("F4") : "無";
-                Console.WriteLine($"  [GetLatestByProgramAndMethodName] 最新 Spec#{latestSpec.Id} [{latestSpec.TestItemName}] 上限={latestUpper}  下限={latestLower}  計算結束={latestSpec.SpecCalcEndTime:yyyy-MM-dd}");
+                string latestUpper = latestSpec.SpecUpperLimit.HasValue
+                    ? latestSpec.SpecUpperLimit.Value.ToString("F4")
+                    : "無";
+                string latestLower = latestSpec.SpecLowerLimit.HasValue
+                    ? latestSpec.SpecLowerLimit.Value.ToString("F4")
+                    : "無";
+                Console.WriteLine(
+                    $"  [GetLatestByProgramAndMethodName] 最新 Spec#{latestSpec.Id} [{latestSpec.TestItemName}] 上限={latestUpper}  下限={latestLower}  計算結束={latestSpec.SpecCalcEndTime:yyyy-MM-dd}"
+                );
             }
             else
                 Console.WriteLine($"  [GetLatestByProgramAndMethodName] 最近一個月無資料");
@@ -404,17 +458,19 @@ namespace DapperMySqlCrudExample
 
             var stat = new SiteTestStatistic
             {
-                LotsInfoId   = 10006,
-                Program      = "PROD-A",
-                SiteId       = 1,
+                LotsInfoId = 10006,
+                Program = "PROD-A",
+                SiteId = 1,
                 TestItemName = "Vth",
-                MeanValue    = 1.012m,
-                MaxValue     = 1.098m,
-                MinValue     = 0.934m,
-                StdValue     = 0.041m,
-                CpValue      = 1.23m,
-                CpkValue     = 1.18m,
-                TesterId     = "TESTER-01"
+                MeanValue = 1.012m,
+                MaxValue = 1.098m,
+                MinValue = 0.934m,
+                StdValue = 0.041m,
+                CpValue = 1.23m,
+                CpkValue = 1.18m,
+                TesterId = "TESTER-01",
+                StartTime = new DateTime(2024, 1, 1),
+                EndTime = new DateTime(2024, 1, 31),
             };
             long statId = _siteStatRepo.Insert(stat);
             Console.WriteLine($"  [Insert] SiteTestStatistic ID = {statId}");
@@ -423,7 +479,9 @@ namespace DapperMySqlCrudExample
             Console.WriteLine($"  [GetById] Program={getStat?.Program}, Mean={getStat?.MeanValue}");
 
             var bySite = _siteStatRepo.GetBySiteAndItem(1, "Vth");
-            int cnt = 0; foreach (var x in bySite) cnt++;
+            int cnt = 0;
+            foreach (var x in bySite)
+                cnt++;
             Console.WriteLine($"  [GetBySiteAndItem] 找到 {cnt} 筆");
 
             if (getStat != null)
@@ -444,21 +502,25 @@ namespace DapperMySqlCrudExample
 
             var goodLot = new GoodLot
             {
-                LotsInfoId          = 10007,
-                DetectionMethodId   = 1, // YIELD
-                SpecUpperLimit      = 0.99m,
-                SpecLowerLimit      = 0.95m,
-                SpecCalcStartTime   = new DateTime(2024, 1, 1),
-                SpecCalcEndTime     = new DateTime(2024, 3, 31)
+                LotsInfoId = 10007,
+                DetectionMethodId = 1, // YIELD
+                SpecUpperLimit = 0.99m,
+                SpecLowerLimit = 0.95m,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 3, 31),
             };
             long goodLotId = _goodLotRepo.Insert(goodLot);
             Console.WriteLine($"  [Insert] GoodLot ID = {goodLotId}");
 
             var getGoodLot = _goodLotRepo.GetById(goodLotId);
-            Console.WriteLine($"  [GetById] LotsInfoId={getGoodLot?.LotsInfoId}, MethodId={getGoodLot?.DetectionMethodId}");
+            Console.WriteLine(
+                $"  [GetById] LotsInfoId={getGoodLot?.LotsInfoId}, MethodId={getGoodLot?.DetectionMethodId}"
+            );
 
             var byLots = _goodLotRepo.GetByLotsInfoId(10007);
-            int cnt = 0; foreach (var x in byLots) cnt++;
+            int cnt = 0;
+            foreach (var x in byLots)
+                cnt++;
             Console.WriteLine($"  [GetByLotsInfoId] 找到 {cnt} 筆");
 
             if (getGoodLot != null)
@@ -491,7 +553,7 @@ namespace DapperMySqlCrudExample
                         SpecUpperLimit = 1.0m,
                         SpecLowerLimit = 0.9m,
                         SpecCalcStartTime = new DateTime(2024, 1, 1),
-                        SpecCalcEndTime = new DateTime(2024, 12, 31)
+                        SpecCalcEndTime = new DateTime(2024, 12, 31),
                     };
 
                     // 使用交易連線執行插入
@@ -503,7 +565,8 @@ namespace DapperMySqlCrudExample
                                   @SpecCalcStartTime, @SpecCalcEndTime);
                           SELECT LAST_INSERT_ID();",
                         lot,
-                        transaction);
+                        transaction
+                    );
 
                     Console.WriteLine($"    在交易中新增 AnomalyLot，ID = {lotId}");
 
@@ -515,7 +578,7 @@ namespace DapperMySqlCrudExample
                         SpecUpperLimit = 1.0m,
                         SpecLowerLimit = 0.9m,
                         SpecCalcStartTime = new DateTime(2024, 1, 1),
-                        SpecCalcEndTime = new DateTime(2024, 12, 31)
+                        SpecCalcEndTime = new DateTime(2024, 12, 31),
                     };
 
                     var itemId = transaction.Connection.ExecuteScalar<long>(
@@ -528,7 +591,8 @@ namespace DapperMySqlCrudExample
                                   @SpecCalcStartTime, @SpecCalcEndTime);
                           SELECT LAST_INSERT_ID();",
                         testItem,
-                        transaction);
+                        transaction
+                    );
 
                     Console.WriteLine($"    在交易中新增 AnomalyTestItem，ID = {itemId}");
 
@@ -558,7 +622,7 @@ namespace DapperMySqlCrudExample
                         LotsInfoId = 20002,
                         DetectionMethodId = 1,
                         SpecCalcStartTime = new DateTime(2024, 1, 1),
-                        SpecCalcEndTime = new DateTime(2024, 12, 31)
+                        SpecCalcEndTime = new DateTime(2024, 12, 31),
                     };
 
                     var lotId = transaction.Connection.ExecuteScalar<long>(
@@ -567,7 +631,8 @@ namespace DapperMySqlCrudExample
                           VALUES (@LotsInfoId, @DetectionMethodId, @SpecCalcStartTime, @SpecCalcEndTime);
                           SELECT LAST_INSERT_ID();",
                         lot,
-                        transaction);
+                        transaction
+                    );
 
                     Console.WriteLine($"    在交易中新增 AnomalyLot，ID = {lotId}");
 
