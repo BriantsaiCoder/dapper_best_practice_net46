@@ -17,6 +17,9 @@
     <PackageReference Include="Dapper" Version="2.1.35" />
     <!-- MySql.Data 9.x 起不再支援 MySQL 5.x；若目標資料庫為 MySQL 5.x，請使用 8.0.x。 -->
     <PackageReference Include="MySql.Data" Version="8.0.33" />
+    <!-- MathNet.Numerics：提供樣本平均數 / 樣本標準差計算（Statistics.Mean / StandardDeviation）。
+         5.x 支援 .NET Standard 2.0，與 net461 相容。 -->
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
   </ItemGroup>
 
 </Project>

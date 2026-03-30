@@ -50,6 +50,7 @@ namespace DapperMySqlCrudExample
                 DemoAnomalyLotProcessMapping();
                 DemoAnomalyUnitProcessMapping();
                 DemoDetectionSpec();
+                DemoComputeAndInsertSiteMeanSpec();
                 DemoSiteTestStatistic();
                 DemoGoodLot();
                 DemoTransaction();
@@ -449,6 +450,43 @@ namespace DapperMySqlCrudExample
             }
 
             Console.WriteLine($"  [Delete] 結果: {_detectionSpecRepo.Delete(specId)}");
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // 7b. ComputeAndInsertSiteMeanSpec
+        // ─────────────────────────────────────────────────────────────────────
+        private static void DemoComputeAndInsertSiteMeanSpec()
+        {
+            PrintSection("7b. ComputeAndInsertSiteMeanSpec（計算 SITE_MEAN Spec）");
+            Console.WriteLine("  [說明] 查詢 site_test_statistics 的 mean_value，");
+            Console.WriteLine("         計算算術平均數與樣本標準差，以 mean±6σ 為上下限，");
+            Console.WriteLine("         寫入 detection_specs（method_code = SITE_MEAN）。");
+            try
+            {
+                long newSpecId = _detectionSpecRepo.ComputeAndInsertSiteMeanSpec(
+                    programName:  "PROD-A",
+                    siteId:       1,
+                    testItemName: "Vth");
+                Console.WriteLine($"  [ComputeAndInsertSiteMeanSpec] 新 DetectionSpec ID = {newSpecId}");
+
+                var spec = _detectionSpecRepo.GetById(newSpecId);
+                if (spec != null)
+                {
+                    Console.WriteLine(
+                        $"  [GetById] Program={spec.Program}, Site={spec.SiteId}, " +
+                        $"Mean={spec.SpecCalcMean:F6}, Std={spec.SpecCalcStd:F6}, " +
+                        $"UCL={spec.SpecUpperLimit:F6}, LCL={spec.SpecLowerLimit:F6}");
+                    Console.WriteLine(
+                        $"  [GetById] CalcStart={spec.SpecCalcStartTime:yyyy-MM-dd}, " +
+                        $"CalcEnd={spec.SpecCalcEndTime:yyyy-MM-dd}");
+                }
+
+                Console.WriteLine($"  [Delete] 清理測試資料: {_detectionSpecRepo.Delete(newSpecId)}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"  [跳過] 資料不足，無法計算: {ex.Message}");
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────

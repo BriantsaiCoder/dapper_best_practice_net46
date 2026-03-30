@@ -30,5 +30,17 @@ namespace DapperMySqlCrudExample.Repositories
         long Insert(DetectionSpec entity);
         bool Update(DetectionSpec entity);
         bool Delete(long id);
+
+        /// <summary>
+        /// 查詢 site_test_statistics 中指定 program / site / test_item 的 mean_value，
+        /// 優先取「近一個月內且 mean_value 不為 NULL」的資料（需 ≥ 30 筆）；
+        /// 若不足，改取最新 30 筆（mean_value 不為 NULL）。
+        /// 以算術平均數 ± 6 × 樣本標準差作為 spec 上下限，
+        /// 寫入 detection_specs（detection_method = SITE_MEAN），回傳新記錄的 ID。
+        /// </summary>
+        /// <exception cref="System.InvalidOperationException">
+        /// 當有效資料筆數為 0，或所有 start_time 皆為 NULL 時拋出。
+        /// </exception>
+        long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName);
     }
 }
