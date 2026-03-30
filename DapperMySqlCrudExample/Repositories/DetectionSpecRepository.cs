@@ -83,6 +83,36 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<DetectionSpec>(sql, new { Program = program, DetectionMethodName = detectionMethodName });
         }
 
+        /// <summary>
+        /// 取最近一個月內 spec_calc_end_time 最大的單筆記錄（最新有效規格）。
+        /// 找不到時回傳 null。
+        /// </summary>
+        public DetectionSpec GetLatestByProgramAndMethodName(string program, string detectionMethodName)
+        {
+            const string sql = @"
+                SELECT ds.id                   AS Id,
+                       ds.program              AS Program,
+                       ds.test_item_name       AS TestItemName,
+                       ds.site_id              AS SiteId,
+                       ds.detection_method_id  AS DetectionMethodId,
+                       ds.spec_upper_limit     AS SpecUpperLimit,
+                       ds.spec_lower_limit     AS SpecLowerLimit,
+                       ds.spec_calc_start_time AS SpecCalcStartTime,
+                       ds.spec_calc_end_time   AS SpecCalcEndTime,
+                       ds.created_at           AS CreatedAt,
+                       ds.updated_at           AS UpdatedAt
+                FROM   detection_specs   ds
+                JOIN   detection_methods dm ON dm.id = ds.detection_method_id
+                WHERE  ds.program     = @Program
+                  AND  dm.method_name = @DetectionMethodName
+                  AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                ORDER BY ds.spec_calc_end_time DESC
+                LIMIT 1";
+
+            using (var conn = _factory.Create())
+                return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Program = program, DetectionMethodName = detectionMethodName });
+        }
+
         public long Insert(DetectionSpec entity)
         {
             const string sql = @"

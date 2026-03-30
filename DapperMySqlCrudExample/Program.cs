@@ -376,6 +376,16 @@ namespace DapperMySqlCrudExample
             }
             Console.WriteLine($"  [GetRecentByProgramAndMethodName] Program=PROD-A, MethodName=示範偵測方法，最近一個月共 {recentCnt} 筆");
 
+            var latestSpec = _detectionSpecRepo.GetLatestByProgramAndMethodName("PROD-A", "示範偵測方法");
+            if (latestSpec != null)
+            {
+                string latestUpper = latestSpec.SpecUpperLimit.HasValue ? latestSpec.SpecUpperLimit.Value.ToString("F4") : "無";
+                string latestLower = latestSpec.SpecLowerLimit.HasValue ? latestSpec.SpecLowerLimit.Value.ToString("F4") : "無";
+                Console.WriteLine($"  [GetLatestByProgramAndMethodName] 最新 Spec#{latestSpec.Id} [{latestSpec.TestItemName}] 上限={latestUpper}  下限={latestLower}  計算結束={latestSpec.SpecCalcEndTime:yyyy-MM-dd}");
+            }
+            else
+                Console.WriteLine($"  [GetLatestByProgramAndMethodName] 最近一個月無資料");
+
             if (getSpec != null)
             {
                 getSpec.SpecUpperLimit = 1.8m;
