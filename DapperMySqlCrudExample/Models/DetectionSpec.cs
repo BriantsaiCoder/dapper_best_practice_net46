@@ -14,6 +14,8 @@ namespace DapperMySqlCrudExample.Models
         public decimal? SpecLowerLimit { get; set; }
         public DateTime SpecCalcStartTime { get; set; }
         public DateTime SpecCalcEndTime { get; set; }
+        public decimal? SpecCalcMean { get; set; }
+        public decimal? SpecCalcStd { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

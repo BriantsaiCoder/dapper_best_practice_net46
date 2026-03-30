@@ -139,6 +139,8 @@ CREATE TABLE detection_specs (
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NOT NULL,
     spec_calc_end_time DATETIME NOT NULL,
+    spec_calc_mean       DECIMAL(18,9) NULL,
+    spec_calc_std        DECIMAL(18,9) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_program_method (program, detection_method_id),

@@ -383,13 +383,15 @@ namespace DapperMySqlCrudExample
                 SpecLowerLimit = 0.5m,
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
+                SpecCalcMean = 1.23456789m,
+                SpecCalcStd = 0.01234567m,
             };
             long specId = _detectionSpecRepo.Insert(spec);
             Console.WriteLine($"  [Insert] DetectionSpec ID = {specId}");
 
             var getSpec = _detectionSpecRepo.GetById(specId);
             Console.WriteLine(
-                $"  [GetById] Program={getSpec?.Program}, Item={getSpec?.TestItemName}"
+                $"  [GetById] Program={getSpec?.Program}, Item={getSpec?.TestItemName}, Mean={getSpec?.SpecCalcMean}, Std={getSpec?.SpecCalcStd}"
             );
 
             var byProgramMethod = _detectionSpecRepo.GetByProgramAndMethod("PROD-A", 2);
