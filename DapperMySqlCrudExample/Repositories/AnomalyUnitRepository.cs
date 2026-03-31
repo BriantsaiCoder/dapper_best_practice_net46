@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -15,7 +16,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory;
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id                    AS Id,
             anomaly_test_item_id  AS AnomalyTestItemId,
             unit_id               AS UnitId,
@@ -43,14 +45,16 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
+            var sql =
+                $"SELECT {SelectColumns} FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId });
         }
 
-        public long Insert(AnomalyUnit entity)
+        public long Insert(AnomalyUnit entity, IDbTransaction transaction = null)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO anomaly_units
                     (anomaly_test_item_id, unit_id, detection_value,
                      spec_upper_limit, spec_lower_limit,
@@ -61,13 +65,16 @@ namespace DapperMySqlCrudExample.Repositories
                      @SpecCalcStartTime, @SpecCalcEndTime);
                 SELECT LAST_INSERT_ID();";
 
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
         public bool Update(AnomalyUnit entity)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE anomaly_units
                 SET    anomaly_test_item_id  = @AnomalyTestItemId,
                        unit_id               = @UnitId,
@@ -85,7 +92,8 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Delete(long id)
         {
             using (var conn = _factory.Create())
-                return conn.Execute("DELETE FROM anomaly_units WHERE id = @Id", new { Id = id }) > 0;
+                return conn.Execute("DELETE FROM anomaly_units WHERE id = @Id", new { Id = id })
+                    > 0;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -15,7 +16,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory;
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id             AS Id,
             anomaly_lot_id AS AnomalyLotId,
             station_name   AS StationName,
@@ -40,27 +42,35 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<AnomalyLotProcessMapping> GetByAnomalyLotId(long anomalyLotId)
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE anomaly_lot_id = @AnomalyLotId";
+            var sql =
+                $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE anomaly_lot_id = @AnomalyLotId";
             using (var conn = _factory.Create())
-                return conn.Query<AnomalyLotProcessMapping>(sql, new { AnomalyLotId = anomalyLotId });
+                return conn.Query<AnomalyLotProcessMapping>(
+                    sql,
+                    new { AnomalyLotId = anomalyLotId }
+                );
         }
 
-        public long Insert(AnomalyLotProcessMapping entity)
+        public long Insert(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO anomaly_lot_process_mapping
                     (anomaly_lot_id, station_name, equipment_id, process_time)
                 VALUES
                     (@AnomalyLotId, @StationName, @EquipmentId, @ProcessTime);
                 SELECT LAST_INSERT_ID();";
 
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
         public bool Update(AnomalyLotProcessMapping entity)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE anomaly_lot_process_mapping
                 SET    anomaly_lot_id = @AnomalyLotId,
                        station_name   = @StationName,
@@ -75,7 +85,10 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Delete(long id)
         {
             using (var conn = _factory.Create())
-                return conn.Execute("DELETE FROM anomaly_lot_process_mapping WHERE id = @Id", new { Id = id }) > 0;
+                return conn.Execute(
+                        "DELETE FROM anomaly_lot_process_mapping WHERE id = @Id",
+                        new { Id = id }
+                    ) > 0;
         }
     }
 }

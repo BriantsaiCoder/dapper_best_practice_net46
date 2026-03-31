@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using DapperMySqlCrudExample.Models;
 
 namespace DapperMySqlCrudExample.Repositories
@@ -9,7 +10,7 @@ namespace DapperMySqlCrudExample.Repositories
         IEnumerable<AnomalyUnit> GetAll();
         AnomalyUnit GetById(long id);
         IEnumerable<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId);
-        long Insert(AnomalyUnit entity);
+        long Insert(AnomalyUnit entity, IDbTransaction transaction = null);
         bool Update(AnomalyUnit entity);
         bool Delete(long id);
     }

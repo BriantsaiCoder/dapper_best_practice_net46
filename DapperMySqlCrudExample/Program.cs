@@ -53,7 +53,6 @@ namespace DapperMySqlCrudExample
                 DemoComputeAndInsertSiteMeanSpec();
                 DemoSiteTestStatistic();
                 DemoGoodLot();
-                DemoTransaction();
 
                 Console.WriteLine("\n========== 所有 CRUD 示範完成 ==========");
             }
@@ -221,11 +220,8 @@ namespace DapperMySqlCrudExample
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long lotId = _anomalyLotRepo.Insert(lot);
-
             var testItem = new AnomalyTestItem
             {
-                AnomalyLotId = lotId,
                 TestItemName = "Ioff",
                 DetectionValue = 1.23m,
                 SpecUpperLimit = 2.0m,
@@ -233,11 +229,8 @@ namespace DapperMySqlCrudExample
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long itemId = _anomalyTestItemRepo.Insert(testItem);
-
             var unit = new AnomalyUnit
             {
-                AnomalyTestItemId = itemId,
                 UnitId = "WAFER-001-DIE-01",
                 DetectionValue = 1.99m,
                 SpecUpperLimit = 2.0m,
@@ -245,7 +238,19 @@ namespace DapperMySqlCrudExample
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long unitId = _anomalyUnitRepo.Insert(unit);
+            long lotId,
+                itemId,
+                unitId;
+            using (var conn = _factory.Create())
+            using (var tx = conn.BeginTransaction())
+            {
+                lotId = _anomalyLotRepo.Insert(lot, tx);
+                testItem.AnomalyLotId = lotId;
+                itemId = _anomalyTestItemRepo.Insert(testItem, tx);
+                unit.AnomalyTestItemId = itemId;
+                unitId = _anomalyUnitRepo.Insert(unit, tx);
+                tx.Commit();
+            }
             Console.WriteLine($"  [Insert] AnomalyUnit ID = {unitId}");
 
             var getUnit = _anomalyUnitRepo.GetById(unitId);
@@ -278,16 +283,22 @@ namespace DapperMySqlCrudExample
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long lotId = _anomalyLotRepo.Insert(lot);
-
             var mapping = new AnomalyLotProcessMapping
             {
-                AnomalyLotId = lotId,
                 StationName = "Diffusion",
                 EquipmentId = "EQP-D-001",
                 ProcessTime = new DateTime(2024, 3, 15, 8, 30, 0),
             };
-            long mappingId = _lotProcessRepo.Insert(mapping);
+            long lotId,
+                mappingId;
+            using (var conn = _factory.Create())
+            using (var tx = conn.BeginTransaction())
+            {
+                lotId = _anomalyLotRepo.Insert(lot, tx);
+                mapping.AnomalyLotId = lotId;
+                mappingId = _lotProcessRepo.Insert(mapping, tx);
+                tx.Commit();
+            }
             Console.WriteLine($"  [Insert] Mapping ID = {mappingId}");
 
             var getMapping = _lotProcessRepo.GetById(mappingId);
@@ -306,12 +317,16 @@ namespace DapperMySqlCrudExample
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // 6. Unit Process Mapping
+        // 6. Unit Process Mapping + 交易示範
         // ─────────────────────────────────────────────────────────────────────
         private static void DemoAnomalyUnitProcessMapping()
         {
-            PrintSection("6. AnomalyUnitProcessMapping（Unit 製程 Boat）CRUD");
+            PrintSection("6. AnomalyUnitProcessMapping（Unit 製程 Boat）CRUD + 交易示範");
 
+            // ── 情境一：4 張表串接 Insert，交易成功提交 ──────────────────────
+            Console.WriteLine(
+                "\n  [情境一] 交易成功提交（lot → testItem → unit → unitProcessMapping）"
+            );
             var lot = new AnomalyLot
             {
                 LotsInfoId = 10005,
@@ -319,27 +334,20 @@ namespace DapperMySqlCrudExample
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long lotId = _anomalyLotRepo.Insert(lot);
             var ti = new AnomalyTestItem
             {
-                AnomalyLotId = lotId,
                 TestItemName = "Idsat",
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long tiId = _anomalyTestItemRepo.Insert(ti);
             var au = new AnomalyUnit
             {
-                AnomalyTestItemId = tiId,
                 UnitId = "W01-D05",
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            long auId = _anomalyUnitRepo.Insert(au);
-
             var upMapping = new AnomalyUnitProcessMapping
             {
-                AnomalyUnitId = auId,
                 BoatId = "BOAT-A-01",
                 PositionX = 3,
                 PositionY = 7,
@@ -347,8 +355,23 @@ namespace DapperMySqlCrudExample
                 StationName = "Diffusion",
                 EquipmentId = "EQP-D-001",
             };
-            long upId = _unitProcessRepo.Insert(upMapping);
-            Console.WriteLine($"  [Insert] UnitProcessMapping ID = {upId}");
+            long lotId,
+                tiId,
+                auId,
+                upId;
+            using (var conn = _factory.Create())
+            using (var tx = conn.BeginTransaction())
+            {
+                lotId = _anomalyLotRepo.Insert(lot, tx);
+                ti.AnomalyLotId = lotId;
+                tiId = _anomalyTestItemRepo.Insert(ti, tx);
+                au.AnomalyTestItemId = tiId;
+                auId = _anomalyUnitRepo.Insert(au, tx);
+                upMapping.AnomalyUnitId = auId;
+                upId = _unitProcessRepo.Insert(upMapping, tx);
+                tx.Commit();
+            }
+            Console.WriteLine($"  [Insert] UnitProcessMapping ID = {upId}（✅ 交易已提交）");
 
             var getUp = _unitProcessRepo.GetById(upId);
             Console.WriteLine(
@@ -365,6 +388,39 @@ namespace DapperMySqlCrudExample
             _anomalyUnitRepo.Delete(auId);
             _anomalyTestItemRepo.Delete(tiId);
             _anomalyLotRepo.Delete(lotId);
+
+            // ── 情境二：交易中途失敗，回復（Rollback）──────────────────────
+            Console.WriteLine("\n  [情境二] 交易失敗回復");
+            var lot2 = new AnomalyLot
+            {
+                LotsInfoId = 10005,
+                DetectionMethodId = 3,
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
+            };
+            var ti2 = new AnomalyTestItem
+            {
+                TestItemName = "Idsat_Rollback",
+                SpecCalcStartTime = new DateTime(2024, 1, 1),
+                SpecCalcEndTime = new DateTime(2024, 12, 31),
+            };
+            using (var conn = _factory.Create())
+            using (var tx = conn.BeginTransaction())
+            {
+                try
+                {
+                    long rollbackLotId = _anomalyLotRepo.Insert(lot2, tx);
+                    ti2.AnomalyLotId = rollbackLotId;
+                    _anomalyTestItemRepo.Insert(ti2, tx);
+                    throw new InvalidOperationException("模擬業務邏輯錯誤，交易應回復");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    tx.Rollback();
+                    Console.WriteLine($"  ✅ 交易已回復（預期行為）：{ex.Message}");
+                    Console.WriteLine("  資料未寫入資料庫");
+                }
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -577,124 +633,6 @@ namespace DapperMySqlCrudExample
             }
 
             Console.WriteLine($"  [Delete] 結果: {_goodLotRepo.Delete(goodLotId)}");
-        }
-
-        // ─────────────────────────────────────────────────────────────────────
-        // 10. 交易模式示範
-        // ─────────────────────────────────────────────────────────────────────
-        private static void DemoTransaction()
-        {
-            PrintSection("10. Transaction（交易模式）示範");
-
-            // 示範交易的 Commit（成功情境）
-            Console.WriteLine("\n  [情境一] 交易成功提交");
-            using (var transaction = _factory.BeginTransaction())
-            {
-                try
-                {
-                    // 在交易中新增多筆資料
-                    var lot = new AnomalyLot
-                    {
-                        LotsInfoId = 20001,
-                        DetectionMethodId = 1,
-                        SpecUpperLimit = 1.0m,
-                        SpecLowerLimit = 0.9m,
-                        SpecCalcStartTime = new DateTime(2024, 1, 1),
-                        SpecCalcEndTime = new DateTime(2024, 12, 31),
-                    };
-
-                    // 使用交易連線執行插入
-                    var lotId = transaction.Connection.ExecuteScalar<long>(
-                        @"INSERT INTO anomaly_lots
-                          (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
-                           spec_calc_start_time, spec_calc_end_time)
-                          VALUES (@LotsInfoId, @DetectionMethodId, @SpecUpperLimit, @SpecLowerLimit,
-                                  @SpecCalcStartTime, @SpecCalcEndTime);
-                          SELECT LAST_INSERT_ID();",
-                        lot,
-                        transaction
-                    );
-
-                    Console.WriteLine($"    在交易中新增 AnomalyLot，ID = {lotId}");
-
-                    var testItem = new AnomalyTestItem
-                    {
-                        AnomalyLotId = lotId,
-                        TestItemName = "TransactionTest",
-                        DetectionValue = 0.95m,
-                        SpecUpperLimit = 1.0m,
-                        SpecLowerLimit = 0.9m,
-                        SpecCalcStartTime = new DateTime(2024, 1, 1),
-                        SpecCalcEndTime = new DateTime(2024, 12, 31),
-                    };
-
-                    var itemId = transaction.Connection.ExecuteScalar<long>(
-                        @"INSERT INTO anomaly_test_items
-                          (anomaly_lot_id, test_item_name, detection_value,
-                           spec_upper_limit, spec_lower_limit,
-                           spec_calc_start_time, spec_calc_end_time)
-                          VALUES (@AnomalyLotId, @TestItemName, @DetectionValue,
-                                  @SpecUpperLimit, @SpecLowerLimit,
-                                  @SpecCalcStartTime, @SpecCalcEndTime);
-                          SELECT LAST_INSERT_ID();",
-                        testItem,
-                        transaction
-                    );
-
-                    Console.WriteLine($"    在交易中新增 AnomalyTestItem，ID = {itemId}");
-
-                    // 提交交易
-                    transaction.Commit();
-                    Console.WriteLine("    ✅ 交易已成功提交");
-
-                    // 清理測試資料
-                    _anomalyTestItemRepo.Delete(itemId);
-                    _anomalyLotRepo.Delete(lotId);
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine($"    ❌ 交易失敗並已回復：{ex.Message}");
-                }
-            }
-
-            // 示範交易的 Rollback（失敗情境）
-            Console.WriteLine("\n  [情境二] 交易失敗回復");
-            using (var transaction = _factory.BeginTransaction())
-            {
-                try
-                {
-                    var lot = new AnomalyLot
-                    {
-                        LotsInfoId = 20002,
-                        DetectionMethodId = 1,
-                        SpecCalcStartTime = new DateTime(2024, 1, 1),
-                        SpecCalcEndTime = new DateTime(2024, 12, 31),
-                    };
-
-                    var lotId = transaction.Connection.ExecuteScalar<long>(
-                        @"INSERT INTO anomaly_lots
-                          (lots_info_id, detection_method_id, spec_calc_start_time, spec_calc_end_time)
-                          VALUES (@LotsInfoId, @DetectionMethodId, @SpecCalcStartTime, @SpecCalcEndTime);
-                          SELECT LAST_INSERT_ID();",
-                        lot,
-                        transaction
-                    );
-
-                    Console.WriteLine($"    在交易中新增 AnomalyLot，ID = {lotId}");
-
-                    // 模擬錯誤：故意拋出例外
-                    throw new InvalidOperationException("模擬業務邏輯錯誤");
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine($"    ✅ 交易已回復（預期行為）：{ex.Message}");
-                    Console.WriteLine("    資料未寫入資料庫");
-                }
-            }
-
-            Console.WriteLine("\n  交易模式示範完成");
         }
 
         // ─────────────────────────────────────────────────────────────────────
