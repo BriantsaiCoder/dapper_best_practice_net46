@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -72,7 +73,7 @@ namespace DapperMySqlCrudExample.Repositories
                 );
         }
 
-        public long Insert(SiteTestStatistic entity)
+        public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -88,6 +89,8 @@ namespace DapperMySqlCrudExample.Repositories
                      @StartTime, @EndTime);
                 SELECT LAST_INSERT_ID();";
 
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }

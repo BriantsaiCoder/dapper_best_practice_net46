@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -15,7 +16,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory;
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id                   AS Id,
             lots_info_id         AS LotsInfoId,
             detection_method_id  AS DetectionMethodId,
@@ -47,9 +49,10 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<GoodLot>(sql, new { LotsInfoId = lotsInfoId });
         }
 
-        public long Insert(GoodLot entity)
+        public long Insert(GoodLot entity, IDbTransaction transaction = null)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO good_lots
                     (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
                      spec_calc_start_time, spec_calc_end_time)
@@ -58,13 +61,16 @@ namespace DapperMySqlCrudExample.Repositories
                      @SpecCalcStartTime, @SpecCalcEndTime);
                 SELECT LAST_INSERT_ID();";
 
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
         public bool Update(GoodLot entity)
         {
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE good_lots
                 SET    lots_info_id         = @LotsInfoId,
                        detection_method_id  = @DetectionMethodId,

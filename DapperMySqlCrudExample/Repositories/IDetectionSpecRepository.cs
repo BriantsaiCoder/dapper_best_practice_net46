@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using DapperMySqlCrudExample.Models;
 
 namespace DapperMySqlCrudExample.Repositories
@@ -30,7 +31,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <returns>最新一筆 DetectionSpec，或 null</returns>
         DetectionSpec GetLatestByProgramAndMethodName(string program, string detectionMethodName);
 
-        long Insert(DetectionSpec entity);
+        long Insert(DetectionSpec entity, IDbTransaction transaction = null);
         bool Update(DetectionSpec entity);
         bool Delete(long id);
 

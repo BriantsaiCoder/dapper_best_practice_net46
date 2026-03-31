@@ -11,7 +11,10 @@ namespace DapperMySqlCrudExample.Repositories
         AnomalyLot GetById(long id);
         IEnumerable<AnomalyLot> GetByLotsInfoId(int lotsInfoId);
         long Insert(AnomalyLot entity, IDbTransaction transaction = null);
-        bool Update(AnomalyLot entity);
-        bool Delete(long id);
+        bool Update(AnomalyLot entity, IDbTransaction transaction = null);
+        bool Delete(long id, IDbTransaction transaction = null);
+        IEnumerable<AnomalyLot> GetPaged(int offset, int limit);
+        int GetCount();
+        bool Exists(long id);
     }
 }

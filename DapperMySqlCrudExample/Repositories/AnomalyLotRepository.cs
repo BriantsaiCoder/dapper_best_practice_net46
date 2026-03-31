@@ -67,7 +67,8 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
-        public bool Update(AnomalyLot entity)
+        /// <remarks>其餘 Repository 的 Update/Delete 可套用相同交易模式。</remarks>
+        public bool Update(AnomalyLot entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -80,14 +81,42 @@ namespace DapperMySqlCrudExample.Repositories
                        spec_calc_end_time   = @SpecCalcEndTime
                 WHERE  id = @Id";
 
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, entity, transaction) > 0;
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
 
-        public bool Delete(long id)
+        /// <remarks>其餘 Repository 的 Update/Delete 可套用相同交易模式。</remarks>
+        public bool Delete(long id, IDbTransaction transaction = null)
         {
+            const string sql = "DELETE FROM anomaly_lots WHERE id = @Id";
+
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
             using (var conn = _factory.Create())
-                return conn.Execute("DELETE FROM anomaly_lots WHERE id = @Id", new { Id = id }) > 0;
+                return conn.Execute(sql, new { Id = id }) > 0;
+        }
+
+        public IEnumerable<AnomalyLot> GetPaged(int offset, int limit)
+        {
+            var sql = $"SELECT {SelectColumns} FROM anomaly_lots ORDER BY id LIMIT @Offset, @Limit";
+            using (var conn = _factory.Create())
+                return conn.Query<AnomalyLot>(sql, new { Offset = offset, Limit = limit });
+        }
+
+        public int GetCount()
+        {
+            const string sql = "SELECT COUNT(*) FROM anomaly_lots";
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<int>(sql);
+        }
+
+        public bool Exists(long id)
+        {
+            const string sql = "SELECT COUNT(1) FROM anomaly_lots WHERE id = @Id";
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
@@ -33,6 +34,22 @@ namespace DapperMySqlCrudExample.Repositories
             spec_calc_std        AS SpecCalcStd,
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
+
+        private const string JoinSelectColumns =
+            @"
+            ds.id                   AS Id,
+            ds.program              AS Program,
+            ds.test_item_name       AS TestItemName,
+            ds.site_id              AS SiteId,
+            ds.detection_method_id  AS DetectionMethodId,
+            ds.spec_upper_limit     AS SpecUpperLimit,
+            ds.spec_lower_limit     AS SpecLowerLimit,
+            ds.spec_calc_start_time AS SpecCalcStartTime,
+            ds.spec_calc_end_time   AS SpecCalcEndTime,
+            ds.spec_calc_mean       AS SpecCalcMean,
+            ds.spec_calc_std        AS SpecCalcStd,
+            ds.created_at           AS CreatedAt,
+            ds.updated_at           AS UpdatedAt";
 
         public IEnumerable<DetectionSpec> GetAll()
         {
@@ -76,21 +93,9 @@ namespace DapperMySqlCrudExample.Repositories
             string detectionMethodName
         )
         {
-            const string sql =
-                @"
-                SELECT ds.id                   AS Id,
-                       ds.program              AS Program,
-                       ds.test_item_name       AS TestItemName,
-                       ds.site_id              AS SiteId,
-                       ds.detection_method_id  AS DetectionMethodId,
-                       ds.spec_upper_limit     AS SpecUpperLimit,
-                       ds.spec_lower_limit     AS SpecLowerLimit,
-                       ds.spec_calc_start_time AS SpecCalcStartTime,
-                       ds.spec_calc_end_time   AS SpecCalcEndTime,
-                       ds.spec_calc_mean       AS SpecCalcMean,
-                       ds.spec_calc_std        AS SpecCalcStd,
-                       ds.created_at           AS CreatedAt,
-                       ds.updated_at           AS UpdatedAt
+            var sql =
+                $@"
+                SELECT {JoinSelectColumns}
                 FROM   detection_specs   ds
                 JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                 WHERE  ds.program      = @Program
@@ -114,21 +119,9 @@ namespace DapperMySqlCrudExample.Repositories
             string detectionMethodName
         )
         {
-            const string sql =
-                @"
-                SELECT ds.id                   AS Id,
-                       ds.program              AS Program,
-                       ds.test_item_name       AS TestItemName,
-                       ds.site_id              AS SiteId,
-                       ds.detection_method_id  AS DetectionMethodId,
-                       ds.spec_upper_limit     AS SpecUpperLimit,
-                       ds.spec_lower_limit     AS SpecLowerLimit,
-                       ds.spec_calc_start_time AS SpecCalcStartTime,
-                       ds.spec_calc_end_time   AS SpecCalcEndTime,
-                       ds.spec_calc_mean       AS SpecCalcMean,
-                       ds.spec_calc_std        AS SpecCalcStd,
-                       ds.created_at           AS CreatedAt,
-                       ds.updated_at           AS UpdatedAt
+            var sql =
+                $@"
+                SELECT {JoinSelectColumns}
                 FROM   detection_specs   ds
                 JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                 WHERE  ds.program     = @Program
@@ -144,7 +137,7 @@ namespace DapperMySqlCrudExample.Repositories
                 );
         }
 
-        public long Insert(DetectionSpec entity)
+        public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -160,6 +153,8 @@ namespace DapperMySqlCrudExample.Repositories
                      @SpecCalcMean, @SpecCalcStd);
                 SELECT LAST_INSERT_ID();";
 
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
@@ -240,6 +235,8 @@ namespace DapperMySqlCrudExample.Repositories
             }
         }
 
+        /// <summary>查詢最近 30 筆 site_test_statistics，計算 Mean ± 3σ 後寫入 detection_specs。</summary>
+        /// <remarks>生產環境建議移至 Service 層，搭配 Unit of Work 管理交易。</remarks>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,

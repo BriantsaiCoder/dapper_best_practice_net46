@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -86,10 +87,7 @@ namespace DapperMySqlCrudExample
 
             // Read (all)
             var allMethods = _detectionMethodRepo.GetAll();
-            int count = 0;
-            foreach (var m in allMethods)
-                count++;
-            Console.WriteLine($"  [GetAll] 共 {count} 筆");
+            Console.WriteLine($"  [GetAll] 共 {allMethods.Count()} 筆");
 
             // Read (by id)
             var found = _detectionMethodRepo.GetById(insertedId);
@@ -143,10 +141,17 @@ namespace DapperMySqlCrudExample
             );
 
             var byLots = _anomalyLotRepo.GetByLotsInfoId(lotsInfoId);
-            int cnt = 0;
-            foreach (var x in byLots)
-                cnt++;
-            Console.WriteLine($"  [GetByLotsInfoId] 找到 {cnt} 筆");
+            Console.WriteLine($"  [GetByLotsInfoId] 找到 {byLots.Count()} 筆");
+
+            // 分頁 / 計數 / 存在檢查
+            int totalCount = _anomalyLotRepo.GetCount();
+            Console.WriteLine($"  [GetCount] 總筆數 = {totalCount}");
+
+            var paged = _anomalyLotRepo.GetPaged(0, 5);
+            Console.WriteLine($"  [GetPaged] 第一頁取得 {paged.Count()} 筆");
+
+            bool exists = _anomalyLotRepo.Exists(lotId);
+            Console.WriteLine($"  [Exists] ID={lotId} 存在: {exists}");
 
             if (getLot != null)
             {
@@ -452,32 +457,19 @@ namespace DapperMySqlCrudExample
             );
 
             var byProgramMethod = _detectionSpecRepo.GetByProgramAndMethod("PROD-A", 2);
-            int cnt = 0;
-            foreach (var x in byProgramMethod)
-                cnt++;
-            Console.WriteLine($"  [GetByProgramAndMethod] 找到 {cnt} 筆");
+            Console.WriteLine($"  [GetByProgramAndMethod] 找到 {byProgramMethod.Count()} 筆");
 
-            var recentSpecs = _detectionSpecRepo.GetRecentByProgramAndMethodName(
-                "PROD-A",
-                "示範偵測方法"
-            );
-            int recentCnt = 0;
+            var recentSpecs = _detectionSpecRepo
+                .GetRecentByProgramAndMethodName("PROD-A", "示範偵測方法")
+                .ToList();
             foreach (var s in recentSpecs)
             {
-                recentCnt++;
-                // SpecUpperLimit / SpecLowerLimit 為 decimal?，需先判斷是否有值再使用
-                string upper = s.SpecUpperLimit.HasValue
-                    ? s.SpecUpperLimit.Value.ToString("F4")
-                    : "無";
-                string lower = s.SpecLowerLimit.HasValue
-                    ? s.SpecLowerLimit.Value.ToString("F4")
-                    : "無";
                 Console.WriteLine(
-                    $"    Spec#{s.Id} [{s.TestItemName}] 上限={upper}  下限={lower}  計算結束={s.SpecCalcEndTime:yyyy-MM-dd}"
+                    $"    Spec#{s.Id} [{s.TestItemName}] 上限={FormatDecimal(s.SpecUpperLimit)}  下限={FormatDecimal(s.SpecLowerLimit)}  計算結束={s.SpecCalcEndTime:yyyy-MM-dd}"
                 );
             }
             Console.WriteLine(
-                $"  [GetRecentByProgramAndMethodName] Program=PROD-A, MethodName=示範偵測方法，最近一個月共 {recentCnt} 筆"
+                $"  [GetRecentByProgramAndMethodName] Program=PROD-A, MethodName=示範偵測方法，最近一個月共 {recentSpecs.Count} 筆"
             );
 
             var latestSpec = _detectionSpecRepo.GetLatestByProgramAndMethodName(
@@ -486,14 +478,8 @@ namespace DapperMySqlCrudExample
             );
             if (latestSpec != null)
             {
-                string latestUpper = latestSpec.SpecUpperLimit.HasValue
-                    ? latestSpec.SpecUpperLimit.Value.ToString("F4")
-                    : "無";
-                string latestLower = latestSpec.SpecLowerLimit.HasValue
-                    ? latestSpec.SpecLowerLimit.Value.ToString("F4")
-                    : "無";
                 Console.WriteLine(
-                    $"  [GetLatestByProgramAndMethodName] 最新 Spec#{latestSpec.Id} [{latestSpec.TestItemName}] 上限={latestUpper}  下限={latestLower}  計算結束={latestSpec.SpecCalcEndTime:yyyy-MM-dd}"
+                    $"  [GetLatestByProgramAndMethodName] 最新 Spec#{latestSpec.Id} [{latestSpec.TestItemName}] 上限={FormatDecimal(latestSpec.SpecUpperLimit)}  下限={FormatDecimal(latestSpec.SpecLowerLimit)}  計算結束={latestSpec.SpecCalcEndTime:yyyy-MM-dd}"
                 );
             }
             else
@@ -582,10 +568,7 @@ namespace DapperMySqlCrudExample
             Console.WriteLine($"  [GetById] Program={getStat?.Program}, Mean={getStat?.MeanValue}");
 
             var bySite = _siteStatRepo.GetBySiteAndItem(1, "Vth");
-            int cnt = 0;
-            foreach (var x in bySite)
-                cnt++;
-            Console.WriteLine($"  [GetBySiteAndItem] 找到 {cnt} 筆");
+            Console.WriteLine($"  [GetBySiteAndItem] 找到 {bySite.Count()} 筆");
 
             if (getStat != null)
             {
@@ -621,10 +604,7 @@ namespace DapperMySqlCrudExample
             );
 
             var byLots = _goodLotRepo.GetByLotsInfoId(10007);
-            int cnt = 0;
-            foreach (var x in byLots)
-                cnt++;
-            Console.WriteLine($"  [GetByLotsInfoId] 找到 {cnt} 筆");
+            Console.WriteLine($"  [GetByLotsInfoId] 找到 {byLots.Count()} 筆");
 
             if (getGoodLot != null)
             {
@@ -636,6 +616,12 @@ namespace DapperMySqlCrudExample
         }
 
         // ─────────────────────────────────────────────────────────────────────
+
+        private static string FormatDecimal(decimal? value)
+        {
+            return value.HasValue ? value.Value.ToString("F4") : "無";
+        }
+
         private static void PrintSection(string title)
         {
             Console.WriteLine($"\n--- {title} ---");

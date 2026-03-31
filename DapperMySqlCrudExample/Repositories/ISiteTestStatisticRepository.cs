@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using DapperMySqlCrudExample.Models;
 
 namespace DapperMySqlCrudExample.Repositories
@@ -10,7 +11,7 @@ namespace DapperMySqlCrudExample.Repositories
         SiteTestStatistic GetById(long id);
         IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId);
         IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName);
-        long Insert(SiteTestStatistic entity);
+        long Insert(SiteTestStatistic entity, IDbTransaction transaction = null);
         bool Update(SiteTestStatistic entity);
         bool Delete(long id);
     }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using DapperMySqlCrudExample.Models;
 
 namespace DapperMySqlCrudExample.Repositories
@@ -9,7 +10,7 @@ namespace DapperMySqlCrudExample.Repositories
         IEnumerable<DetectionMethod> GetAll();
         DetectionMethod GetById(byte id);
         DetectionMethod GetByCode(string methodCode);
-        byte Insert(DetectionMethod entity);
+        byte Insert(DetectionMethod entity, IDbTransaction transaction = null);
         bool Update(DetectionMethod entity);
         bool Delete(byte id);
     }
