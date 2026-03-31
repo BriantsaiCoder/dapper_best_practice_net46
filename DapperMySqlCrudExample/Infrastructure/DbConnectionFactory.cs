@@ -2,6 +2,7 @@ using System;
 using System.Configuration;
 using System.Data;
 using MySql.Data.MySqlClient;
+using NLog;
 
 namespace DapperMySqlCrudExample.Infrastructure
 {
@@ -13,14 +14,24 @@ namespace DapperMySqlCrudExample.Infrastructure
     /// </summary>
     public class DbConnectionFactory : IDbConnectionFactory
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+        private const string EnvVarName = "MYSQL_CONNECTION_STRING";
         private readonly string _connectionString;
 
         public DbConnectionFactory()
         {
+            // 優先讀取環境變數，適用於生產環境避免將密碼寫入設定檔
+            var envConnStr = Environment.GetEnvironmentVariable(EnvVarName);
+            if (!string.IsNullOrWhiteSpace(envConnStr))
+            {
+                _connectionString = envConnStr;
+                return;
+            }
+
             var entry = ConfigurationManager.ConnectionStrings["DefaultConnection"];
             if (entry == null || string.IsNullOrWhiteSpace(entry.ConnectionString))
                 throw new InvalidOperationException(
-                    "App.config 中找不到連線字串 'DefaultConnection'，請確認設定正確。"
+                    $"找不到連線字串：環境變數 '{EnvVarName}' 未設定，且 App.config 中無 'DefaultConnection'。"
                 );
 
             _connectionString = entry.ConnectionString;
@@ -41,8 +52,17 @@ namespace DapperMySqlCrudExample.Infrastructure
         public IDbConnection Create()
         {
             var conn = new MySqlConnection(_connectionString);
-            conn.Open();
-            return conn;
+            try
+            {
+                conn.Open();
+                return conn;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "MySQL 連線開啟失敗");
+                conn.Dispose();
+                throw;
+            }
         }
     }
 }

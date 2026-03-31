@@ -12,7 +12,7 @@ namespace DapperMySqlCrudExample.Repositories
         IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId);
         IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName);
         long Insert(SiteTestStatistic entity, IDbTransaction transaction = null);
-        bool Update(SiteTestStatistic entity);
-        bool Delete(long id);
+        bool Update(SiteTestStatistic entity, IDbTransaction transaction = null);
+        bool Delete(long id, IDbTransaction transaction = null);
     }
 }

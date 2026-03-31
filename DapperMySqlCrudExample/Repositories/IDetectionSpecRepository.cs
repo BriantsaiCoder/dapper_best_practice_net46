@@ -32,8 +32,8 @@ namespace DapperMySqlCrudExample.Repositories
         DetectionSpec GetLatestByProgramAndMethodName(string program, string detectionMethodName);
 
         long Insert(DetectionSpec entity, IDbTransaction transaction = null);
-        bool Update(DetectionSpec entity);
-        bool Delete(long id);
+        bool Update(DetectionSpec entity, IDbTransaction transaction = null);
+        bool Delete(long id, IDbTransaction transaction = null);
 
         /// <summary>
         /// 查詢 site_test_statistics 中指定 program / site / test_item 的 mean_value，

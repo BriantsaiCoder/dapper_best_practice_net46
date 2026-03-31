@@ -31,7 +31,7 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<AnomalyUnit> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_units ORDER BY id";
+            var sql = $"SELECT {SelectColumns} FROM anomaly_units ORDER BY id LIMIT 10000";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql);
         }
@@ -71,7 +71,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
-        public bool Update(AnomalyUnit entity)
+        public bool Update(AnomalyUnit entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -85,15 +85,20 @@ namespace DapperMySqlCrudExample.Repositories
                        spec_calc_end_time    = @SpecCalcEndTime
                 WHERE  id = @Id";
 
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, entity, transaction) > 0;
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
 
-        public bool Delete(long id)
+        public bool Delete(long id, IDbTransaction transaction = null)
         {
+            const string sql = "DELETE FROM anomaly_units WHERE id = @Id";
+
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
             using (var conn = _factory.Create())
-                return conn.Execute("DELETE FROM anomaly_units WHERE id = @Id", new { Id = id })
-                    > 0;
+                return conn.Execute(sql, new { Id = id }) > 0;
         }
     }
 }

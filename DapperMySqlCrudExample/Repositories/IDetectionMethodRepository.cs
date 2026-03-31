@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample.Repositories
         DetectionMethod GetById(byte id);
         DetectionMethod GetByCode(string methodCode);
         byte Insert(DetectionMethod entity, IDbTransaction transaction = null);
-        bool Update(DetectionMethod entity);
-        bool Delete(byte id);
+        bool Update(DetectionMethod entity, IDbTransaction transaction = null);
+        bool Delete(byte id, IDbTransaction transaction = null);
     }
 }

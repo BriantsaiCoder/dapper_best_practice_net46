@@ -30,7 +30,7 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<AnomalyLot> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_lots ORDER BY id";
+            var sql = $"SELECT {SelectColumns} FROM anomaly_lots ORDER BY id LIMIT 10000";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLot>(sql);
         }

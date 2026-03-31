@@ -1,12 +1,13 @@
 # dapper_best_practice_net46
 
-> .NET Framework 4.6.1 + Dapper + MySQL — 業界最佳實務 CRUD Console 範例
+> .NET Framework 4.6.1 + Dapper + MySQL — 生產就緒 CRUD 最佳實務
 
 ## 專案說明
 
-本專案以 **Console Application** 示範在 .NET Framework 4.6.1 環境下，
-如何使用 [Dapper](https://github.com/DapperLib/Dapper) 搭配 MySQL
+本專案以 **Console Application** 形式，在 .NET Framework 4.6.1 環境下，
+使用 [Dapper](https://github.com/DapperLib/Dapper) 搭配 MySQL
 進行 CRUD（新增、查詢、更新、刪除）操作，並遵循業界最佳實務。
+專案已包含交易支援、結構化日誌、連線安全防護等生產級功能。
 
 ---
 
@@ -16,6 +17,8 @@
 |------|------|------|
 | ORM（Micro-ORM）| Dapper | 2.1.35 |
 | MySQL Driver | MySql.Data | 8.0.33 |
+| 日誌框架 | NLog | 5.2.8 |
+| 數值統計 | MathNet.Numerics | 5.0.0 |
 | Target Framework | .NET Framework | 4.6.1 |
 | 語言版本 | C# | 7.3 |
 
@@ -29,6 +32,7 @@
 DapperMySqlCrudExample/
 ├── DapperMySqlCrudExample.csproj   # SDK-style 專案檔
 ├── App.config                       # 連線字串設定
+├── NLog.config                      # NLog 日誌組態（Console + File 滾動封存）
 ├── Program.cs                       # 主程式（示範所有表格 CRUD）
 │
 ├── Infrastructure/
@@ -66,7 +70,7 @@ DapperMySqlCrudExample/
 ## 最佳實務重點
 
 1. **Repository Pattern** — 每張資料表對應一個 `IXxxRepository` 介面與實作，降低耦合、方便替換與測試。
-2. **IDbConnectionFactory** — 以介面抽象連線建立，可在單元測試中替換為假連線（Mock）。
+2. **IDbConnectionFactory** — 以介面抽象連線建立，可在單元測試中替換為假連線（Mock）。支援 `BeginTransaction()` 建立跨操作交易。
 3. **`using` 管理連線生命週期** — 每個 Repository 方法內以 `using` 確保連線用完即關，避免連線池耗盡。
 4. **Parameterized Query** — 所有 SQL 均使用 Dapper 匿名物件參數，杜絕 SQL Injection。
 5. **Column AS 別名對應** — SQL 使用 `column_name AS PropertyName` 對應 C# 屬性名稱，無需額外設定 Column Attribute。
@@ -74,6 +78,11 @@ DapperMySqlCrudExample/
 7. **`QueryFirstOrDefault`** — 查詢單筆時使用，不拋例外，由呼叫端判斷 null。
 8. **`private const string SelectColumns`** — 提取共用欄位清單為常數，遵循 DRY 原則，欄位變動只需改一處。
 9. **防呆與清晰例外訊息** — `DbConnectionFactory` 對 null / 空白連線字串丟出具明確說明的例外，方便偵錯。
+10. **連線安全防護** — `Create()` 開啟連線失敗時主動 `Dispose()`，避免資源洩漏。
+11. **環境變數優先** — `DbConnectionFactory` 優先讀取 `MYSQL_CONNECTION_STRING` 環境變數，方便容器化或 CI/CD 部署。
+12. **交易支援** — `Update` / `Delete` 方法接受選用的 `IDbTransaction` 參數，可在外部交易內執行。
+13. **GetAll 安全上限** — 所有 `GetAll()` 附帶 `LIMIT 10000`，防止全表掃描造成記憶體暴漲。
+14. **結構化日誌** — 整合 NLog，Console + 滾動檔案（每日 / 10 MB 上限 / 保留 14 天），連線失敗與未處理例外皆記錄。
 
 ---
 
@@ -134,7 +143,7 @@ IDbConnectionFactory → DbConnectionFactory → MySqlConnection → MySQL DB
 
 ## 過度設計分析
 
-本專案定位為「最佳實務範本」，各設計層次皆有對應的工程理由，**整體架構並未過度設計**。以下為評估細節：
+本專案已具備生產就緒的架構，各設計層次皆有對應的工程理由，**整體架構並未過度設計**。以下為評估細節：
 
 | 設計元素 | 評估結果 | 說明 |
 |---------|---------|------|
@@ -143,10 +152,10 @@ IDbConnectionFactory → DbConnectionFactory → MySqlConnection → MySQL DB
 | `IDbConnectionFactory` | ✅ 合理 | 隔離基礎設施，讓測試不需真實資料庫 |
 | `SelectColumns` 常數 | ✅ 合理 | DRY 原則，減少維護成本 |
 | `using` 短連線模式 | ✅ 合理 | 防洩漏、利用連線池，最佳實務標準做法 |
-| `Program.cs` 手動組裝 | ✅ 合理 | Console 範例不需 DI 框架，手動 `new` 更易讀、更易學 |
+| `Program.cs` 手動組裝 | ✅ 合理 | Console 應用不需 DI 框架，手動 `new` 更易讀、更易維護 |
 | 個別 `const SelectColumns`（各 Repo）| ⚠️ 可接受 | 若欄位重複率高，可考慮提取至 base class，但目前各表欄位差異大，分開維護反而清晰 |
 
-> **結論**：本專案的架構設計與其「可測試、可替換、職責分離」的目標一致，不存在為複雜而複雜的設計，適合作為中小型專案的最佳實務參考範本。
+> **結論**：本專案的架構設計與其「可測試、可替換、職責分離」的目標一致，不存在為複雜而複雜的設計，適合作為中小型生產專案的架構基礎。
 
 ---
 
@@ -166,11 +175,19 @@ USE your_db;
 
 ```xml
 <add name="DefaultConnection"
-     connectionString="Server=localhost;Port=3306;Database=your_db;Uid=your_user;Pwd=your_password;CharSet=utf8mb4;"
+     connectionString="Server=localhost;Port=3306;Database=your_db;Uid=your_user;Pwd=your_password;CharSet=utf8mb4;AllowUserVariables=true;SslMode=Required;MinimumPoolSize=5;MaximumPoolSize=100;ConnectionLifeTime=300;DefaultCommandTimeout=30;"
      providerName="MySql.Data.MySqlClient" />
 ```
 
-> ⚠️ 生產環境請勿將密碼硬寫在設定檔，建議透過環境變數或密鑰管理服務注入。
+| 連線參數 | 說明 |
+|---------|------|
+| `SslMode=Required` | 強制 TLS 加密傳輸（MySQL 5.x 可改為 `Preferred`） |
+| `MinimumPoolSize=5` | 預熱 5 條連線，減少冷啟動延遲 |
+| `MaximumPoolSize=100` | 連線池上限，依主機規格調整 |
+| `ConnectionLifeTime=300` | 連線存活 300 秒後回收，避免長期佔用 |
+| `DefaultCommandTimeout=30` | SQL 指令逾時 30 秒 |
+
+> ⚠️ 生產環境請勿將密碼硬寫在設定檔。可設定環境變數 `MYSQL_CONNECTION_STRING`，`DbConnectionFactory` 會優先使用環境變數。
 
 ### 3. 建置與執行
 

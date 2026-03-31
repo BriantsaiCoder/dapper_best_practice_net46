@@ -37,7 +37,7 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<SiteTestStatistic> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id";
+            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT 10000";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql);
         }
@@ -95,7 +95,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
-        public bool Update(SiteTestStatistic entity)
+        public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -115,17 +115,20 @@ namespace DapperMySqlCrudExample.Repositories
                        end_time       = @EndTime
                 WHERE  id = @Id";
 
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, entity, transaction) > 0;
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
 
-        public bool Delete(long id)
+        public bool Delete(long id, IDbTransaction transaction = null)
         {
+            const string sql = "DELETE FROM site_test_statistics WHERE id = @Id";
+
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
             using (var conn = _factory.Create())
-                return conn.Execute(
-                        "DELETE FROM site_test_statistics WHERE id = @Id",
-                        new { Id = id }
-                    ) > 0;
+                return conn.Execute(sql, new { Id = id }) > 0;
         }
     }
 }

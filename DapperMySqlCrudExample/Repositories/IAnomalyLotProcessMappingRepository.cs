@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample.Repositories
         AnomalyLotProcessMapping GetById(long id);
         IEnumerable<AnomalyLotProcessMapping> GetByAnomalyLotId(long anomalyLotId);
         long Insert(AnomalyLotProcessMapping entity, IDbTransaction transaction = null);
-        bool Update(AnomalyLotProcessMapping entity);
-        bool Delete(long id);
+        bool Update(AnomalyLotProcessMapping entity, IDbTransaction transaction = null);
+        bool Delete(long id, IDbTransaction transaction = null);
     }
 }

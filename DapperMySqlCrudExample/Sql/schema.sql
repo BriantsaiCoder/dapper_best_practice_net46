@@ -147,6 +147,7 @@ CREATE TABLE detection_specs (
     INDEX idx_program_item_method (program, test_item_name, detection_method_id),
     INDEX idx_calc_end_time (spec_calc_end_time),
     INDEX idx_calc_time (spec_calc_start_time, spec_calc_end_time),
+    INDEX idx_site_id (site_id),
     CONSTRAINT fk_specs_detection_method
         FOREIGN KEY (detection_method_id)
         REFERENCES detection_methods(id)
@@ -174,6 +175,7 @@ CREATE TABLE site_test_statistics (
     INDEX idx_site (site_id),
     INDEX idx_program_item (program, test_item_name),
     INDEX idx_start_time (start_time),
+    INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time),
     UNIQUE INDEX unq_lot_site_item (lots_info_id, site_id, test_item_name),
     CONSTRAINT fk_site_test_statistics_lots_info
         FOREIGN KEY (lots_info_id)
@@ -203,3 +205,9 @@ CREATE TABLE good_lots (
         REFERENCES detection_methods(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================================
+-- 增量索引（若資料庫已建立，可單獨執行以下 ALTER TABLE 補上新索引）
+-- =============================================================================
+-- ALTER TABLE site_test_statistics ADD INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time);
+-- ALTER TABLE detection_specs ADD INDEX idx_site_id (site_id);

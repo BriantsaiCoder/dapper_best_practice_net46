@@ -4,6 +4,7 @@ using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
+using NLog;
 
 namespace DapperMySqlCrudExample
 {
@@ -14,6 +15,7 @@ namespace DapperMySqlCrudExample
     /// </summary>
     internal static class Program
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private static IDbConnectionFactory _factory;
 
         private static IDetectionMethodRepository _detectionMethodRepo;
@@ -59,8 +61,15 @@ namespace DapperMySqlCrudExample
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n[錯誤] {ex.GetType().Name}: {ex.Message}");
-                Console.WriteLine("請確認 App.config 連線字串設定正確，且資料庫與資料表已建立。");
+                _logger.Error(ex, "執行 CRUD 範例時發生未處理的例外");
+                Console.Error.WriteLine($"\n[錯誤] {ex.GetType().Name}: {ex}");
+                Console.Error.WriteLine(
+                    "請確認 App.config 連線字串設定正確，且資料庫與資料表已建立。"
+                );
+            }
+            finally
+            {
+                LogManager.Shutdown();
             }
 
             Console.WriteLine("\n按任意鍵結束...");

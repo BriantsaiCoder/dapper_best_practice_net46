@@ -28,7 +28,7 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<DetectionMethod> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id";
+            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id LIMIT 10000";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql);
         }
@@ -67,7 +67,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<byte>(sql, entity);
         }
 
-        public bool Update(DetectionMethod entity)
+        public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -78,14 +78,18 @@ namespace DapperMySqlCrudExample.Repositories
                        has_unit_level = @HasUnitLevel
                 WHERE  id = @Id";
 
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, entity, transaction) > 0;
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
 
-        public bool Delete(byte id)
+        public bool Delete(byte id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_methods WHERE id = @Id";
 
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }

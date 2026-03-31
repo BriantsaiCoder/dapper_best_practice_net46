@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample.Repositories
         GoodLot GetById(long id);
         IEnumerable<GoodLot> GetByLotsInfoId(int lotsInfoId);
         long Insert(GoodLot entity, IDbTransaction transaction = null);
-        bool Update(GoodLot entity);
-        bool Delete(long id);
+        bool Update(GoodLot entity, IDbTransaction transaction = null);
+        bool Delete(long id, IDbTransaction transaction = null);
     }
 }

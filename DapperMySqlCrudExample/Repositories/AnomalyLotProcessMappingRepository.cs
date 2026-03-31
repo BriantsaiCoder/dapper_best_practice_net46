@@ -28,7 +28,8 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<AnomalyLotProcessMapping> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping ORDER BY id";
+            var sql =
+                $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping ORDER BY id LIMIT 10000";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLotProcessMapping>(sql);
         }
@@ -67,7 +68,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
-        public bool Update(AnomalyLotProcessMapping entity)
+        public bool Update(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
             const string sql =
                 @"
@@ -78,17 +79,20 @@ namespace DapperMySqlCrudExample.Repositories
                        process_time   = @ProcessTime
                 WHERE  id = @Id";
 
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, entity, transaction) > 0;
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
 
-        public bool Delete(long id)
+        public bool Delete(long id, IDbTransaction transaction = null)
         {
+            const string sql = "DELETE FROM anomaly_lot_process_mapping WHERE id = @Id";
+
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
             using (var conn = _factory.Create())
-                return conn.Execute(
-                        "DELETE FROM anomaly_lot_process_mapping WHERE id = @Id",
-                        new { Id = id }
-                    ) > 0;
+                return conn.Execute(sql, new { Id = id }) > 0;
         }
     }
 }

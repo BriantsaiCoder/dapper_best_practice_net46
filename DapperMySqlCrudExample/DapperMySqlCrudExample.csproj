@@ -20,6 +20,11 @@
     <!-- MathNet.Numerics：提供樣本平均數 / 樣本標準差計算（Statistics.Mean / StandardDeviation）。
          5.x 支援 .NET Standard 2.0，與 net461 相容。 -->
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageReference Include="NLog" Version="5.3.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="NLog.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
