@@ -32,20 +32,20 @@ namespace DapperMySqlCrudExample
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            // 初始化連線工廠與所有 Repository
-            _factory = new DbConnectionFactory();
-            _detectionMethodRepo = new DetectionMethodRepository(_factory);
-            _anomalyLotRepo = new AnomalyLotRepository(_factory);
-            _anomalyTestItemRepo = new AnomalyTestItemRepository(_factory);
-            _anomalyUnitRepo = new AnomalyUnitRepository(_factory);
-            _lotProcessRepo = new AnomalyLotProcessMappingRepository(_factory);
-            _unitProcessRepo = new AnomalyUnitProcessMappingRepository(_factory);
-            _detectionSpecRepo = new DetectionSpecRepository(_factory);
-            _siteStatRepo = new SiteTestStatisticRepository(_factory);
-            _goodLotRepo = new GoodLotRepository(_factory);
-
             try
             {
+                // 初始化連線工廠與所有 Repository
+                _factory = new DbConnectionFactory();
+                _detectionMethodRepo = new DetectionMethodRepository(_factory);
+                _anomalyLotRepo = new AnomalyLotRepository(_factory);
+                _anomalyTestItemRepo = new AnomalyTestItemRepository(_factory);
+                _anomalyUnitRepo = new AnomalyUnitRepository(_factory);
+                _lotProcessRepo = new AnomalyLotProcessMappingRepository(_factory);
+                _unitProcessRepo = new AnomalyUnitProcessMappingRepository(_factory);
+                _detectionSpecRepo = new DetectionSpecRepository(_factory);
+                _siteStatRepo = new SiteTestStatisticRepository(_factory);
+                _goodLotRepo = new GoodLotRepository(_factory);
+
                 DemoDetectionMethod();
                 DemoAnomalyLot();
                 DemoAnomalyTestItem();
@@ -72,8 +72,11 @@ namespace DapperMySqlCrudExample
                 LogManager.Shutdown();
             }
 
-            Console.WriteLine("\n按任意鍵結束...");
-            Console.ReadKey();
+            if (!Console.IsInputRedirected)
+            {
+                Console.WriteLine("\n按任意鍵結束...");
+                Console.ReadKey(intercept: true);
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -255,8 +258,7 @@ namespace DapperMySqlCrudExample
             long lotId,
                 itemId,
                 unitId;
-            using (var conn = _factory.Create())
-            using (var tx = conn.BeginTransaction())
+            using (var tx = _factory.BeginTransaction())
             {
                 lotId = _anomalyLotRepo.Insert(lot, tx);
                 testItem.AnomalyLotId = lotId;
@@ -305,8 +307,7 @@ namespace DapperMySqlCrudExample
             };
             long lotId,
                 mappingId;
-            using (var conn = _factory.Create())
-            using (var tx = conn.BeginTransaction())
+            using (var tx = _factory.BeginTransaction())
             {
                 lotId = _anomalyLotRepo.Insert(lot, tx);
                 mapping.AnomalyLotId = lotId;
@@ -373,8 +374,7 @@ namespace DapperMySqlCrudExample
                 tiId,
                 auId,
                 upId;
-            using (var conn = _factory.Create())
-            using (var tx = conn.BeginTransaction())
+            using (var tx = _factory.BeginTransaction())
             {
                 lotId = _anomalyLotRepo.Insert(lot, tx);
                 ti.AnomalyLotId = lotId;
@@ -418,8 +418,7 @@ namespace DapperMySqlCrudExample
                 SpecCalcStartTime = new DateTime(2024, 1, 1),
                 SpecCalcEndTime = new DateTime(2024, 12, 31),
             };
-            using (var conn = _factory.Create())
-            using (var tx = conn.BeginTransaction())
+            using (var tx = _factory.BeginTransaction())
             {
                 try
                 {

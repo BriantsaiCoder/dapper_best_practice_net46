@@ -64,5 +64,24 @@ namespace DapperMySqlCrudExample.Infrastructure
                 throw;
             }
         }
+
+        public IDbTransaction BeginTransaction()
+        {
+            return BeginTransaction(IsolationLevel.ReadCommitted);
+        }
+
+        public IDbTransaction BeginTransaction(IsolationLevel isolationLevel)
+        {
+            var conn = Create();
+            try
+            {
+                return conn.BeginTransaction(isolationLevel);
+            }
+            catch
+            {
+                conn.Dispose();
+                throw;
+            }
+        }
     }
 }

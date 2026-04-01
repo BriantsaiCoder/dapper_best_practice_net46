@@ -261,9 +261,9 @@ namespace DapperMySqlCrudExample.Repositories
             string testItemName
         )
         {
-            using (var conn = _factory.Create())
-            using (var transaction = conn.BeginTransaction())
+            using (var transaction = _factory.BeginTransaction())
             {
+                var conn = transaction.Connection;
                 var rows = QuerySiteMeanRows(conn, transaction, programName, siteId, testItemName);
 
                 if (rows.Count == 0)

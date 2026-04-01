@@ -17,7 +17,7 @@
 |------|------|------|
 | ORM（Micro-ORM）| Dapper | 2.1.35 |
 | MySQL Driver | MySql.Data | 8.0.33 |
-| 日誌框架 | NLog | 5.2.8 |
+| 日誌框架 | NLog | 5.3.4 |
 | 數值統計 | MathNet.Numerics | 5.0.0 |
 | Target Framework | .NET Framework | 4.6.1 |
 | 語言版本 | C# | 7.3 |
@@ -80,7 +80,7 @@ DapperMySqlCrudExample/
 9. **防呆與清晰例外訊息** — `DbConnectionFactory` 對 null / 空白連線字串丟出具明確說明的例外，方便偵錯。
 10. **連線安全防護** — `Create()` 開啟連線失敗時主動 `Dispose()`，避免資源洩漏。
 11. **環境變數優先** — `DbConnectionFactory` 優先讀取 `MYSQL_CONNECTION_STRING` 環境變數，方便容器化或 CI/CD 部署。
-12. **交易支援** — `Update` / `Delete` 方法接受選用的 `IDbTransaction` 參數，可在外部交易內執行。
+12. **交易支援** — `IDbConnectionFactory.BeginTransaction()` 可建立跨操作交易，且 Repository 的 `Insert` / `Update` / `Delete` 方法皆接受選用的 `IDbTransaction` 參數。
 13. **GetAll 安全上限** — 所有 `GetAll()` 附帶 `LIMIT 10000`，防止全表掃描造成記憶體暴漲。
 14. **結構化日誌** — 整合 NLog，Console + 滾動檔案（每日 / 10 MB 上限 / 保留 14 天），連線失敗與未處理例外皆記錄。
 
