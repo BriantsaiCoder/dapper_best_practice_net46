@@ -14,6 +14,49 @@ namespace DapperMySqlCrudExample.Infrastructure
     /// </summary>
     public class DbConnectionFactory : IDbConnectionFactory
     {
+        private sealed class ConnectionOwnedTransaction : IDbTransaction
+        {
+            private readonly IDbConnection _connection;
+            private readonly IDbTransaction _innerTransaction;
+            private bool _disposed;
+
+            public ConnectionOwnedTransaction(IDbConnection connection, IDbTransaction innerTransaction)
+            {
+                _connection = connection;
+                _innerTransaction = innerTransaction;
+            }
+
+            public IDbConnection Connection => _connection;
+
+            public IsolationLevel IsolationLevel => _innerTransaction.IsolationLevel;
+
+            public void Commit()
+            {
+                _innerTransaction.Commit();
+            }
+
+            public void Rollback()
+            {
+                _innerTransaction.Rollback();
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+
+                try
+                {
+                    _innerTransaction.Dispose();
+                }
+                finally
+                {
+                    _connection.Dispose();
+                    _disposed = true;
+                }
+            }
+        }
+
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private const string EnvVarName = "MYSQL_CONNECTION_STRING";
         private readonly string _connectionString;
@@ -75,7 +118,10 @@ namespace DapperMySqlCrudExample.Infrastructure
             var conn = Create();
             try
             {
-                return conn.BeginTransaction(isolationLevel);
+                return new ConnectionOwnedTransaction(
+                    conn,
+                    conn.BeginTransaction(isolationLevel)
+                );
             }
             catch
             {
