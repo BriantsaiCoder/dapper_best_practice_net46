@@ -4,47 +4,78 @@ using DapperMySqlCrudExample.Models;
 
 namespace DapperMySqlCrudExample.Repositories
 {
-    /// <summary>Spec 規格 Repository 介面</summary>
+    /// <summary>
+    /// 偵測規格（detection_specs）資料表的 Repository 介面。
+    /// 提供標準 CRUD、分頁、計數、存在判斷，以及依偵測方法查詢的業務查詢方法。
+    /// 業務計算邏輯（如 SITE_MEAN 規格計算）已移至 Services 層。
+    /// </summary>
     public interface IDetectionSpecRepository
     {
+        /// <summary>取得所有偵測規格記錄。</summary>
+        /// <returns>DetectionSpec 集合（可能為空）。</returns>
         IEnumerable<DetectionSpec> GetAll();
+
+        /// <summary>依主鍵查詢單筆偵測規格。</summary>
+        /// <param name="id">記錄主鍵 ID。</param>
+        /// <returns>找到時回傳 <see cref="DetectionSpec"/>，否則回傳 null。</returns>
         DetectionSpec GetById(long id);
+
+        /// <summary>依 program 與 detection_method_id 查詢符合條件的規格清單。</summary>
+        /// <param name="program">產品程式名稱。</param>
+        /// <param name="detectionMethodId">偵測方法主鍵（對應 detection_methods.id）。</param>
+        /// <returns>符合條件的 DetectionSpec 集合。</returns>
         IEnumerable<DetectionSpec> GetByProgramAndMethod(string program, byte detectionMethodId);
 
         /// <summary>
-        /// 依 detection method name 及 program 查詢最近一個月內計算的 spec 資料。
+        /// 依偵測方法名稱及 program 查詢最近一個月內計算的規格清單。
         /// </summary>
-        /// <param name="program">產品程式名稱</param>
-        /// <param name="detectionMethodName">偵測方法名稱（對應 detection_methods.method_name）</param>
-        /// <returns>符合條件的 DetectionSpec 集合</returns>
+        /// <param name="program">產品程式名稱。</param>
+        /// <param name="detectionMethodName">偵測方法名稱（對應 detection_methods.method_name）。</param>
+        /// <returns>符合條件的 DetectionSpec 集合（可能為空）。</returns>
         IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(
             string program,
             string detectionMethodName
         );
 
         /// <summary>
-        /// 取最近一個月內 spec_calc_end_time 最大的單筆記錄（最新有效規格）。
-        /// 找不到時回傳 null。
+        /// 取最近一個月內 spec_calc_end_time 最大的單筆規格（最新有效規格）。
         /// </summary>
-        /// <param name="program">產品程式名稱</param>
-        /// <param name="detectionMethodName">偵測方法名稱（對應 detection_methods.method_name）</param>
-        /// <returns>最新一筆 DetectionSpec，或 null</returns>
+        /// <param name="program">產品程式名稱。</param>
+        /// <param name="detectionMethodName">偵測方法名稱（對應 detection_methods.method_name）。</param>
+        /// <returns>最新一筆 <see cref="DetectionSpec"/>，找不到時回傳 null。</returns>
         DetectionSpec GetLatestByProgramAndMethodName(string program, string detectionMethodName);
 
+        /// <summary>新增一筆偵測規格，回傳新記錄的自動遞增 ID。</summary>
+        /// <param name="entity">要新增的 DetectionSpec 實體。</param>
+        /// <param name="transaction">選用的資料庫交易；null 表示不使用交易。</param>
+        /// <returns>新記錄的自動遞增主鍵 ID。</returns>
         long Insert(DetectionSpec entity, IDbTransaction transaction = null);
+
+        /// <summary>更新一筆既有的偵測規格。</summary>
+        /// <param name="entity">包含更新資料的 DetectionSpec 實體（Id 欄位必填）。</param>
+        /// <param name="transaction">選用的資料庫交易；null 表示不使用交易。</param>
+        /// <returns>受影響列數 &gt; 0 則回傳 true，否則回傳 false。</returns>
         bool Update(DetectionSpec entity, IDbTransaction transaction = null);
+
+        /// <summary>依主鍵刪除一筆偵測規格。</summary>
+        /// <param name="id">要刪除記錄的主鍵 ID。</param>
+        /// <param name="transaction">選用的資料庫交易；null 表示不使用交易。</param>
+        /// <returns>受影響列數 &gt; 0 則回傳 true，否則回傳 false。</returns>
         bool Delete(long id, IDbTransaction transaction = null);
 
-        /// <summary>
-        /// 查詢 site_test_statistics 中指定 program / site / test_item 的 mean_value，
-        /// 優先取「近一個月內且 mean_value 不為 NULL」的資料（需 ≥ 30 筆）；
-        /// 若不足，改取最新 30 筆（mean_value 不為 NULL）。
-        /// 以算術平均數 ± 6 × 樣本標準差作為 spec 上下限，
-        /// 寫入 detection_specs（detection_method = SITE_MEAN），回傳新記錄的 ID。
-        /// </summary>
-        /// <exception cref="System.InvalidOperationException">
-        /// 當有效資料筆數為 0，或所有 start_time 皆為 NULL 時拋出。
-        /// </exception>
-        long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName);
+        /// <summary>判斷指定主鍵的偵測規格是否存在。</summary>
+        /// <param name="id">記錄主鍵 ID。</param>
+        /// <returns>記錄存在則回傳 true，否則回傳 false。</returns>
+        bool Exists(long id);
+
+        /// <summary>取得 detection_specs 資料表的總記錄數。</summary>
+        /// <returns>記錄總數。</returns>
+        int GetCount();
+
+        /// <summary>依偏移量與筆數分頁取得偵測規格清單（依 id 升冪排序）。</summary>
+        /// <param name="offset">略過的記錄數（從 0 開始）。</param>
+        /// <param name="limit">最多回傳的記錄筆數。</param>
+        /// <returns>該分頁的 DetectionSpec 集合。</returns>
+        IEnumerable<DetectionSpec> GetPaged(int offset, int limit);
     }
 }

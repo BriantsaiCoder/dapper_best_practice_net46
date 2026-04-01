@@ -6,18 +6,21 @@ using DapperMySqlCrudExample.Models;
 
 namespace DapperMySqlCrudExample.Repositories
 {
-    /// <summary>Site 測項統計值 Repository 實作</summary>
+    /// <summary>
+    /// <see cref="ISiteTestStatisticRepository"/> 的 Dapper 實作，對應 site_test_statistics 資料表。
+    /// </summary>
     public class SiteTestStatisticRepository : ISiteTestStatisticRepository
     {
         private readonly IDbConnectionFactory _factory;
 
+        /// <summary>建立 SiteTestStatisticRepository 實體。</summary>
+        /// <param name="factory">資料庫連線工廠。</param>
         public SiteTestStatisticRepository(IDbConnectionFactory factory)
         {
             _factory = factory;
         }
 
-        private const string SelectColumns =
-            @"
+        private const string SelectColumns = @"
             id             AS Id,
             lots_info_id   AS LotsInfoId,
             program        AS Program,
@@ -35,13 +38,15 @@ namespace DapperMySqlCrudExample.Repositories
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
 
+        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT 10000";
+            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql);
         }
 
+        /// <inheritdoc/>
         public SiteTestStatistic GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE id = @Id";
@@ -49,34 +54,31 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<SiteTestStatistic>(sql, new { Id = id });
         }
 
+        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId)
         {
-            var sql =
-                $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
+            var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql, new { LotsInfoId = lotsInfoId });
         }
 
+        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName)
         {
-            var sql =
-                $@"
+            var sql = $@"
                 SELECT {SelectColumns}
                 FROM   site_test_statistics
                 WHERE  site_id = @SiteId
                   AND  test_item_name = @TestItemName";
 
             using (var conn = _factory.Create())
-                return conn.Query<SiteTestStatistic>(
-                    sql,
-                    new { SiteId = siteId, TestItemName = testItemName }
-                );
+                return conn.Query<SiteTestStatistic>(sql, new { SiteId = siteId, TestItemName = testItemName });
         }
 
+        /// <inheritdoc/>
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
-            const string sql =
-                @"
+            const string sql = @"
                 INSERT INTO site_test_statistics
                     (lots_info_id, program, site_id, test_item_name,
                      mean_value, max_value, min_value, std_value,
@@ -89,16 +91,13 @@ namespace DapperMySqlCrudExample.Repositories
                      @StartTime, @EndTime);
                 SELECT LAST_INSERT_ID();";
 
-            if (transaction != null)
-                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
-            using (var conn = _factory.Create())
-                return conn.ExecuteScalar<long>(sql, entity);
+            return _factory.ExecuteScalar<long>(sql, entity, transaction);
         }
 
+        /// <inheritdoc/>
         public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
-            const string sql =
-                @"
+            const string sql = @"
                 UPDATE site_test_statistics
                 SET    lots_info_id   = @LotsInfoId,
                        program        = @Program,
@@ -115,20 +114,36 @@ namespace DapperMySqlCrudExample.Repositories
                        end_time       = @EndTime
                 WHERE  id = @Id";
 
-            if (transaction != null)
-                return transaction.Connection.Execute(sql, entity, transaction) > 0;
-            using (var conn = _factory.Create())
-                return conn.Execute(sql, entity) > 0;
+            return _factory.Execute(sql, entity, transaction);
         }
 
+        /// <inheritdoc/>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM site_test_statistics WHERE id = @Id";
+            return _factory.Execute(sql, new { Id = id }, transaction);
+        }
 
-            if (transaction != null)
-                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+        /// <inheritdoc/>
+        public bool Exists(long id)
+        {
+            const string sql = "SELECT COUNT(1) FROM site_test_statistics WHERE id = @Id";
+            return _factory.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+        }
+
+        /// <inheritdoc/>
+        public int GetCount()
+        {
+            const string sql = "SELECT COUNT(1) FROM site_test_statistics";
+            return _factory.ExecuteScalar<int>(sql);
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<SiteTestStatistic> GetPaged(int offset, int limit)
+        {
+            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
-                return conn.Execute(sql, new { Id = id }) > 0;
+                return conn.Query<SiteTestStatistic>(sql, new { Offset = offset, Limit = limit });
         }
     }
 }
