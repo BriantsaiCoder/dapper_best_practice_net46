@@ -191,16 +191,14 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs WHERE id = @Id";
-            using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+            return _factory.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
 
         /// <inheritdoc />
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs";
-            using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql);
+            return _factory.ExecuteScalar<int>(sql);
         }
 
         /// <inheritdoc />
