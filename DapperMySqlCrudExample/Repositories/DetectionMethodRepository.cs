@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Dapper;
@@ -18,7 +19,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="factory">資料庫連線工廠。</param>
         public DetectionMethodRepository(IDbConnectionFactory factory)
         {
-            _factory = factory;
+            _factory = RepositoryGuards.RequireFactory(factory, nameof(factory));
         }
 
         private const string SelectColumns = @"
@@ -57,6 +58,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 INSERT INTO detection_methods
                     (method_code, method_name, has_test_item, has_unit_level)
@@ -70,6 +73,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 UPDATE detection_methods
                 SET    method_code    = @MethodCode,
@@ -105,6 +110,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public IEnumerable<DetectionMethod> GetPaged(int offset, int limit)
         {
+            RepositoryGuards.ValidatePaging(offset, limit);
+
             var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql, new { Offset = offset, Limit = limit });

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Dapper;
@@ -17,7 +18,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="factory">資料庫連線工廠。</param>
         public SiteTestStatisticRepository(IDbConnectionFactory factory)
         {
-            _factory = factory;
+            _factory = RepositoryGuards.RequireFactory(factory, nameof(factory));
         }
 
         private const string SelectColumns = @"
@@ -78,6 +79,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 INSERT INTO site_test_statistics
                     (lots_info_id, program, site_id, test_item_name,
@@ -97,6 +100,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 UPDATE site_test_statistics
                 SET    lots_info_id   = @LotsInfoId,
@@ -141,6 +146,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetPaged(int offset, int limit)
         {
+            RepositoryGuards.ValidatePaging(offset, limit);
+
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql, new { Offset = offset, Limit = limit });

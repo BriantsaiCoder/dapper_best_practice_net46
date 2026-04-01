@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Dapper;
@@ -20,9 +21,10 @@ namespace DapperMySqlCrudExample.Repositories
 
         /// <summary>建立 <see cref="DetectionSpecRepository"/> 實例。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="factory"/> 為 null。</exception>
         public DetectionSpecRepository(IDbConnectionFactory factory)
         {
-            _factory = factory;
+            _factory = RepositoryGuards.RequireFactory(factory, nameof(factory));
         }
 
         private const string SelectColumns =
@@ -138,6 +140,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc />
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql =
                 @"INSERT INTO detection_specs
                       (program, test_item_name, site_id, detection_method_id,
@@ -157,6 +161,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc />
         public bool Update(DetectionSpec entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql =
                 @"UPDATE detection_specs
                   SET    program              = @Program,
@@ -200,6 +206,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc />
         public IEnumerable<DetectionSpec> GetPaged(int offset, int limit)
         {
+            RepositoryGuards.ValidatePaging(offset, limit);
+
             var sql =
                 $"SELECT {SelectColumns} FROM detection_specs ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())

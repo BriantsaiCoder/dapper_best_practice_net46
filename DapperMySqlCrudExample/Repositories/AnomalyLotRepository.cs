@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Dapper;
@@ -17,7 +18,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="factory">資料庫連線工廠。</param>
         public AnomalyLotRepository(IDbConnectionFactory factory)
         {
-            _factory = factory;
+            _factory = RepositoryGuards.RequireFactory(factory, nameof(factory));
         }
 
         private const string SelectColumns = @"
@@ -58,6 +59,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public long Insert(AnomalyLot entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 INSERT INTO anomaly_lots
                     (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
@@ -73,6 +76,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public bool Update(AnomalyLot entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 UPDATE anomaly_lots
                 SET    lots_info_id         = @LotsInfoId,
@@ -110,6 +115,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public IEnumerable<AnomalyLot> GetPaged(int offset, int limit)
         {
+            RepositoryGuards.ValidatePaging(offset, limit);
+
             var sql = $"SELECT {SelectColumns} FROM anomaly_lots ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLot>(sql, new { Offset = offset, Limit = limit });

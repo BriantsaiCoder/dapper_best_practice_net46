@@ -20,6 +20,8 @@ namespace DapperMySqlCrudExample.Services
     /// </summary>
     public sealed class DetectionSpecService : IDetectionSpecService
     {
+        private const string SiteMeanMethodCode = "SITE_MEAN";
+        private const int PreferredHistoryCount = 30;
         private readonly IDbConnectionFactory _factory;
         private readonly IDetectionSpecRepository _specRepo;
 
@@ -40,6 +42,9 @@ namespace DapperMySqlCrudExample.Services
             string testItemName
         )
         {
+            ValidateRequiredText(programName, nameof(programName));
+            ValidateRequiredText(testItemName, nameof(testItemName));
+
             using (var conn = _factory.Create())
             using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
             {
@@ -83,10 +88,7 @@ namespace DapperMySqlCrudExample.Services
                     var specCalcStart = timesWithValue.Min();
                     var specCalcEnd = timesWithValue.Max();
 
-                    byte methodId = conn.ExecuteScalar<byte>(
-                        "SELECT id FROM detection_methods WHERE method_code = 'SITE_MEAN' LIMIT 1",
-                        transaction: tx
-                    );
+                    byte methodId = GetRequiredSiteMeanMethodId(conn, tx);
 
                     var spec = new DetectionSpec
                     {
@@ -152,7 +154,7 @@ namespace DapperMySqlCrudExample.Services
                   ORDER BY start_time DESC";
 
             var rows = conn.Query<SiteMeanRow>(sql1, p, tx).ToList();
-            if (rows.Count >= 30)
+            if (rows.Count >= PreferredHistoryCount)
                 return rows;
 
             const string sql2 =
@@ -166,6 +168,26 @@ namespace DapperMySqlCrudExample.Services
                   LIMIT 30";
 
             return conn.Query<SiteMeanRow>(sql2, p, tx).ToList();
+        }
+
+        private static void ValidateRequiredText(string value, string parameterName)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", parameterName);
+        }
+
+        private static byte GetRequiredSiteMeanMethodId(IDbConnection conn, IDbTransaction tx)
+        {
+            const string sql =
+                "SELECT id FROM detection_methods WHERE method_code = @MethodCode LIMIT 1";
+
+            var methodId = conn.ExecuteScalar<byte?>(sql, new { MethodCode = SiteMeanMethodCode }, tx);
+            if (!methodId.HasValue)
+                throw new InvalidOperationException(
+                    "detection_methods 中找不到 method_code = 'SITE_MEAN' 的設定，無法建立 DetectionSpec。"
+                );
+
+            return methodId.Value;
         }
     }
 }

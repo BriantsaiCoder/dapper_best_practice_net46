@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Dapper;
@@ -18,7 +19,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="factory">資料庫連線工廠。</param>
         public AnomalyLotProcessMappingRepository(IDbConnectionFactory factory)
         {
-            _factory = factory;
+            _factory = RepositoryGuards.RequireFactory(factory, nameof(factory));
         }
 
         private const string SelectColumns = @"
@@ -57,6 +58,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public long Insert(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 INSERT INTO anomaly_lot_process_mapping
                     (anomaly_lot_id, station_name, equipment_id, process_time)
@@ -70,6 +73,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public bool Update(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
+            RepositoryGuards.RequireEntity(entity, nameof(entity));
+
             const string sql = @"
                 UPDATE anomaly_lot_process_mapping
                 SET    anomaly_lot_id = @AnomalyLotId,
@@ -105,6 +110,8 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public IEnumerable<AnomalyLotProcessMapping> GetPaged(int offset, int limit)
         {
+            RepositoryGuards.ValidatePaging(offset, limit);
+
             var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLotProcessMapping>(sql, new { Offset = offset, Limit = limit });

@@ -111,6 +111,33 @@ namespace DapperMySqlCrudExample.Tests.Repositories
         }
 
         /// <summary>
+        /// 驗證所有 Repository 在傳入 null factory 時都會 fail fast。
+        /// </summary>
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void AllRepositories_WithNullFactory_ThrowArgumentNullException()
+        {
+            Action[] constructions = new Action[]
+            {
+                () => new DetectionMethodRepository(null),
+                () => new DetectionSpecRepository(null),
+                () => new SiteTestStatisticRepository(null),
+                () => new GoodLotRepository(null),
+                () => new AnomalyLotRepository(null),
+                () => new AnomalyLotProcessMappingRepository(null),
+                () => new AnomalyUnitRepository(null),
+                () => new AnomalyUnitProcessMappingRepository(null),
+                () => new AnomalyTestItemRepository(null),
+            };
+
+            foreach (var construction in constructions)
+                construction.Should()
+                    .Throw<ArgumentNullException>()
+                    .Which.ParamName.Should()
+                    .Be("factory");
+        }
+
+        /// <summary>
         /// 驗證各 Repository 介面均有正確實作型別（介面-實作對應健全性）。
         /// </summary>
         [TestMethod]

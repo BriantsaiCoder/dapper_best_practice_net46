@@ -12,8 +12,12 @@ namespace DapperMySqlCrudExample.Services
         /// <param name="siteId">Site 編號。</param>
         /// <param name="testItemName">測項名稱。</param>
         /// <returns>新建 detection_specs 記錄的主鍵 id。</returns>
+        /// <exception cref="System.ArgumentException">
+        /// <paramref name="programName"/> 或 <paramref name="testItemName"/> 為 null、空字串或空白字元。
+        /// </exception>
         /// <exception cref="System.InvalidOperationException">
-        /// 查無足夠的 site_test_statistics 資料，或所有 start_time 均為 NULL。
+        /// 查無足夠的 site_test_statistics 資料、所有 start_time 均為 NULL，
+        /// 或 detection_methods 中未設定 method_code = 'SITE_MEAN'。
         /// </exception>
         long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName);
     }

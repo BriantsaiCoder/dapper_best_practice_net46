@@ -12,17 +12,19 @@ namespace DapperMySqlCrudExample
     /// <summary>
     /// 應用程式進入點。
     /// 負責初始化基礎設施並驗證資料庫連線可用性，
-    /// 並示範不使用交易與使用交易的資料庫存取完整範例。
+    /// 並示範不使用交易、使用交易與 DetectionSpecService 的資料存取範例。
     /// </summary>
     internal static class Program
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private static IDbConnectionFactory _connectionFactory;
+        private static IDetectionSpecRepository _detectionSpecRepository;
         private static IDetectionSpecService _detectionSpecService;
 
-        private static int Main()
+        private static int Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
+            var shouldRunDemo = ShouldRunDemo(args);
 
             try
             {
@@ -32,8 +34,18 @@ namespace DapperMySqlCrudExample
                 _logger.Info("應用程式啟動檢查完成，資料庫連線驗證成功。");
                 Console.WriteLine("啟動檢查完成，資料庫連線正常。");
 
-                RunNonTransactionExample();
-                RunTransactionExample();
+                if (shouldRunDemo)
+                {
+                    Console.WriteLine("已啟用 --demo，開始執行資料存取示範。");
+                    RunNonTransactionExample();
+                    RunTransactionExample();
+                    RunDetectionSpecServiceExample();
+                }
+                else
+                {
+                    Console.WriteLine("目前為安全模式，僅進行啟動檢查。");
+                    Console.WriteLine("若要執行新增 / 更新 / 刪除示範，請以 --demo 重新啟動。");
+                }
 
                 return 0;
             }
@@ -56,8 +68,11 @@ namespace DapperMySqlCrudExample
         {
             _connectionFactory = new DbConnectionFactory();
 
-            var specRepo = new DetectionSpecRepository(_connectionFactory);
-            _detectionSpecService = new DetectionSpecService(_connectionFactory, specRepo);
+            _detectionSpecRepository = new DetectionSpecRepository(_connectionFactory);
+            _detectionSpecService = new DetectionSpecService(
+                _connectionFactory,
+                _detectionSpecRepository
+            );
         }
 
         private static void VerifyDatabaseConnectivity()
@@ -66,6 +81,20 @@ namespace DapperMySqlCrudExample
             {
                 connection.ExecuteScalar<int>("SELECT 1");
             }
+        }
+
+        private static bool ShouldRunDemo(string[] args)
+        {
+            if (args == null || args.Length == 0)
+                return false;
+
+            foreach (var arg in args)
+            {
+                if (string.Equals(arg, "--demo", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -251,6 +280,84 @@ namespace DapperMySqlCrudExample
 
             Console.WriteLine();
             Console.WriteLine("  範例二完成。");
+        }
+
+        /// <summary>
+        /// 示範如何透過 <see cref="IDetectionSpecService"/> 依歷史統計資料建立 detection_specs 記錄。
+        /// 若目前資料庫尚無可用的 site_test_statistics 樣本資料，則會顯示略過訊息。
+        /// </summary>
+        private static void RunDetectionSpecServiceExample()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════");
+            Console.WriteLine("  範例三：DetectionSpecService 使用示例");
+            Console.WriteLine("═══════════════════════════════════════════════════════");
+
+            var sample = FindDetectionSpecExampleInput();
+            if (sample == null)
+            {
+                Console.WriteLine(
+                    "  [Skip] site_test_statistics 尚無 mean_value 與 start_time 俱全的樣本資料，略過 DetectionSpecService 示範。"
+                );
+                return;
+            }
+
+            try
+            {
+                long newSpecId = _detectionSpecService.ComputeAndInsertSiteMeanSpec(
+                    sample.ProgramName,
+                    sample.SiteId,
+                    sample.TestItemName
+                );
+                var createdSpec = _detectionSpecRepository.GetById(newSpecId);
+
+                _logger.Info(
+                    "RunDetectionSpecServiceExample: 建立 DetectionSpec 成功，Id={Id}, Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
+                    newSpecId,
+                    sample.ProgramName,
+                    sample.SiteId,
+                    sample.TestItemName
+                );
+                Console.WriteLine(
+                    $"  [Service] 新增成功 → Id={newSpecId}, Program={sample.ProgramName}, SiteId={sample.SiteId}, TestItem={sample.TestItemName}"
+                );
+                Console.WriteLine(
+                    $"  [Verify] UCL={createdSpec?.SpecUpperLimit}, LCL={createdSpec?.SpecLowerLimit}, Mean={createdSpec?.SpecCalcMean}, Std={createdSpec?.SpecCalcStd}"
+                );
+
+                bool cleaned = _detectionSpecRepository.Delete(newSpecId);
+                Console.WriteLine($"  [Cleanup] 示範資料已清除={cleaned}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.Warn(ex, "RunDetectionSpecServiceExample: 示範略過");
+                Console.WriteLine($"  [Skip] {ex.Message}");
+            }
+        }
+
+        private static DetectionSpecExampleInput FindDetectionSpecExampleInput()
+        {
+            const string sql =
+                @"SELECT program        AS ProgramName,
+                         site_id        AS SiteId,
+                         test_item_name AS TestItemName
+                  FROM   site_test_statistics
+                  WHERE  mean_value    IS NOT NULL
+                    AND  start_time    IS NOT NULL
+                  ORDER BY start_time DESC
+                  LIMIT 1";
+
+            using (var connection = _connectionFactory.Create())
+                return connection.QueryFirstOrDefault<DetectionSpecExampleInput>(sql);
+        }
+
+        private sealed class DetectionSpecExampleInput
+        {
+            public string ProgramName { get; set; }
+
+            public uint SiteId { get; set; }
+
+            public string TestItemName { get; set; }
         }
     }
 }

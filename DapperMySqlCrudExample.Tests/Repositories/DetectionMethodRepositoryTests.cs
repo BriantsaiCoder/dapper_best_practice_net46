@@ -118,17 +118,78 @@ namespace DapperMySqlCrudExample.Tests.Repositories
         /// </summary>
         [TestMethod]
         [TestCategory("Unit")]
-        public void Constructor_WithNullFactory_ThrowsNullReferenceOrArgumentException()
+        public void Constructor_WithNullFactory_ThrowsArgumentNullException()
         {
             // Act
             Action act = () => new DetectionMethodRepository(null);
 
-#pragma warning disable CS0168
-            // C# 7 / .NET Framework 不強制建構子 null guard，
-            // 執行時機為呼叫方法時才拋出 NullReferenceException；
-            // 此測試驗證建構子本身不主動拋例外（設計決策記錄）。
-            act.Should().NotThrow("建構子不做 null guard，方法呼叫時才拋例外");
-#pragma warning restore CS0168
+            // Assert
+            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("factory");
+        }
+
+        /// <summary>
+        /// 驗證 Insert 在 entity 為 null 時會主動拋出明確例外。
+        /// </summary>
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void Insert_WithNullEntity_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var mockConn = new Mock<IDbConnection>();
+            var factory = new MockDbConnectionFactory(mockConn.Object);
+            var repo = new DetectionMethodRepository(factory);
+
+            // Act
+            Action act = () => repo.Insert(null);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("entity");
+        }
+
+        /// <summary>
+        /// 驗證 Update 在 entity 為 null 時會主動拋出明確例外。
+        /// </summary>
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void Update_WithNullEntity_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var mockConn = new Mock<IDbConnection>();
+            var factory = new MockDbConnectionFactory(mockConn.Object);
+            var repo = new DetectionMethodRepository(factory);
+
+            // Act
+            Action act = () => repo.Update(null);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("entity");
+        }
+
+        /// <summary>
+        /// 驗證分頁參數不合法時會及早失敗，避免送出無效 SQL。
+        /// </summary>
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void GetPaged_WithInvalidArguments_ThrowsArgumentOutOfRangeException()
+        {
+            // Arrange
+            var mockConn = new Mock<IDbConnection>();
+            var factory = new MockDbConnectionFactory(mockConn.Object);
+            var repo = new DetectionMethodRepository(factory);
+
+            // Act
+            Action negativeOffset = () => repo.GetPaged(-1, 10).ToList();
+            Action nonPositiveLimit = () => repo.GetPaged(0, 0).ToList();
+
+            // Assert
+            negativeOffset.Should()
+                .Throw<ArgumentOutOfRangeException>()
+                .Which.ParamName.Should()
+                .Be("offset");
+            nonPositiveLimit.Should()
+                .Throw<ArgumentOutOfRangeException>()
+                .Which.ParamName.Should()
+                .Be("limit");
         }
 
         // ──────────────────────────────────────────────────────────────────

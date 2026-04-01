@@ -43,9 +43,9 @@
 | MySQL Driver | MySql.Data | 8.0.33 | 相容 MySQL 5.6–8.0+ |
 | Logging | NLog | 5.3.4 | 主控台 + 檔案輪替輸出 |
 | Statistics | MathNet.Numerics | 5.0.0 | 平均值 / 標準差計算 |
-| Testing | MSTest | 3.3.1 | 單元 / 整合測試框架 |
-| Assertion | FluentAssertions | 6.12.0 | 流式斷言語法 |
-| Mock | Moq | 4.20.70 | 測試替身 |
+| Testing | MSTest | 3.8.3 | 單元 / 整合測試框架 |
+| Assertion | FluentAssertions | 6.12.2 | 流式斷言語法 |
+| Mock | Moq | 4.20.72 | 測試替身 |
 
 > `MySql.Data` 9.x 已移除 MySQL 5.x 支援；若正式環境仍有 MySQL 5.6/5.7，請維持 8.0.x。
 
@@ -57,7 +57,7 @@
 dapper_best_practice_net46.sln
 ├── DapperMySqlCrudExample/                  # 主專案（net461）
 │   ├── Infrastructure/
-│   │   ├── IDbConnectionFactory.cs          # 連線工廠介面（含交易支援）
+│   │   ├── IDbConnectionFactory.cs          # 連線工廠介面
 │   │   ├── DbConnectionFactory.cs           # 讀取環境變數 / App.config
 │   │   └── DapperExtensions.cs              # Execute→bool / ExecuteScalar<T>
 │   ├── Models/                              # Dapper 對應 POCO（無 ORM Attribute）
@@ -81,12 +81,14 @@ dapper_best_practice_net46.sln
 │   │   └── schema.sql                       # 完整 DDL
 │   ├── App.config                           # 連線字串後備設定
 │   ├── NLog.config                          # 日誌設定
-│   └── Program.cs                           # Composition Root / CRUD 展示
+│   └── Program.cs                           # Composition Root / CRUD + Service 展示
 │
 └── DapperMySqlCrudExample.Tests/            # 測試專案（net462）
     ├── Infrastructure/
     │   ├── MockDbConnectionFactory.cs        # 注入 Mock IDbConnection（單元測試用）
     │   └── LiveDbConnectionFactory.cs        # 讀取環境變數，真實 MySQL 連線（整合測試用）
+    ├── Services/
+    │   └── DetectionSpecServiceTests.cs      # DetectionSpecService 輕量單元測試
     └── Repositories/
         ├── DetectionMethodRepositoryTests.cs # DetectionMethod 單元 / 整合測試
         └── CrudUsageExampleTests.cs          # 跨 Repository 模型驗證 + CRUD 整合範例
@@ -154,18 +156,20 @@ IEnumerable<T> GetPaged(int offset, int limit);
 ### 5. DetectionSpecService — 業務計算 + 交易
 
 ```csharp
-public void ComputeAndInsertDetectionSpec(byte detectionMethodId)
+public long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName)
 {
-    using (var tx = _factory.BeginTransaction())
+    using (var conn = _factory.Create())
+    using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
     {
-        // 透過 MathNet.Numerics 計算統計量
-        // INSERT detection_specs
-        tx.Commit();   // 例外則 using 區塊自動 Rollback
+        // 1. 查詢 site_test_statistics 歷史資料
+        // 2. 以 MathNet.Numerics 計算 Mean / StdDev
+        // 3. 寫入 detection_specs 後 Commit
     }
 }
 ```
 
 - 使用 `IsolationLevel.RepeatableRead` 確保讀取一致性。
+- `Program.cs` 內含一段會自動尋找示範資料並呼叫 `DetectionSpecService` 的使用範例。
 
 ### 6. 交易整合模式
 
@@ -203,11 +207,21 @@ dotnet build dapper_best_practice_net46.sln
 
 預期輸出：`建置 成功`，0 錯誤、0 警告。
 
-### 執行 CRUD 展示
+### 執行啟動檢查（預設安全模式）
 
 ```bash
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 ```
+
+此模式只驗證資料庫連線，不會執行任何新增 / 更新 / 刪除示範。
+
+### 執行 CRUD / Service 展示
+
+```bash
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --demo
+```
+
+帶入 `--demo` 後，才會依序執行 Repository CRUD、交易示範與 `DetectionSpecService` 範例。
 
 ---
 
@@ -257,7 +271,7 @@ dotnet test DapperMySqlCrudExample.Tests/DapperMySqlCrudExample.Tests.csproj \
     --filter "TestCategory!=Integration"
 ```
 
-預期：**9/9 全部通過**。
+預期：**所有 Unit 測試通過**。
 
 ### 整合測試（需要真實 MySQL）
 
