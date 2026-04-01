@@ -1,6 +1,6 @@
 # GitHub Copilot 工作區指引
 
-> 本專案為 **.NET Framework 4.6.1 + Dapper + MySQL** 的 CRUD 最佳實務展示。
+> 本專案為 **.NET Framework 4.6.1 + Dapper + MySQL** 的正式生產環境基底專案。
 > 詳細專案目的與技術說明請參閱 [`README.md`](../README.md)。
 
 ---
@@ -11,7 +11,7 @@
 # SDK-style 專案，支援 dotnet CLI（需安裝任意 .NET SDK）
 dotnet build dapper_best_practice_net46.sln
 
-# 執行（確認 App.config 的連線字串已設定）
+# 執行啟動檢查（確認 App.config 或環境變數已設定連線字串）
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 
 # 亦可用 MSBuild
@@ -24,7 +24,7 @@ DapperMySqlCrudExample/bin/Debug/net461/DapperMySqlCrudExample.exe
 **前置需求**：
 
 - 目標框架：`net461`（.NET Framework 4.6.1）；C# 語言版本鎖定 `7.3`
-- 執行前需有可連線的 MySQL 執行個體，並在 `DapperMySqlCrudExample/App.config` 設定 `DefaultConnection` 連線字串
+- 執行前需有可連線的 MySQL 執行個體，並透過 `MYSQL_CONNECTION_STRING` 或 `DapperMySqlCrudExample/App.config` 的 `DefaultConnection` 提供連線字串
 - 資料庫 DDL 位於 [`DapperMySqlCrudExample/Sql/schema.sql`](../DapperMySqlCrudExample/Sql/schema.sql)
 
 ---
@@ -33,20 +33,23 @@ DapperMySqlCrudExample/bin/Debug/net461/DapperMySqlCrudExample.exe
 
 ```
 Program.cs
-   └─ 建構子注入 IDbConnectionFactory，直接實例化各 Repository
-IXxxRepository（抽象介面）
-   └─ XxxRepository（實作，接收 IDbConnectionFactory）
-         └─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
-               └─ Dapper 查詢 → MySQL DB
+   └─ 啟動檢查 / composition root
+       └─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
+           └─ Dapper 驗證連線 → MySQL DB
+
+應用工作流程
+   └─ IXxxRepository（抽象介面）
+       └─ XxxRepository（實作，接收 IDbConnectionFactory）
+           └─ Dapper 查詢 / 寫入 → MySQL DB
 ```
 
 | 層次     | 目錄              | 職責                                           |
 | -------- | ----------------- | ---------------------------------------------- |
-| 進入點   | `Program.cs`      | 示範所有表格 CRUD，無 DI 容器（手動組裝）      |
+| 進入點   | `Program.cs`      | 啟動檢查與 composition root，不預設執行資料寫入 |
 | 基礎建設 | `Infrastructure/` | `IDbConnectionFactory` & `DbConnectionFactory` |
 | 模型     | `Models/`         | Dapper 對應 POCO，無 ORM Attribute             |
-| 資料存取 | `Repositories/`   | 介面 + 實作，每張表格一組                      |
-| 資料庫   | `Sql/schema.sql`  | 9 張表格的 DDL，含外鍵與索引                   |
+| 資料存取 | `Repositories/`   | 介面 + 實作，已覆蓋 9 組核心資料表             |
+| 資料庫   | `Sql/schema.sql`  | 完整 schema（含整合表與核心異常檢測資料表）    |
 
 ---
 
@@ -158,7 +161,7 @@ public class Foo
 2. **`Models/Foo.cs`** — 建立 POCO，屬性對應 Schema 欄位（可空欄位用 `?`）
 3. **`Repositories/IFooRepository.cs`** — 宣告介面
 4. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數
-5. **`Program.cs`** — 實例化並呼叫 CRUD Demo
+5. **應用工作流程** — 在實際業務流程、批次或服務層中整合新的 Repository
 
 ---
 
