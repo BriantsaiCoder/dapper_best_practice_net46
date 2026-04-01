@@ -8,6 +8,54 @@
 --     時區自動轉換問題，確保製造業本地事件時間的一致性。
 --   • MySQL 5.7+：可直接使用 BOOLEAN (TINYINT(1) 別名)，行為一致。
 -- =============================================================================
+-- ★ 執行順序 & 資料表分類說明
+-- =============================================================================
+-- 本 schema 分為兩個區塊：
+--   A. 第 2 節「整合既有系統資料表」：
+--      整合既有系統的資料表定義；若您的環境已存在這些資料表，可跳過本節。
+--      其中 lots_info 為本專案核心資料表的外鍵依賴，必須於核心資料表之前存在。
+--   B. 第 3~11 節「本專案核心資料表」：
+--      本專案 Repository 直接管理的 9 張表，
+--      需在 lots_info 等外鍵參照的資料表存在後方可建立。
+--
+-- =============================================================================
+-- ★ 本專案核心資料表（Repository 直接管理，共 9 張）
+-- =============================================================================
+--   1. detection_methods            — 偵測方法主表（TINYINT PK，固定 4 筆種子資料）
+--   2. anomaly_lots                 — 異常批號主表（FK → lots_info, detection_methods）
+--   3. anomaly_test_items           — 異常測項明細表（FK → anomaly_lots）
+--   4. anomaly_units                — 異常 Unit 明細表（FK → anomaly_test_items）
+--   5. anomaly_lot_process_mapping  — 批號 Process Mapping 表（FK → anomaly_lots）
+--   6. anomaly_unit_process_mapping — Unit Process Mapping 表（FK → anomaly_units）
+--   7. detection_specs              — Spec 規格表（FK → detection_methods）
+--   8. site_test_statistics         — Site 測項統計值表（FK → lots_info）
+--   9. good_lots                    — 好批批號記錄表（FK → lots_info, detection_methods）
+--
+-- =============================================================================
+-- ★ 外部依賴資料表（需由既有系統提供，本專案不負責建立）
+-- =============================================================================
+--   ◆ 關鍵 FK 依賴（執行第 3~11 節前必須先存在）：
+--      • lots_info                   — 批號主資料（anomaly_lots / site_test_statistics /
+--                                      good_lots 均以其 id 為外鍵）
+--
+--   ◆ 既有系統整合資料表（第 2 節含完整 DDL，可視需要選擇性建立）：
+--      • db_key                      — 資料庫金鑰狀態追蹤
+--      • db_key_ui_status            — UI 狀態記錄
+--      • fail_pin_rate_info          — 壞針率資訊主表
+--      • fail_pin_rate_list          — 壞針率清單（FK → fail_pin_rate_info）
+--      • fail_pin_rate_list_pin_ball — 壞針清單 Pin/Ball 明細（FK → fail_pin_rate_list）
+--      • fail_pin_rate_test_result   — 壞針測試結果（FK → fail_pin_rate_list）
+--      • ieda_content                — IEDA 測試資料內容
+--      • ieda_title                  — IEDA 批號抬頭資料
+--      • lots_result                 — 批號逐筆測試結果（FK → lots_info）
+--      • lots_statistic              — 批號統計值（FK → lots_info）
+--      • recovery_rate               — 回收率記錄
+--      • tester_device_info          — 測試機台裝置資訊
+--      • tester_production_analysis  — 機台生產分析（FK → tester_device_info）
+--      • tester_status               — 機台測試狀態（FK → tester_device_info）
+--      • tester_sw_version           — 機台軟體版本（FK → tester_device_info）
+--      • ui_status                   — UI 版本狀態
+-- =============================================================================
 
 -- 1. 偵測方法主表
 CREATE TABLE detection_methods (
@@ -26,7 +74,7 @@ INSERT INTO detection_methods (method_code, method_name, has_test_item, has_unit
 ('MEAN',      '平均值偵測',     FALSE, TRUE),
 ('SITE_MEAN', 'Site平均值偵測', TRUE,  FALSE);
 
--- 整合既有系統資料表
+-- 2. 整合既有系統資料表（若已存在可跳過本節）
 CREATE TABLE `db_key` (
   `id` int NOT NULL AUTO_INCREMENT,
   `datetime` int DEFAULT NULL,

@@ -1,6 +1,8 @@
 using System;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
+using DapperMySqlCrudExample.Repositories;
+using DapperMySqlCrudExample.Services;
 using NLog;
 
 namespace DapperMySqlCrudExample
@@ -14,6 +16,7 @@ namespace DapperMySqlCrudExample
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private static IDbConnectionFactory _connectionFactory;
+        private static IDetectionSpecService _detectionSpecService;
 
         private static int Main()
         {
@@ -46,6 +49,9 @@ namespace DapperMySqlCrudExample
         private static void InitializeInfrastructure()
         {
             _connectionFactory = new DbConnectionFactory();
+
+            var specRepo = new DetectionSpecRepository(_connectionFactory);
+            _detectionSpecService = new DetectionSpecService(_connectionFactory, specRepo);
         }
 
         private static void VerifyDatabaseConnectivity()
