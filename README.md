@@ -13,7 +13,6 @@
 - [快速開始](#快速開始)
 - [資料庫設定](#資料庫設定)
 - [連線設定](#連線設定)
-- [執行測試](#執行測試)
 - [Repository 擴充規範](#repository-擴充規範)
 - [主要工程決策](#主要工程決策)
 - [驗證清單](#驗證清單)
@@ -29,7 +28,6 @@
 - 短生命週期連線與安全的連線字串管理
 - 啟動檢查、結構化日誌與失敗可觀測性
 - 最小必要抽象層，維持可讀性與延伸性
-- 完整單元測試覆蓋（不需 DB），整合測試可選執行
 
 ---
 
@@ -37,15 +35,12 @@
 
 | 類別 | 套件 | 版本 | 說明 |
 |------|------|------|------|
-| Runtime | .NET Framework | 4.6.1 / 4.6.2 | 主/測試專案目標框架 |
+| Runtime | .NET Framework | 4.6.1 | 目標框架 |
 | Language | C# | 7.3 | 語言版本上限（不用 C# 8+ 語法） |
 | Micro-ORM | Dapper | 2.1.35 | 明確 SQL、低額外負擔 |
 | MySQL Driver | MySql.Data | 8.0.33 | 相容 MySQL 5.6–8.0+ |
 | Logging | NLog | 5.3.4 | 主控台 + 檔案輪替輸出 |
 | Statistics | MathNet.Numerics | 5.0.0 | 平均值 / 標準差計算 |
-| Testing | MSTest | 3.8.3 | 單元 / 整合測試框架 |
-| Assertion | FluentAssertions | 6.12.2 | 流式斷言語法 |
-| Mock | Moq | 4.20.72 | 測試替身 |
 
 > `MySql.Data` 9.x 已移除 MySQL 5.x 支援；若正式環境仍有 MySQL 5.6/5.7，請維持 8.0.x。
 
@@ -82,16 +77,6 @@ dapper_best_practice_net46.sln
 │   ├── App.config                           # 連線字串後備設定
 │   ├── NLog.config                          # 日誌設定
 │   └── Program.cs                           # Composition Root / CRUD + Service 展示
-│
-└── DapperMySqlCrudExample.Tests/            # 測試專案（net462）
-    ├── Infrastructure/
-    │   ├── MockDbConnectionFactory.cs        # 注入 Mock IDbConnection（單元測試用）
-    │   └── LiveDbConnectionFactory.cs        # 讀取環境變數，真實 MySQL 連線（整合測試用）
-    ├── Services/
-    │   └── DetectionSpecServiceTests.cs      # DetectionSpecService 輕量單元測試
-    └── Repositories/
-        ├── DetectionMethodRepositoryTests.cs # DetectionMethod 單元 / 整合測試
-        └── CrudUsageExampleTests.cs          # 跨 Repository 模型驗證 + CRUD 整合範例
 ```
 
 ---
@@ -262,41 +247,6 @@ export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;P
 
 ---
 
-## 執行測試
-
-### 單元測試（不需 MySQL）
-
-```bash
-dotnet test DapperMySqlCrudExample.Tests/DapperMySqlCrudExample.Tests.csproj \
-    --filter "TestCategory!=Integration"
-```
-
-預期：**所有 Unit 測試通過**。
-
-### 整合測試（需要真實 MySQL）
-
-整合測試標記有 `[Ignore]`，需先設定連線字串再執行：
-
-```bash
-export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;Pwd=your_password;"
-
-dotnet test DapperMySqlCrudExample.Tests/DapperMySqlCrudExample.Tests.csproj \
-    --filter "TestCategory=Integration"
-```
-
-### CI 建議設定
-
-```yaml
-# GitHub Actions 範例
-- name: Run Unit Tests
-  run: |
-    dotnet test DapperMySqlCrudExample.Tests/DapperMySqlCrudExample.Tests.csproj \
-      --filter "TestCategory!=Integration" \
-      --logger "trx;LogFileName=test-results.trx"
-```
-
----
-
 ## Repository 擴充規範
 
 新增資料表時，請遵循以下流程：
@@ -305,7 +255,6 @@ dotnet test DapperMySqlCrudExample.Tests/DapperMySqlCrudExample.Tests.csproj \
 2. **`Models/Foo.cs`** — 建立 POCO，屬性名稱與 SQL `AS` 別名一致（`PascalCase`）
 3. **`Repositories/IFooRepository.cs`** — 宣告介面（含 `Exists` / `GetCount` / `GetPaged`）
 4. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數與 `using (var conn = _factory.Create())` 模式
-5. **測試** — 在 `Tests/Repositories/` 新增對應測試類別
 
 ```csharp
 // 標準 Repository 骨架
@@ -367,4 +316,3 @@ public class FooRepository : IFooRepository
 - [ ] 目標資料庫可連線，DDL 已套用
 - [ ] `detection_methods` 基礎資料已存在
 - [ ] `dotnet build dapper_best_practice_net46.sln` 建構成功（0 錯誤）
-- [ ] 單元測試全數通過：`--filter "TestCategory!=Integration"`
