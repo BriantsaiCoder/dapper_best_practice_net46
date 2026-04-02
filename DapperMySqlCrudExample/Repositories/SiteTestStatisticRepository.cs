@@ -18,7 +18,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="factory">資料庫連線工廠。</param>
         public SiteTestStatisticRepository(IDbConnectionFactory factory)
         {
-            _factory = RepositoryGuards.RequireFactory(factory, nameof(factory));
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
         private const string SelectColumns = @"
@@ -79,7 +79,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <inheritdoc/>
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
-            RepositoryGuards.RequireEntity(entity, nameof(entity));
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             const string sql = @"
                 INSERT INTO site_test_statistics
@@ -94,13 +94,17 @@ namespace DapperMySqlCrudExample.Repositories
                      @StartTime, @EndTime);
                 SELECT LAST_INSERT_ID();";
 
-            return _factory.ExecuteScalar<long>(sql, entity, transaction);
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<long>(sql, entity);
         }
 
         /// <inheritdoc/>
         public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
-            RepositoryGuards.RequireEntity(entity, nameof(entity));
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             const string sql = @"
                 UPDATE site_test_statistics
@@ -119,34 +123,48 @@ namespace DapperMySqlCrudExample.Repositories
                        end_time       = @EndTime
                 WHERE  id = @Id";
 
-            return _factory.Execute(sql, entity, transaction);
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, entity, transaction) > 0;
+
+            using (var conn = _factory.Create())
+                return conn.Execute(sql, entity) > 0;
         }
 
         /// <inheritdoc/>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM site_test_statistics WHERE id = @Id";
-            return _factory.Execute(sql, new { Id = id }, transaction);
+
+            if (transaction != null)
+                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+
+            using (var conn = _factory.Create())
+                return conn.Execute(sql, new { Id = id }) > 0;
         }
 
         /// <inheritdoc/>
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM site_test_statistics WHERE id = @Id";
-            return _factory.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
 
         /// <inheritdoc/>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM site_test_statistics";
-            return _factory.ExecuteScalar<int>(sql);
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<int>(sql);
         }
 
         /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetPaged(int offset, int limit)
         {
-            RepositoryGuards.ValidatePaging(offset, limit);
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset), offset, "offset 不可小於 0。");
+            if (limit <= 0)
+                throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
 
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
