@@ -7,6 +7,7 @@
 ## 目錄
 
 - [專案定位](#專案定位)
+- [5 分鐘快速導覽](#5-分鐘快速導覽)
 - [技術棧](#技術棧)
 - [專案結構](#專案結構)
 - [核心設計模式](#核心設計模式)
@@ -29,6 +30,47 @@
 - 啟動檢查、結構化日誌與失敗可觀測性
 - 最小必要抽象層，維持可讀性與延伸性
 - 最少抽象層，直接使用 Dapper 原生 API，降低學習曲線
+
+---
+
+## 5 分鐘快速導覽
+
+> 給剛加入團隊的工程師：依照以下 4 步驟，30 分鐘內掌握整個專案。
+
+### Step 1 — 先跑起來（5 min）
+
+```bash
+dotnet build dapper_best_practice_net46.sln          # 建構
+# 設定連線字串（擇一）
+export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;Pwd=your_password;"
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj            # 啟動檢查
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --demo  # CRUD 展示
+```
+
+觀察 Console 輸出，理解完整 CRUD 流程。
+
+### Step 2 — 讀最簡單的 Repository（10 min）
+
+打開 `DetectionMethodRepository.cs`（7 個欄位，最精簡），搭配介面 `IDetectionMethodRepository.cs` 一起看。
+重點掌握三個核心模式：
+
+| 模式 | 位置 | 用途 |
+|------|------|------|
+| `SelectColumns` 常數 | 類別頂部 | DRY 欄位對應（`snake_case` → `PascalCase`） |
+| `using (var conn = _factory.Create())` | 每個方法 | 短生命週期連線管理 |
+| `if (transaction != null)` 分支 | Insert / Update / Delete | 交易複用既有連線 vs. 自建連線 |
+
+### Step 3 — 讀 Program.cs 的三個展示方法（10 min）
+
+| 方法 | 展示情境 |
+|------|----------|
+| `RunNonTransactionExample()` | 單筆 CRUD，不使用交易 |
+| `RunTransactionExample()` | 多個 Repository 在同一筆交易中協作 + Rollback |
+| `RunComputeSiteMeanSpecExample()` | 業務計算（查詢 → 統計 → 寫入）搭配交易 |
+
+### Step 4 — 動手加一張新表（5 min）
+
+跟著下方 [Repository 擴充規範](#repository-擴充規範) 的 4 步流程（DDL → Model → Interface → Implementation），仿照 `DetectionMethodRepository` 實作一次，即完成上手。
 
 ---
 
