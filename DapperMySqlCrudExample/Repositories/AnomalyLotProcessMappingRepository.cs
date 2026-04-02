@@ -8,10 +8,10 @@ using DapperMySqlCrudExample.Models;
 namespace DapperMySqlCrudExample.Repositories
 {
     /// <summary>
-    /// <see cref="IAnomalyLotProcessMappingRepository"/> 的 Dapper 實作，
-    /// 對應 anomaly_lot_process_mapping 資料表。
+    /// AnomalyLotProcessMappingRepository —
+    /// anomaly_lot_process_mapping 資料表的 Dapper 資料存取。
     /// </summary>
-    public class AnomalyLotProcessMappingRepository : IAnomalyLotProcessMappingRepository
+    public class AnomalyLotProcessMappingRepository
     {
         private readonly IDbConnectionFactory _factory;
 

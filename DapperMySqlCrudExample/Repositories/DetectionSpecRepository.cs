@@ -16,7 +16,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// 以及 SITE_MEAN 規格計算方法。
     /// </para>
     /// </summary>
-    public sealed class DetectionSpecRepository : IDetectionSpecRepository
+    public sealed class DetectionSpecRepository
     {
         private readonly IDbConnectionFactory _factory;
 

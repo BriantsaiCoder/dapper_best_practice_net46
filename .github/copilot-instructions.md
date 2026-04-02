@@ -38,9 +38,8 @@ Program.cs
            └─ Dapper 驗證連線 → MySQL DB
 
 應用工作流程
-   └─ IXxxRepository（抽象介面）
-       └─ XxxRepository（實作，接收 IDbConnectionFactory）
-           └─ Dapper 查詢 / 寫入 → MySQL DB
+   └─ XxxRepository（具體類別，接收 IDbConnectionFactory）
+       └─ Dapper 查詢 / 寫入 → MySQL DB
 ```
 
 | 層次     | 目錄              | 職責                                           |
@@ -48,8 +47,8 @@ Program.cs
 | 進入點   | `Program.cs`      | 啟動檢查與 composition root，不預設執行資料寫入 |
 | 基礎建設 | `Infrastructure/` | `IDbConnectionFactory` & `DbConnectionFactory` |
 | 模型     | `Models/`         | Dapper 對應 POCO，無 ORM Attribute             |
-| 資料存取 | `Repositories/`   | 介面 + 實作，已覆蓋 9 組核心資料表             |
-| 資料庫   | `Sql/schema.sql`  | 完整 schema（含整合表與核心異常檢測資料表）    |
+| 資料存取 | `Repositories/`   | 具體類別，已覆蓋 9 組核心資料表               |
+| 資料庫   | `Sql/schema.sql`  | 核心 9 張表 DDL（整合表見 schema-legacy.sql） |
 
 ---
 
@@ -57,25 +56,11 @@ Program.cs
 
 ### 新增 Repository 時，務必遵循以下模式
 
-#### 1. 介面：宣告標準 CRUD 方法
-
-```csharp
-// Repositories/IFooRepository.cs
-public interface IFooRepository
-{
-    IEnumerable<Foo> GetAll();
-    Foo GetById(long id);
-    long Insert(Foo entity);
-    bool Update(Foo entity);
-    bool Delete(long id);
-}
-```
-
-#### 2. 實作：使用 `SelectColumns` 常數 + `using` 管理連線
+#### 1. 實作：使用 `SelectColumns` 常數 + `using` 管理連線
 
 ```csharp
 // Repositories/FooRepository.cs
-public class FooRepository : IFooRepository
+public class FooRepository
 {
     private readonly IDbConnectionFactory _factory;
 
@@ -124,7 +109,7 @@ public class FooRepository : IFooRepository
 }
 ```
 
-#### 3. Model：純 POCO，不加 ORM Attribute
+#### 2. Model：純 POCO，不加 ORM Attribute
 
 ```csharp
 // Models/Foo.cs
@@ -159,9 +144,8 @@ public class Foo
 
 1. **`Sql/schema.sql`** — 新增 DDL（`CREATE TABLE`、索引、外鍵）
 2. **`Models/Foo.cs`** — 建立 POCO，屬性對應 Schema 欄位（可空欄位用 `?`）
-3. **`Repositories/IFooRepository.cs`** — 宣告介面
-4. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數
-5. **應用工作流程** — 在實際業務流程、批次或服務層中整合新的 Repository
+3. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數
+4. **應用工作流程** — 在實際業務流程、批次或服務層中整合新的 Repository
 
 ---
 

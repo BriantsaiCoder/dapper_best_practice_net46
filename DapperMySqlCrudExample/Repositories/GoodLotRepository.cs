@@ -8,9 +8,9 @@ using DapperMySqlCrudExample.Models;
 namespace DapperMySqlCrudExample.Repositories
 {
     /// <summary>
-    /// <see cref="IGoodLotRepository"/> 的 Dapper 實作，對應 good_lots 資料表。
+    /// GoodLotRepository — good_lots 資料表的 Dapper 資料存取。
     /// </summary>
-    public class GoodLotRepository : IGoodLotRepository
+    public class GoodLotRepository
     {
         private readonly IDbConnectionFactory _factory;
 
