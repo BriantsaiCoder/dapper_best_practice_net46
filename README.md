@@ -11,6 +11,7 @@
 - [技術棧](#技術棧)
 - [專案結構](#專案結構)
 - [核心設計模式](#核心設計模式)
+- [交易使用情境](#交易使用情境)
 - [快速開始](#快速開始)
 - [資料庫設定](#資料庫設定)
 - [連線設定](#連線設定)
@@ -214,6 +215,39 @@ using (var tx = conn.BeginTransaction())
 - 不需引入 Unit of Work 類別。
 - 多個 Repository 可在同一筆交易中協作。
 - 交易邊界由應用工作流程決定，而非被資料層硬綁定。
+
+---
+
+## 交易使用情境
+
+以下列出本專案中**需要使用交易**的應用情境，以及判斷原則：
+
+### 需要交易的情境
+
+| 情境 | 涉及資料表 | 原因 | 隔離層級 |
+|------|-----------|------|----------|
+| 異常批號建立 | `anomaly_lots` → `anomaly_test_items` → `anomaly_units` → `anomaly_lot_process_mapping` / `anomaly_unit_process_mapping` | 父子表具有 FK 關聯，部分寫入會造成孤立資料 | `ReadCommitted`（預設） |
+| SITE_MEAN 規格計算 | `site_test_statistics`（讀）→ `detection_specs`（寫） | 讀取統計資料並計算後寫入，需確保讀取一致性 | `RepeatableRead` |
+| 好批 + 異常批同步建立 | `good_lots` + `anomaly_lots` | 同一批號的好批與異常批判定需原子性，避免狀態不一致 | `ReadCommitted`（預設） |
+| 批量刪除父子資料 | 任何具有 FK 關聯的父子表 | 先刪子表再刪父表，中途失敗會導致資料不一致 | `ReadCommitted`（預設） |
+
+### 不需要交易的情境
+
+| 情境 | 說明 |
+|------|------|
+| 單筆 CRUD | 單一 `INSERT` / `UPDATE` / `DELETE` 天生為原子操作 |
+| 純查詢 | `GetAll` / `GetById` / `GetPaged` 等唯讀操作 |
+| `detection_methods` 維護 | 固定種子資料，通常只做單筆異動 |
+
+### 判斷原則
+
+> **何時該加交易？** 當一個業務動作需要寫入 **兩張以上** 的資料表，或需要 **先讀後寫** 且讀取結果會影響寫入內容時，就應使用交易。
+
+對應 Program.cs 的三個展示方法：
+
+- `RunNonTransactionExample()` — 單筆 CRUD，不使用交易
+- `RunTransactionExample()` — 多表寫入的 Commit / Rollback 示範
+- `RunComputeSiteMeanSpecExample()` — 先讀後寫的 `RepeatableRead` 交易示範
 
 ---
 
