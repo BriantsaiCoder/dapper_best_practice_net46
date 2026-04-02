@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// <see cref="IDetectionMethodRepository"/> 的 Dapper 實作，對應 detection_methods 資料表。
     /// 主鍵 id 為 TINYINT UNSIGNED，故 PK 型別為 <see cref="byte"/>。
     /// </summary>
-    public class DetectionMethodRepository : IDetectionMethodRepository
+    public class DetectionMethodRepository
     {
         private readonly IDbConnectionFactory _factory;
 

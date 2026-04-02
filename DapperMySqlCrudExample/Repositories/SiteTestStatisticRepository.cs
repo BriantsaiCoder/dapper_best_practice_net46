@@ -10,7 +10,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// <summary>
     /// <see cref="ISiteTestStatisticRepository"/> 的 Dapper 實作，對應 site_test_statistics 資料表。
     /// </summary>
-    public class SiteTestStatisticRepository : ISiteTestStatisticRepository
+    public class SiteTestStatisticRepository
     {
         private readonly IDbConnectionFactory _factory;
 

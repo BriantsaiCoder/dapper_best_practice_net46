@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// <see cref="IAnomalyUnitProcessMappingRepository"/> 的 Dapper 實作，
     /// 對應 anomaly_unit_process_mapping 資料表。
     /// </summary>
-    public class AnomalyUnitProcessMappingRepository : IAnomalyUnitProcessMappingRepository
+    public class AnomalyUnitProcessMappingRepository
     {
         private readonly IDbConnectionFactory _factory;
 

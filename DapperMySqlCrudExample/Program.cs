@@ -17,7 +17,7 @@ namespace DapperMySqlCrudExample
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private static IDbConnectionFactory _connectionFactory;
-        private static IDetectionSpecRepository _detectionSpecRepository;
+        private static DetectionSpecRepository _detectionSpecRepository;
 
         private static int Main(string[] args)
         {

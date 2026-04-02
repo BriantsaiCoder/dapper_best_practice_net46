@@ -10,7 +10,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// <summary>
     /// <see cref="IAnomalyTestItemRepository"/> 的 Dapper 實作，對應 anomaly_test_items 資料表。
     /// </summary>
-    public class AnomalyTestItemRepository : IAnomalyTestItemRepository
+    public class AnomalyTestItemRepository
     {
         private readonly IDbConnectionFactory _factory;
 
