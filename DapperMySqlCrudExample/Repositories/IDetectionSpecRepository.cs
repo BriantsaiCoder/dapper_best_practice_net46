@@ -6,8 +6,8 @@ namespace DapperMySqlCrudExample.Repositories
 {
     /// <summary>
     /// 偵測規格（detection_specs）資料表的 Repository 介面。
-    /// 提供標準 CRUD、分頁、計數、存在判斷，以及依偵測方法查詢的業務查詢方法。
-    /// 業務計算邏輯（如 SITE_MEAN 規格計算）已移至 Services 層。
+    /// 提供標準 CRUD、分頁、計數、存在判斷、依偵測方法查詢的業務查詢方法，
+    /// 以及 SITE_MEAN 規格計算。
     /// </summary>
     public interface IDetectionSpecRepository
     {
@@ -77,5 +77,22 @@ namespace DapperMySqlCrudExample.Repositories
         /// <param name="limit">最多回傳的記錄筆數。</param>
         /// <returns>該分頁的 DetectionSpec 集合。</returns>
         IEnumerable<DetectionSpec> GetPaged(int offset, int limit);
+
+        /// <summary>
+        /// 依據歷史 site_test_statistics 資料計算 Mean ± 6σ，
+        /// 建立新的 detection_specs 記錄（使用 SITE_MEAN 偵測方法）。
+        /// </summary>
+        /// <param name="programName">測試程式名稱。</param>
+        /// <param name="siteId">Site 編號。</param>
+        /// <param name="testItemName">測項名稱。</param>
+        /// <returns>新建 detection_specs 記錄的主鍵 id。</returns>
+        /// <exception cref="System.ArgumentException">
+        /// <paramref name="programName"/> 或 <paramref name="testItemName"/> 為 null、空字串或空白字元。
+        /// </exception>
+        /// <exception cref="System.InvalidOperationException">
+        /// 查無足夠的 site_test_statistics 資料、所有 start_time 均為 NULL，
+        /// 或 detection_methods 中未設定 method_code = 'SITE_MEAN'。
+        /// </exception>
+        long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName);
     }
 }
