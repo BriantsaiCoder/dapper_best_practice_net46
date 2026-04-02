@@ -8,7 +8,7 @@ using DapperMySqlCrudExample.Models;
 namespace DapperMySqlCrudExample.Repositories
 {
     /// <summary>
-    /// <see cref="IAnomalyLotRepository"/> 的 Dapper 實作，對應 anomaly_lots 資料表。
+    /// AnomalyLotRepository — anomaly_lots 資料表的 Dapper 資料存取。
     /// </summary>
     public class AnomalyLotRepository
     {

@@ -52,7 +52,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 
 ### Step 2 — 讀最簡單的 Repository（10 min）
 
-打開 `DetectionMethodRepository.cs`（7 個欄位，最精簡），搭配介面 `IDetectionMethodRepository.cs` 一起看。
+打開 `DetectionMethodRepository.cs`（7 個欄位，最精簡）。
 重點掌握三個核心模式：
 
 | 模式 | 位置 | 用途 |
@@ -71,7 +71,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 
 ### Step 4 — 動手加一張新表（5 min）
 
-跟著下方 [Repository 擴充規範](#repository-擴充規範) 的 4 步流程（DDL → Model → Interface → Implementation），仿照 `DetectionMethodRepository` 實作一次，即完成上手。
+跟著下方 [Repository 擴充規範](#repository-擴充規範) 的 3 步流程（DDL → Model → Repository），仿照 `DetectionMethodRepository` 實作一次，即完成上手。
 
 ---
 
@@ -108,14 +108,13 @@ dapper_best_practice_net46.sln
     │   ├── AnomalyUnit.cs
     │   ├── AnomalyUnitProcessMapping.cs
     │   └── AnomalyTestItem.cs
-    ├── Repositories/                        # 介面 + 實作（共 9 組）
-    │   ├── IDetectionMethodRepository.cs
+    ├── Repositories/                        # 具體類別（共 9 個）
     │   ├── DetectionMethodRepository.cs
-    │   ├── IDetectionSpecRepository.cs      # 含 ComputeAndInsertSiteMeanSpec
     │   ├── DetectionSpecRepository.cs       # 含 SITE_MEAN 規格計算邏輯
-    │   └── ...                              # 其餘 7 組 Repository
+    │   └── ...                              # 其餘 7 個 Repository
     ├── Sql/
-    │   └── schema.sql                       # 完整 DDL
+    │   ├── schema.sql                       # 核心 9 張表 DDL
+    │   └── schema-legacy.sql                # 既有系統整合表格 DDL
     ├── App.config                           # 連線字串後備設定
     ├── NLog.config                          # 日誌設定
     └── Program.cs                           # Composition Root / CRUD + 規格計算展示
@@ -169,9 +168,9 @@ private const string SelectColumns = @"
 - 所有查詢方法共用同一欄位清單，修改只需更新一處。
 - DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 別名對齊，**不需 ORM Attribute**。
 
-### 4. 標準延伸介面
+### 4. 標準延伸方法
 
-每個 Repository 介面均包含：
+每個 Repository 均包含：
 
 ```csharp
 bool Exists(long id);
@@ -350,12 +349,15 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 # 建立資料庫
 mysql -u root -p -e "CREATE DATABASE dapper_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 套用資料表 DDL（需先建立外部依賴的 lots_info 資料表）
+# 若為全新環境，先建立既有系統整合資料表（含 lots_info 等外鍵依賴）
+mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema-legacy.sql
+
+# 套用核心 9 張資料表 DDL
 mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema.sql
 ```
 
-> ⚠️ **外部依賴**：`anomaly_lots` 與 `good_lots` 含 `lots_info(id)` 外鍵，  
-> 此資料表為外部系統提供，需在執行 DDL **前**自行建立。
+> ⚠️ **外部依賴**：`anomaly_lots`、`site_test_statistics`、`good_lots` 含 `lots_info(id)` 外鍵，  
+> 此資料表須在執行 `schema.sql` **前**存在。若環境中已有 `lots_info`，可跳過 `schema-legacy.sql`。
 
 ---
 
@@ -387,12 +389,11 @@ export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;P
 
 1. **`Sql/schema.sql`** — 新增 DDL（`CREATE TABLE`、索引、外鍵）
 2. **`Models/Foo.cs`** — 建立 POCO，屬性名稱與 SQL `AS` 別名一致（`PascalCase`）
-3. **`Repositories/IFooRepository.cs`** — 宣告介面（含 `Exists` / `GetCount` / `GetPaged`）
-4. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數與 `using (var conn = _factory.Create())` 模式
+3. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數與 `using (var conn = _factory.Create())` 模式
 
 ```csharp
 // 標準 Repository 骨架
-public class FooRepository : IFooRepository
+public class FooRepository
 {
     private readonly IDbConnectionFactory _factory;
 

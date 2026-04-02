@@ -8,7 +8,7 @@ using DapperMySqlCrudExample.Models;
 namespace DapperMySqlCrudExample.Repositories
 {
     /// <summary>
-    /// <see cref="ISiteTestStatisticRepository"/> 的 Dapper 實作，對應 site_test_statistics 資料表。
+    /// SiteTestStatisticRepository — site_test_statistics 資料表的 Dapper 資料存取。
     /// </summary>
     public class SiteTestStatisticRepository
     {
