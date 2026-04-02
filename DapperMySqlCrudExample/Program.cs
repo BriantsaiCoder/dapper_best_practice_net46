@@ -4,7 +4,6 @@ using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
-using DapperMySqlCrudExample.Services;
 using NLog;
 
 namespace DapperMySqlCrudExample
@@ -12,14 +11,13 @@ namespace DapperMySqlCrudExample
     /// <summary>
     /// 應用程式進入點。
     /// 負責初始化基礎設施並驗證資料庫連線可用性，
-    /// 並示範不使用交易、使用交易與 DetectionSpecService 的資料存取範例。
+    /// 並示範不使用交易、使用交易與 SITE_MEAN 規格計算的資料存取範例。
     /// </summary>
     internal static class Program
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private static IDbConnectionFactory _connectionFactory;
         private static IDetectionSpecRepository _detectionSpecRepository;
-        private static IDetectionSpecService _detectionSpecService;
 
         private static int Main(string[] args)
         {
@@ -39,7 +37,7 @@ namespace DapperMySqlCrudExample
                     Console.WriteLine("已啟用 --demo，開始執行資料存取示範。");
                     RunNonTransactionExample();
                     RunTransactionExample();
-                    RunDetectionSpecServiceExample();
+                    RunComputeSiteMeanSpecExample();
                 }
                 else
                 {
@@ -67,12 +65,7 @@ namespace DapperMySqlCrudExample
         private static void InitializeInfrastructure()
         {
             _connectionFactory = new DbConnectionFactory();
-
             _detectionSpecRepository = new DetectionSpecRepository(_connectionFactory);
-            _detectionSpecService = new DetectionSpecService(
-                _connectionFactory,
-                _detectionSpecRepository
-            );
         }
 
         private static void VerifyDatabaseConnectivity()
@@ -282,29 +275,32 @@ namespace DapperMySqlCrudExample
             Console.WriteLine("  範例二完成。");
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // 範例三：SITE_MEAN 規格計算
+        // ─────────────────────────────────────────────────────────────────────
         /// <summary>
-        /// 示範如何透過 <see cref="IDetectionSpecService"/> 依歷史統計資料建立 detection_specs 記錄。
+        /// 示範如何透過 Repository 依歷史統計資料建立 detection_specs 記錄。
         /// 若目前資料庫尚無可用的 site_test_statistics 樣本資料，則會顯示略過訊息。
         /// </summary>
-        private static void RunDetectionSpecServiceExample()
+        private static void RunComputeSiteMeanSpecExample()
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════");
-            Console.WriteLine("  範例三：DetectionSpecService 使用示例");
+            Console.WriteLine("  範例三：SITE_MEAN 規格計算");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
             var sample = FindDetectionSpecExampleInput();
             if (sample == null)
             {
                 Console.WriteLine(
-                    "  [Skip] site_test_statistics 尚無 mean_value 與 start_time 俱全的樣本資料，略過 DetectionSpecService 示範。"
+                    "  [Skip] site_test_statistics 尚無 mean_value 與 start_time 俱全的樣本資料，略過規格計算示範。"
                 );
                 return;
             }
 
             try
             {
-                long newSpecId = _detectionSpecService.ComputeAndInsertSiteMeanSpec(
+                long newSpecId = _detectionSpecRepository.ComputeAndInsertSiteMeanSpec(
                     sample.ProgramName,
                     sample.SiteId,
                     sample.TestItemName
@@ -312,14 +308,14 @@ namespace DapperMySqlCrudExample
                 var createdSpec = _detectionSpecRepository.GetById(newSpecId);
 
                 _logger.Info(
-                    "RunDetectionSpecServiceExample: 建立 DetectionSpec 成功，Id={Id}, Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
+                    "RunComputeSiteMeanSpecExample: 建立 DetectionSpec 成功，Id={Id}, Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
                     newSpecId,
                     sample.ProgramName,
                     sample.SiteId,
                     sample.TestItemName
                 );
                 Console.WriteLine(
-                    $"  [Service] 新增成功 → Id={newSpecId}, Program={sample.ProgramName}, SiteId={sample.SiteId}, TestItem={sample.TestItemName}"
+                    $"  [Compute] 新增成功 → Id={newSpecId}, Program={sample.ProgramName}, SiteId={sample.SiteId}, TestItem={sample.TestItemName}"
                 );
                 Console.WriteLine(
                     $"  [Verify] UCL={createdSpec?.SpecUpperLimit}, LCL={createdSpec?.SpecLowerLimit}, Mean={createdSpec?.SpecCalcMean}, Std={createdSpec?.SpecCalcStd}"
@@ -330,7 +326,7 @@ namespace DapperMySqlCrudExample
             }
             catch (InvalidOperationException ex)
             {
-                _logger.Warn(ex, "RunDetectionSpecServiceExample: 示範略過");
+                _logger.Warn(ex, "RunComputeSiteMeanSpecExample: 示範略過");
                 Console.WriteLine($"  [Skip] {ex.Message}");
             }
         }
