@@ -220,28 +220,85 @@ using (var tx = conn.BeginTransaction())
 
 ## 交易使用情境
 
-以下列出本專案中**需要使用交易**的應用情境，以及判斷原則：
+資料庫交易確保一組操作全部成功或全部回滾，是資料一致性的基礎。以下整理**常見需要交易的通用情境**，並以本專案的實際程式碼作為範例。
 
-### 需要交易的情境
+### 常見需要交易的情境
 
-| 情境 | 涉及資料表 | 原因 | 隔離層級 |
-|------|-----------|------|----------|
-| 異常批號建立 | `anomaly_lots` → `anomaly_test_items` → `anomaly_units` → `anomaly_lot_process_mapping` / `anomaly_unit_process_mapping` | 父子表具有 FK 關聯，部分寫入會造成孤立資料 | `ReadCommitted`（預設） |
-| SITE_MEAN 規格計算 | `site_test_statistics`（讀）→ `detection_specs`（寫） | 讀取統計資料並計算後寫入，需確保讀取一致性 | `RepeatableRead` |
-| 好批 + 異常批同步建立 | `good_lots` + `anomaly_lots` | 同一批號的好批與異常批判定需原子性，避免狀態不一致 | `ReadCommitted`（預設） |
-| 批量刪除父子資料 | 任何具有 FK 關聯的父子表 | 先刪子表再刪父表，中途失敗會導致資料不一致 | `ReadCommitted`（預設） |
+#### 1. 多表寫入（父子表 / 關聯表）
+
+**通用場景**：訂單 + 訂單明細、使用者 + 角色指派、發票 + 發票項目等，任何「一次業務動作寫入多張表」的場景。部分成功會導致孤立資料或破壞外鍵完整性。
+
+> **本專案範例**：異常批號建立 — 同時寫入 `anomaly_lots` → `anomaly_test_items` → `anomaly_units` → 對應的 process mapping 表。
+
+```csharp
+// Program.cs — RunTransactionExample()
+using (var conn = factory.Create())
+using (var tx = conn.BeginTransaction())
+{
+    anomalyLotRepository.Insert(anomalyLot, tx);
+    anomalyUnitRepository.Insert(anomalyUnit, tx);
+    tx.Commit();   // 全部成功才提交
+}
+```
+
+#### 2. 先讀後寫（Read-then-Write）
+
+**通用場景**：庫存扣減（讀取庫存 → 計算 → 更新）、銀行轉帳（讀取餘額 → 驗證 → 扣款/入帳）、報表快照計算等。讀取與寫入之間若有其他交易修改了同一筆資料，會導致計算結果錯誤。通常需搭配較高的隔離層級（如 `RepeatableRead`）。
+
+> **本專案範例**：SITE_MEAN 規格計算 — 先從 `site_test_statistics` 讀取歷史資料計算平均值與標準差，再寫入 `detection_specs`。
+
+```csharp
+// DetectionSpecRepository.cs — ComputeAndInsertSiteMeanSpec()
+using (var conn = _factory.Create())
+using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+{
+    var rows = QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
+    var mean = rows.Mean();                        // 2. 計算
+    Insert(newSpec, tx);                           // 3. 寫入
+    tx.Commit();
+}
+```
+
+#### 3. 批量操作（Batch Insert / Update / Delete）
+
+**通用場景**：批次匯入 CSV 資料、批次刪除過期記錄、批次更新價格等。中途失敗時需要全部回滾，避免只處理了一半的資料。
+
+> **本專案範例**：批量刪除父子資料 — 先刪子表 `anomaly_units`，再刪父表 `anomaly_lots`，中途失敗需全部回滾。
+
+#### 4. 跨實體狀態同步
+
+**通用場景**：同一個業務事件需要同步更新多個實體的狀態，例如訂單完成時同步更新庫存、會員點數與物流狀態。任何一個更新失敗都應回滾全部。
+
+> **本專案範例**：好批 + 異常批同步建立 — 同一批號的 `good_lots` 與 `anomaly_lots` 判定需原子性寫入，避免出現只有一邊有紀錄的不一致狀態。
+
+#### 5. 補償 / Saga 的局部步驟
+
+**通用場景**：在微服務或分散式架構中，單一服務內部的多步操作仍需要本地交易。例如「扣款服務」內部的帳務記錄 + 餘額更新，即使整體流程透過 Saga 協調，每個參與者內部仍以交易確保一致性。
 
 ### 不需要交易的情境
 
 | 情境 | 說明 |
 |------|------|
-| 單筆 CRUD | 單一 `INSERT` / `UPDATE` / `DELETE` 天生為原子操作 |
-| 純查詢 | `GetAll` / `GetById` / `GetPaged` 等唯讀操作 |
-| `detection_methods` 維護 | 固定種子資料，通常只做單筆異動 |
+| 單筆 CRUD | 單一 `INSERT` / `UPDATE` / `DELETE` 天生為原子操作（本專案：`RunNonTransactionExample()`） |
+| 純查詢 | `GetAll` / `GetById` / `GetPaged` 等唯讀操作，不改變資料 |
+| 冪等操作 | 重複執行結果不變的操作（如 `UPSERT`），即使中斷也可安全重試 |
 
 ### 判斷原則
 
-> **何時該加交易？** 當一個業務動作需要寫入 **兩張以上** 的資料表，或需要 **先讀後寫** 且讀取結果會影響寫入內容時，就應使用交易。
+> **何時該加交易？**
+> 1. 一個業務動作需要寫入 **兩張以上** 的資料表
+> 2. 需要 **先讀後寫**，且讀取結果會影響寫入內容
+> 3. 一組操作必須 **全部成功或全部失敗**（原子性需求）
+>
+> 只要符合以上任一條件，就應使用交易。
+
+### 隔離層級選擇
+
+| 隔離層級 | 適用場景 | 本專案範例 |
+|----------|---------|-----------|
+| `ReadCommitted`（預設） | 多表寫入、一般批量操作 | `RunTransactionExample()` — 多表 Commit / Rollback |
+| `RepeatableRead` | 先讀後寫，需防止幻讀 | `ComputeAndInsertSiteMeanSpec()` — 統計計算 |
+| `Serializable` | 最高一致性要求（少用，效能代價高） | — |
 
 對應 Program.cs 的三個展示方法：
 
