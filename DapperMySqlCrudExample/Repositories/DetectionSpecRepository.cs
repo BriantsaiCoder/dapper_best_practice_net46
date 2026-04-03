@@ -37,6 +37,22 @@ namespace DapperMySqlCrudExample.Repositories
             spec_calc_std        AS SpecCalcStd,
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
+
+        /// <summary>JOIN 查詢用欄位清單（帶 ds. 表別名），與 <see cref="SelectColumns"/> 對應相同欄位。</summary>
+        private const string JoinSelectColumns = @"
+            ds.id                   AS Id,
+            ds.program              AS Program,
+            ds.test_item_name       AS TestItemName,
+            ds.site_id              AS SiteId,
+            ds.detection_method_id  AS DetectionMethodId,
+            ds.spec_upper_limit     AS SpecUpperLimit,
+            ds.spec_lower_limit     AS SpecLowerLimit,
+            ds.spec_calc_start_time AS SpecCalcStartTime,
+            ds.spec_calc_end_time   AS SpecCalcEndTime,
+            ds.spec_calc_mean       AS SpecCalcMean,
+            ds.spec_calc_std        AS SpecCalcStd,
+            ds.created_at           AS CreatedAt,
+            ds.updated_at           AS UpdatedAt";
         public IEnumerable<DetectionSpec> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM detection_specs ORDER BY id";
@@ -76,27 +92,15 @@ namespace DapperMySqlCrudExample.Repositories
             string detectionMethodName
         )
         {
-            const string sql =
-                @"SELECT ds.id                   AS Id,
-                         ds.program              AS Program,
-                         ds.test_item_name       AS TestItemName,
-                         ds.site_id              AS SiteId,
-                         ds.detection_method_id  AS DetectionMethodId,
-                         ds.spec_upper_limit     AS SpecUpperLimit,
-                         ds.spec_lower_limit     AS SpecLowerLimit,
-                         ds.spec_calc_start_time AS SpecCalcStartTime,
-                         ds.spec_calc_end_time   AS SpecCalcEndTime,
-                         ds.spec_calc_mean       AS SpecCalcMean,
-                         ds.spec_calc_std        AS SpecCalcStd,
-                         ds.created_at           AS CreatedAt,
-                         ds.updated_at           AS UpdatedAt
-                  FROM   detection_specs   ds
-                  JOIN   detection_methods dm ON dm.id = ds.detection_method_id
-                  WHERE  ds.program     = @Program
-                    AND  dm.method_name = @DetectionMethodName
-                    AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                  ORDER BY ds.spec_calc_end_time DESC
-                  LIMIT 100";
+            var sql =
+                $@"SELECT {JoinSelectColumns}
+                   FROM   detection_specs   ds
+                   JOIN   detection_methods dm ON dm.id = ds.detection_method_id
+                   WHERE  ds.program     = @Program
+                     AND  dm.method_name = @DetectionMethodName
+                     AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                   ORDER BY ds.spec_calc_end_time DESC
+                   LIMIT 100";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
@@ -114,27 +118,15 @@ namespace DapperMySqlCrudExample.Repositories
             string detectionMethodName
         )
         {
-            const string sql =
-                @"SELECT ds.id                   AS Id,
-                         ds.program              AS Program,
-                         ds.test_item_name       AS TestItemName,
-                         ds.site_id              AS SiteId,
-                         ds.detection_method_id  AS DetectionMethodId,
-                         ds.spec_upper_limit     AS SpecUpperLimit,
-                         ds.spec_lower_limit     AS SpecLowerLimit,
-                         ds.spec_calc_start_time AS SpecCalcStartTime,
-                         ds.spec_calc_end_time   AS SpecCalcEndTime,
-                         ds.spec_calc_mean       AS SpecCalcMean,
-                         ds.spec_calc_std        AS SpecCalcStd,
-                         ds.created_at           AS CreatedAt,
-                         ds.updated_at           AS UpdatedAt
-                  FROM   detection_specs   ds
-                  JOIN   detection_methods dm ON dm.id = ds.detection_method_id
-                  WHERE  ds.program     = @Program
-                    AND  dm.method_name = @DetectionMethodName
-                    AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                  ORDER BY ds.spec_calc_end_time DESC
-                  LIMIT 1";
+            var sql =
+                $@"SELECT {JoinSelectColumns}
+                   FROM   detection_specs   ds
+                   JOIN   detection_methods dm ON dm.id = ds.detection_method_id
+                   WHERE  ds.program     = @Program
+                     AND  dm.method_name = @DetectionMethodName
+                     AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                   ORDER BY ds.spec_calc_end_time DESC
+                   LIMIT 1";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(
