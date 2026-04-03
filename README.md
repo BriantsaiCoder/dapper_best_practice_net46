@@ -185,16 +185,21 @@ IEnumerable<T> GetPaged(int offset, int limit);
 
 ### 5. SITE_MEAN 規格計算 — 業務邏輯 + 交易
 
+業務計算邏輯已從 Repository 抽出至 `Calculators/SiteMeanSpecCalculator`，
+Repository 僅保留純 CRUD，Calculator 負責跨 Repository 交易編排與統計計算。
+
 ```csharp
-public long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName)
+// Calculators/SiteMeanSpecCalculator.cs
+public long Execute(string programName, uint siteId, string testItemName)
 {
     using (var conn = _factory.Create())
     using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
     {
-        // 1. 查詢 site_test_statistics 歷史資料（雙策略：1個月內 ≥30 筆，或最新 30 筆）
-        // 2. 以 MathNet.Numerics 計算 Mean / StdDev
-        // 3. 計算 UCL = Mean + 6σ, LCL = Mean - 6σ
-        // 4. 寫入 detection_specs 後 Commit
+        // 1. SiteTestStatisticRepository.GetMeanHistory() — 雙策略查詢歷史資料
+        // 2. DetectionMethodRepository.GetIdByCode() — 查詢 SITE_MEAN 方法 Id
+        // 3. 以 MathNet.Numerics 計算 Mean / StdDev
+        // 4. 計算 UCL = Mean + 6σ, LCL = Mean - 6σ
+        // 5. DetectionSpecRepository.Insert() — 寫入後 Commit
     }
 }
 ```
@@ -250,13 +255,13 @@ using (var tx = conn.BeginTransaction())
 > **本專案範例**：SITE_MEAN 規格計算 — 先從 `site_test_statistics` 讀取歷史資料計算平均值與標準差，再寫入 `detection_specs`。
 
 ```csharp
-// DetectionSpecRepository.cs — ComputeAndInsertSiteMeanSpec()
+// Calculators/SiteMeanSpecCalculator.cs — Execute()
 using (var conn = _factory.Create())
 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    var rows = QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
-    var mean = rows.Mean();                        // 2. 計算
-    Insert(newSpec, tx);                           // 3. 寫入
+    var rows = _siteTestStatisticRepository.GetMeanHistory(..., tx);  // 1. 讀取
+    var (mean, std) = CalculateMeanAndStd(rows);                     // 2. 計算
+    _detectionSpecRepository.Insert(newSpec, tx);                    // 3. 寫入
     tx.Commit();
 }
 ```
@@ -299,7 +304,7 @@ using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 | 隔離層級 | 適用場景 | 本專案範例 |
 |----------|---------|-----------|
 | `ReadCommitted`（預設） | 多表寫入、一般批量操作 | `RunTransactionExample()` — 多表 Commit / Rollback |
-| `RepeatableRead` | 先讀後寫，需防止幻讀 | `ComputeAndInsertSiteMeanSpec()` — 統計計算 |
+| `RepeatableRead` | 先讀後寫，需防止幻讀 | `SiteMeanSpecCalculator.Execute()` — 統計計算 |
 | `Serializable` | 最高一致性要求（少用，效能代價高） | — |
 
 對應 Program.cs 的三個展示方法：

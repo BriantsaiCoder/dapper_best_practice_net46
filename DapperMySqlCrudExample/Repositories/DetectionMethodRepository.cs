@@ -116,5 +116,20 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql, new { Offset = offset, Limit = limit });
         }
+
+        /// <summary>
+        /// 依 method_code 查詢主鍵 id；找不到時回傳 null。
+        /// 可傳入交易物件以參與外部交易。
+        /// </summary>
+        public byte? GetIdByCode(string methodCode, IDbTransaction transaction = null)
+        {
+            const string sql = "SELECT id FROM detection_methods WHERE method_code = @MethodCode";
+
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<byte?>(sql, new { MethodCode = methodCode }, transaction);
+
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<byte?>(sql, new { MethodCode = methodCode });
+        }
     }
 }

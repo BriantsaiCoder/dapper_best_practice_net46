@@ -1,5 +1,6 @@
 using System;
 using Dapper;
+using DapperMySqlCrudExample.Calculators;
 using DapperMySqlCrudExample.Demos;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Repositories;
@@ -33,13 +34,22 @@ namespace DapperMySqlCrudExample
                 {
                     Console.WriteLine("已啟用 --demo，開始執行資料存取示範。");
 
+                    var detectionMethodRepository = new DetectionMethodRepository(connectionFactory);
                     var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
                     var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
+
+                    var siteMeanSpecCalculator = new SiteMeanSpecCalculator(
+                        connectionFactory,
+                        siteTestStatisticRepository,
+                        detectionMethodRepository,
+                        detectionSpecRepository
+                    );
 
                     CrudDemoRunner.RunAllDemos(
                         connectionFactory,
                         detectionSpecRepository,
-                        siteTestStatisticRepository
+                        siteTestStatisticRepository,
+                        siteMeanSpecCalculator
                     );
                 }
                 else

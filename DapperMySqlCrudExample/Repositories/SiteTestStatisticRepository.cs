@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -172,6 +173,80 @@ namespace DapperMySqlCrudExample.Repositories
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql, new { Offset = offset, Limit = limit });
+        }
+
+        /// <summary>
+        /// 雙策略查詢 SITE_MEAN 計算所需的歷史 mean_value 資料。
+        /// 優先取最近 1 個月且計數 ≥ <paramref name="preferredCount"/> 的資料；
+        /// 若不足則回退為最新 <paramref name="preferredCount"/> 筆（不限時間範圍）。
+        /// </summary>
+        /// <param name="program">測試程式代碼。</param>
+        /// <param name="siteId">Site 編號。</param>
+        /// <param name="testItemName">測試項目名稱。</param>
+        /// <param name="preferredCount">期望的最少歷史筆數。</param>
+        /// <param name="transaction">若需參與外部交易，傳入交易物件。</param>
+        public IReadOnlyList<SiteMeanHistoryRow> GetMeanHistory(
+            string program,
+            uint siteId,
+            string testItemName,
+            int preferredCount,
+            IDbTransaction transaction = null
+        )
+        {
+            var p = new
+            {
+                ProgramName = program,
+                SiteId = siteId,
+                TestItemName = testItemName,
+            };
+
+            const string recentSql =
+                @"SELECT mean_value AS MeanValue, start_time AS StartTime
+                  FROM   site_test_statistics
+                  WHERE  program        = @ProgramName
+                    AND  site_id        = @SiteId
+                    AND  test_item_name = @TestItemName
+                    AND  start_time    >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                    AND  mean_value    IS NOT NULL
+                  ORDER BY start_time DESC";
+
+            const string fallbackSql =
+                @"SELECT mean_value AS MeanValue, start_time AS StartTime
+                  FROM   site_test_statistics
+                  WHERE  program        = @ProgramName
+                    AND  site_id        = @SiteId
+                    AND  test_item_name = @TestItemName
+                    AND  mean_value    IS NOT NULL
+                  ORDER BY start_time DESC
+                  LIMIT @Limit";
+
+            if (transaction != null)
+            {
+                var rows = transaction.Connection
+                    .Query<SiteMeanHistoryRow>(recentSql, p, transaction).ToList();
+                if (rows.Count >= preferredCount)
+                    return rows;
+
+                return transaction.Connection
+                    .Query<SiteMeanHistoryRow>(
+                        fallbackSql,
+                        new { p.ProgramName, p.SiteId, p.TestItemName, Limit = preferredCount },
+                        transaction
+                    ).ToList();
+            }
+
+            using (var conn = _factory.Create())
+            {
+                var rows = conn.Query<SiteMeanHistoryRow>(recentSql, p).ToList();
+                if (rows.Count >= preferredCount)
+                    return rows;
+
+                return conn
+                    .Query<SiteMeanHistoryRow>(
+                        fallbackSql,
+                        new { p.ProgramName, p.SiteId, p.TestItemName, Limit = preferredCount }
+                    ).ToList();
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using Dapper;
+using DapperMySqlCrudExample.Calculators;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
@@ -23,12 +24,15 @@ namespace DapperMySqlCrudExample.Demos
         public static void RunAllDemos(
             DbConnectionFactory connectionFactory,
             DetectionSpecRepository detectionSpecRepository,
-            SiteTestStatisticRepository siteTestStatisticRepository
+            SiteTestStatisticRepository siteTestStatisticRepository,
+            SiteMeanSpecCalculator siteMeanSpecCalculator
         )
         {
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
-            RunComputeSiteMeanSpecExample(detectionSpecRepository, siteTestStatisticRepository);
+            RunComputeSiteMeanSpecExample(
+                detectionSpecRepository, siteTestStatisticRepository, siteMeanSpecCalculator
+            );
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -225,7 +229,8 @@ namespace DapperMySqlCrudExample.Demos
         /// </summary>
         private static void RunComputeSiteMeanSpecExample(
             DetectionSpecRepository detectionSpecRepository,
-            SiteTestStatisticRepository siteTestStatisticRepository
+            SiteTestStatisticRepository siteTestStatisticRepository,
+            SiteMeanSpecCalculator siteMeanSpecCalculator
         )
         {
             Console.WriteLine();
@@ -244,7 +249,7 @@ namespace DapperMySqlCrudExample.Demos
 
             try
             {
-                long newSpecId = detectionSpecRepository.ComputeAndInsertSiteMeanSpec(
+                long newSpecId = siteMeanSpecCalculator.Execute(
                     sample.Program,
                     sample.SiteId,
                     sample.TestItemName
