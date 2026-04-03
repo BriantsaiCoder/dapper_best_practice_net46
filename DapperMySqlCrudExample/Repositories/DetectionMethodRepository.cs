@@ -11,13 +11,13 @@ namespace DapperMySqlCrudExample.Repositories
     /// DetectionMethodRepository — detection_methods 資料表的 Dapper 資料存取。
     /// 主鍵 id 為 TINYINT UNSIGNED，故 PK 型別為 <see cref="byte"/>。
     /// </summary>
-    public class DetectionMethodRepository
+    public sealed class DetectionMethodRepository
     {
-        private readonly IDbConnectionFactory _factory;
+        private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 DetectionMethodRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
-        public DetectionMethodRepository(IDbConnectionFactory factory)
+        public DetectionMethodRepository(DbConnectionFactory factory)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
@@ -30,32 +30,24 @@ namespace DapperMySqlCrudExample.Repositories
             has_unit_level AS HasUnitLevel,
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
-
-        /// <inheritdoc/>
         public IEnumerable<DetectionMethod> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql);
         }
-
-        /// <inheritdoc/>
         public DetectionMethod GetById(byte id)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
-
-        /// <inheritdoc/>
         public DetectionMethod GetByCode(string methodCode)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE method_code = @MethodCode";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodCode = methodCode });
         }
-
-        /// <inheritdoc/>
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -73,8 +65,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<byte>(sql, entity);
         }
-
-        /// <inheritdoc/>
         public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -93,8 +83,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Delete(byte id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_methods WHERE id = @Id";
@@ -105,24 +93,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Exists(byte id)
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
-
-        /// <inheritdoc/>
         public IEnumerable<DetectionMethod> GetPaged(int offset, int limit)
         {
             if (offset < 0)

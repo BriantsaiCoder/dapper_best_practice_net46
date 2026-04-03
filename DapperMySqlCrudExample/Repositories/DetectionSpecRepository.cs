@@ -18,7 +18,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// </summary>
     public sealed class DetectionSpecRepository
     {
-        private readonly IDbConnectionFactory _factory;
+        private readonly DbConnectionFactory _factory;
 
         private const string SiteMeanMethodCode = "SITE_MEAN";
         private const int PreferredHistoryCount = 30;
@@ -26,7 +26,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// <summary>建立 <see cref="DetectionSpecRepository"/> 實例。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
         /// <exception cref="ArgumentNullException"><paramref name="factory"/> 為 null。</exception>
-        public DetectionSpecRepository(IDbConnectionFactory factory)
+        public DetectionSpecRepository(DbConnectionFactory factory)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
@@ -60,24 +60,18 @@ namespace DapperMySqlCrudExample.Repositories
               ds.spec_calc_std        AS SpecCalcStd,
               ds.created_at           AS CreatedAt,
               ds.updated_at           AS UpdatedAt";
-
-        /// <inheritdoc />
         public IEnumerable<DetectionSpec> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM detection_specs ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql);
         }
-
-        /// <inheritdoc />
         public DetectionSpec GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
-
-        /// <inheritdoc />
         public IEnumerable<DetectionSpec> GetByProgramAndMethod(
             string program,
             byte detectionMethodId
@@ -95,8 +89,6 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodId = detectionMethodId }
                 );
         }
-
-        /// <inheritdoc />
         public IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(
             string program,
             string detectionMethodName
@@ -117,8 +109,6 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodName = detectionMethodName }
                 );
         }
-
-        /// <inheritdoc />
         public DetectionSpec GetLatestByProgramAndMethodName(
             string program,
             string detectionMethodName
@@ -140,8 +130,6 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodName = detectionMethodName }
                 );
         }
-
-        /// <inheritdoc />
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -165,8 +153,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
-
-        /// <inheritdoc />
         public bool Update(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -191,8 +177,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
-
-        /// <inheritdoc />
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_specs WHERE id = @Id";
@@ -203,24 +187,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc />
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc />
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
-
-        /// <inheritdoc />
         public IEnumerable<DetectionSpec> GetPaged(int offset, int limit)
         {
             if (offset < 0)
@@ -235,8 +213,6 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         // ── SITE_MEAN 規格計算 ──────────────────────────────────────────────
-
-        /// <inheritdoc />
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,

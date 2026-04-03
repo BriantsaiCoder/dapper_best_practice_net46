@@ -94,10 +94,9 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 
 ```text
 dapper_best_practice_net46.sln
-└── DapperMySqlCrudExample/                  # 主專案（net461）
-    ├── Infrastructure/
-    │   ├── IDbConnectionFactory.cs          # 連線工廠介面
-    │   └── DbConnectionFactory.cs           # 讀取環境變數 / App.config
+    └── DapperMySqlCrudExample/                  # 主專案（net461）
+        ├── Infrastructure/
+        │   └── DbConnectionFactory.cs           # 讀取環境變數 / App.config
     ├── Models/                              # Dapper 對應 POCO（無 ORM Attribute）
     │   ├── DetectionMethod.cs
     │   ├── DetectionSpec.cs
@@ -135,7 +134,7 @@ public IEnumerable<DetectionMethod> GetAll()
 }
 ```
 
-- `IDbConnectionFactory` 介面讓 Repository 與具體驅動解耦。
+- `DbConnectionFactory` 統一封裝連線字串取得與開啟連線。
 - 每個方法使用 `using` 管理短生命週期連線。
 
 ### 2. 交易處理 — 直接使用 Dapper API
@@ -393,11 +392,11 @@ export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;P
 
 ```csharp
 // 標準 Repository 骨架
-public class FooRepository
+public sealed class FooRepository
 {
-    private readonly IDbConnectionFactory _factory;
+    private readonly DbConnectionFactory _factory;
 
-    public FooRepository(IDbConnectionFactory factory)
+    public FooRepository(DbConnectionFactory factory)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
     }

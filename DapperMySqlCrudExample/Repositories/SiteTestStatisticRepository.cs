@@ -10,13 +10,13 @@ namespace DapperMySqlCrudExample.Repositories
     /// <summary>
     /// SiteTestStatisticRepository — site_test_statistics 資料表的 Dapper 資料存取。
     /// </summary>
-    public class SiteTestStatisticRepository
+    public sealed class SiteTestStatisticRepository
     {
-        private readonly IDbConnectionFactory _factory;
+        private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 SiteTestStatisticRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
-        public SiteTestStatisticRepository(IDbConnectionFactory factory)
+        public SiteTestStatisticRepository(DbConnectionFactory factory)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
@@ -39,7 +39,6 @@ namespace DapperMySqlCrudExample.Repositories
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
 
-        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id";
@@ -47,7 +46,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<SiteTestStatistic>(sql);
         }
 
-        /// <inheritdoc/>
         public SiteTestStatistic GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE id = @Id";
@@ -55,7 +53,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<SiteTestStatistic>(sql, new { Id = id });
         }
 
-        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId)
         {
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
@@ -63,7 +60,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<SiteTestStatistic>(sql, new { LotsInfoId = lotsInfoId });
         }
 
-        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName)
         {
             var sql = $@"
@@ -76,7 +72,20 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<SiteTestStatistic>(sql, new { SiteId = siteId, TestItemName = testItemName });
         }
 
-        /// <inheritdoc/>
+        public SiteTestStatistic GetLatestSampleForSpecCalculation()
+        {
+            var sql = $@"
+                SELECT {SelectColumns}
+                FROM   site_test_statistics
+                WHERE  mean_value IS NOT NULL
+                  AND  start_time IS NOT NULL
+                ORDER BY start_time DESC
+                LIMIT 1";
+
+            using (var conn = _factory.Create())
+                return conn.QueryFirstOrDefault<SiteTestStatistic>(sql);
+        }
+
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -101,7 +110,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
-        /// <inheritdoc/>
         public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -130,7 +138,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, entity) > 0;
         }
 
-        /// <inheritdoc/>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM site_test_statistics WHERE id = @Id";
@@ -142,7 +149,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
 
-        /// <inheritdoc/>
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM site_test_statistics WHERE id = @Id";
@@ -150,7 +156,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
 
-        /// <inheritdoc/>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM site_test_statistics";
@@ -158,7 +163,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<int>(sql);
         }
 
-        /// <inheritdoc/>
         public IEnumerable<SiteTestStatistic> GetPaged(int offset, int limit)
         {
             if (offset < 0)

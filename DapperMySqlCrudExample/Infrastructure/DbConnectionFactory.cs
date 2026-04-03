@@ -12,7 +12,7 @@ namespace DapperMySqlCrudExample.Infrastructure
     /// 呼叫端需自行以 using 區塊管理連線的生命週期。
     /// 需要交易時，請於外部以 using (var conn = Create()) using (var tx = conn.BeginTransaction()) 建立。
     /// </summary>
-    public class DbConnectionFactory : IDbConnectionFactory
+    public sealed class DbConnectionFactory
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private const string EnvVarName = "MYSQL_CONNECTION_STRING";
@@ -48,7 +48,7 @@ namespace DapperMySqlCrudExample.Infrastructure
             _connectionString = connectionString;
         }
 
-        /// <inheritdoc/>
+        /// <summary>建立並開啟一條資料庫連線，呼叫端須自行以 using 管理。</summary>
         public IDbConnection Create()
         {
             var conn = new MySqlConnection(_connectionString);

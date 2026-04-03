@@ -16,8 +16,6 @@ namespace DapperMySqlCrudExample
     internal static class Program
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
-        private static IDbConnectionFactory _connectionFactory;
-        private static DetectionSpecRepository _detectionSpecRepository;
 
         private static int Main(string[] args)
         {
@@ -26,8 +24,11 @@ namespace DapperMySqlCrudExample
 
             try
             {
-                InitializeInfrastructure();
-                VerifyDatabaseConnectivity();
+                var connectionFactory = new DbConnectionFactory();
+                var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
+                var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
+
+                VerifyDatabaseConnectivity(connectionFactory);
 
                 _logger.Info("應用程式啟動檢查完成，資料庫連線驗證成功。");
                 Console.WriteLine("啟動檢查完成，資料庫連線正常。");
@@ -35,9 +36,9 @@ namespace DapperMySqlCrudExample
                 if (shouldRunDemo)
                 {
                     Console.WriteLine("已啟用 --demo，開始執行資料存取示範。");
-                    RunNonTransactionExample();
-                    RunTransactionExample();
-                    RunComputeSiteMeanSpecExample();
+                    RunNonTransactionExample(connectionFactory);
+                    RunTransactionExample(connectionFactory);
+                    RunComputeSiteMeanSpecExample(detectionSpecRepository, siteTestStatisticRepository);
                 }
                 else
                 {
@@ -62,15 +63,9 @@ namespace DapperMySqlCrudExample
             }
         }
 
-        private static void InitializeInfrastructure()
+        private static void VerifyDatabaseConnectivity(DbConnectionFactory connectionFactory)
         {
-            _connectionFactory = new DbConnectionFactory();
-            _detectionSpecRepository = new DetectionSpecRepository(_connectionFactory);
-        }
-
-        private static void VerifyDatabaseConnectivity()
-        {
-            using (var connection = _connectionFactory.Create())
+            using (var connection = connectionFactory.Create())
             {
                 connection.ExecuteScalar<int>("SELECT 1");
             }
@@ -97,14 +92,14 @@ namespace DapperMySqlCrudExample
         /// 示範不依賴交易的基本 CRUD 操作。
         /// 每個方法內部自行開啟並關閉連線，彼此獨立。
         /// </summary>
-        private static void RunNonTransactionExample()
+        private static void RunNonTransactionExample(DbConnectionFactory connectionFactory)
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════");
             Console.WriteLine("  範例一：不使用交易的 CRUD 操作");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
-            var repo = new DetectionMethodRepository(_connectionFactory);
+            var repo = new DetectionMethodRepository(connectionFactory);
 
             // 清理可能殘留的示範資料，確保 MethodCode 唯一性
             var existing = repo.GetByCode("DEMO_NO_TX");
@@ -162,14 +157,14 @@ namespace DapperMySqlCrudExample
         /// 示範將多個資料庫寫入操作包覆在同一交易中。
         /// 分兩個子場景：(A) 全部成功後 Commit，(B) 模擬失敗後 Rollback。
         /// </summary>
-        private static void RunTransactionExample()
+        private static void RunTransactionExample(DbConnectionFactory connectionFactory)
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════");
             Console.WriteLine("  範例二：使用交易的資料庫存取");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
-            var repo = new DetectionMethodRepository(_connectionFactory);
+            var repo = new DetectionMethodRepository(connectionFactory);
 
             // 清理可能殘留的示範資料
             foreach (var code in new[] { "TX_DEMO_A1", "TX_DEMO_A2", "TX_DEMO_B" })
@@ -183,7 +178,7 @@ namespace DapperMySqlCrudExample
             Console.WriteLine("  ── (A) Commit 場景：同一交易內新增兩筆，全部成功後提交 ──");
 
             byte idA1 = 0, idA2 = 0;
-            using (var conn = _connectionFactory.Create())
+            using (var conn = connectionFactory.Create())
             using (var tx = conn.BeginTransaction())
             {
                 try
@@ -238,7 +233,7 @@ namespace DapperMySqlCrudExample
             Console.WriteLine("  ── (B) Rollback 場景：交易內新增一筆後模擬異常，驗證資料未寫入 ──");
 
             byte idB = 0;
-            using (var conn = _connectionFactory.Create())
+            using (var conn = connectionFactory.Create())
             using (var tx = conn.BeginTransaction())
             {
                 try
@@ -282,14 +277,17 @@ namespace DapperMySqlCrudExample
         /// 示範如何透過 Repository 依歷史統計資料建立 detection_specs 記錄。
         /// 若目前資料庫尚無可用的 site_test_statistics 樣本資料，則會顯示略過訊息。
         /// </summary>
-        private static void RunComputeSiteMeanSpecExample()
+        private static void RunComputeSiteMeanSpecExample(
+            DetectionSpecRepository detectionSpecRepository,
+            SiteTestStatisticRepository siteTestStatisticRepository
+        )
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════");
             Console.WriteLine("  範例三：SITE_MEAN 規格計算");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
-            var sample = FindDetectionSpecExampleInput();
+            var sample = siteTestStatisticRepository.GetLatestSampleForSpecCalculation();
             if (sample == null)
             {
                 Console.WriteLine(
@@ -300,28 +298,28 @@ namespace DapperMySqlCrudExample
 
             try
             {
-                long newSpecId = _detectionSpecRepository.ComputeAndInsertSiteMeanSpec(
-                    sample.ProgramName,
+                long newSpecId = detectionSpecRepository.ComputeAndInsertSiteMeanSpec(
+                    sample.Program,
                     sample.SiteId,
                     sample.TestItemName
                 );
-                var createdSpec = _detectionSpecRepository.GetById(newSpecId);
+                var createdSpec = detectionSpecRepository.GetById(newSpecId);
 
                 _logger.Info(
                     "RunComputeSiteMeanSpecExample: 建立 DetectionSpec 成功，Id={Id}, Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
                     newSpecId,
-                    sample.ProgramName,
+                    sample.Program,
                     sample.SiteId,
                     sample.TestItemName
                 );
                 Console.WriteLine(
-                    $"  [Compute] 新增成功 → Id={newSpecId}, Program={sample.ProgramName}, SiteId={sample.SiteId}, TestItem={sample.TestItemName}"
+                    $"  [Compute] 新增成功 → Id={newSpecId}, Program={sample.Program}, SiteId={sample.SiteId}, TestItem={sample.TestItemName}"
                 );
                 Console.WriteLine(
                     $"  [Verify] UCL={createdSpec?.SpecUpperLimit}, LCL={createdSpec?.SpecLowerLimit}, Mean={createdSpec?.SpecCalcMean}, Std={createdSpec?.SpecCalcStd}"
                 );
 
-                bool cleaned = _detectionSpecRepository.Delete(newSpecId);
+                bool cleaned = detectionSpecRepository.Delete(newSpecId);
                 Console.WriteLine($"  [Cleanup] 示範資料已清除={cleaned}");
             }
             catch (InvalidOperationException ex)
@@ -329,31 +327,6 @@ namespace DapperMySqlCrudExample
                 _logger.Warn(ex, "RunComputeSiteMeanSpecExample: 示範略過");
                 Console.WriteLine($"  [Skip] {ex.Message}");
             }
-        }
-
-        private static DetectionSpecExampleInput FindDetectionSpecExampleInput()
-        {
-            const string sql =
-                @"SELECT program        AS ProgramName,
-                         site_id        AS SiteId,
-                         test_item_name AS TestItemName
-                  FROM   site_test_statistics
-                  WHERE  mean_value    IS NOT NULL
-                    AND  start_time    IS NOT NULL
-                  ORDER BY start_time DESC
-                  LIMIT 1";
-
-            using (var connection = _connectionFactory.Create())
-                return connection.QueryFirstOrDefault<DetectionSpecExampleInput>(sql);
-        }
-
-        private sealed class DetectionSpecExampleInput
-        {
-            public string ProgramName { get; set; }
-
-            public uint SiteId { get; set; }
-
-            public string TestItemName { get; set; }
         }
     }
 }

@@ -10,13 +10,13 @@ namespace DapperMySqlCrudExample.Repositories
     /// <summary>
     /// AnomalyUnitRepository — anomaly_units 資料表的 Dapper 資料存取。
     /// </summary>
-    public class AnomalyUnitRepository
+    public sealed class AnomalyUnitRepository
     {
-        private readonly IDbConnectionFactory _factory;
+        private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 AnomalyUnitRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
-        public AnomalyUnitRepository(IDbConnectionFactory factory)
+        public AnomalyUnitRepository(DbConnectionFactory factory)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
@@ -32,32 +32,24 @@ namespace DapperMySqlCrudExample.Repositories
             spec_calc_end_time    AS SpecCalcEndTime,
             created_at            AS CreatedAt,
             updated_at            AS UpdatedAt";
-
-        /// <inheritdoc/>
         public IEnumerable<AnomalyUnit> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_units ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql);
         }
-
-        /// <inheritdoc/>
         public AnomalyUnit GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyUnit>(sql, new { Id = id });
         }
-
-        /// <inheritdoc/>
         public IEnumerable<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId });
         }
-
-        /// <inheritdoc/>
         public long Insert(AnomalyUnit entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -79,8 +71,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
-
-        /// <inheritdoc/>
         public bool Update(AnomalyUnit entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -102,8 +92,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_units WHERE id = @Id";
@@ -114,24 +102,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_units WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_units";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
-
-        /// <inheritdoc/>
         public IEnumerable<AnomalyUnit> GetPaged(int offset, int limit)
         {
             if (offset < 0)
