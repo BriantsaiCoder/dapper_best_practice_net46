@@ -123,6 +123,9 @@ namespace DapperMySqlCrudExample.Repositories
         /// </summary>
         public byte? GetIdByCode(string methodCode, IDbTransaction transaction = null)
         {
+            if (string.IsNullOrWhiteSpace(methodCode))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(methodCode));
+
             const string sql = "SELECT id FROM detection_methods WHERE method_code = @MethodCode";
 
             if (transaction != null)

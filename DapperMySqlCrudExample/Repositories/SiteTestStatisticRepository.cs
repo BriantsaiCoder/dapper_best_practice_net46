@@ -193,6 +193,13 @@ namespace DapperMySqlCrudExample.Repositories
             IDbTransaction transaction = null
         )
         {
+            if (string.IsNullOrWhiteSpace(program))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(program));
+            if (string.IsNullOrWhiteSpace(testItemName))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
+            if (preferredCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(preferredCount), preferredCount, "preferredCount 必須大於 0。");
+
             var p = new
             {
                 ProgramName = program,
