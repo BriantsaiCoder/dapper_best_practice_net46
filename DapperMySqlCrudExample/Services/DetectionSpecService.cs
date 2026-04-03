@@ -54,44 +54,36 @@ namespace DapperMySqlCrudExample.Services
             using (var conn = _factory.Create())
             using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
             {
-                try
-                {
-                    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+                var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
 
-                    if (rows.Count == 0)
-                        throw new InvalidOperationException(
-                            $"No site_test_statistics data for program={programName}, "
-                                + $"siteId={siteId}, testItem={testItemName}."
-                        );
-
-                    var (mean, std) = CalculateMeanAndStd(rows);
-                    var (ucl, lcl) = CalculateControlLimits(mean, std);
-                    var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
-
-                    byte methodId = GetRequiredSiteMeanMethodId(tx);
-
-                    var spec = BuildDetectionSpec(
-                        programName,
-                        siteId,
-                        testItemName,
-                        methodId,
-                        ucl,
-                        lcl,
-                        specCalcStart,
-                        specCalcEnd,
-                        mean,
-                        std
+                if (rows.Count == 0)
+                    throw new InvalidOperationException(
+                        $"No site_test_statistics data for program={programName}, "
+                            + $"siteId={siteId}, testItem={testItemName}."
                     );
 
-                    long newId = _detectionSpecRepo.Insert(spec, tx);
-                    tx.Commit();
-                    return newId;
-                }
-                catch
-                {
-                    tx.Rollback();
-                    throw;
-                }
+                var (mean, std) = CalculateMeanAndStd(rows);
+                var (ucl, lcl) = CalculateControlLimits(mean, std);
+                var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
+
+                byte methodId = GetRequiredSiteMeanMethodId(tx);
+
+                var spec = BuildDetectionSpec(
+                    programName,
+                    siteId,
+                    testItemName,
+                    methodId,
+                    ucl,
+                    lcl,
+                    specCalcStart,
+                    specCalcEnd,
+                    mean,
+                    std
+                );
+
+                long newId = _detectionSpecRepo.Insert(spec, tx);
+                tx.Commit();
+                return newId;
             }
         }
 
