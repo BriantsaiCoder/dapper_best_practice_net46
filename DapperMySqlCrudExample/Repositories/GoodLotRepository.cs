@@ -37,18 +37,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Query<GoodLot>(sql);
         }
+
         public GoodLot GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM good_lots WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<GoodLot>(sql, new { Id = id });
         }
+
         public IEnumerable<GoodLot> GetByLotsInfoId(int lotsInfoId)
         {
             var sql = $"SELECT {SelectColumns} FROM good_lots WHERE lots_info_id = @LotsInfoId";
             using (var conn = _factory.Create())
                 return conn.Query<GoodLot>(sql, new { LotsInfoId = lotsInfoId });
         }
+
         public long Insert(GoodLot entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -68,6 +71,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(GoodLot entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -88,6 +92,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM good_lots WHERE id = @Id";
@@ -98,18 +103,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM good_lots WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
+
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM good_lots";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
+
         public IEnumerable<GoodLot> GetPaged(int offset, int limit)
         {
             if (offset < 0)

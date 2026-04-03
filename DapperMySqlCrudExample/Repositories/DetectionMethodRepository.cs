@@ -36,12 +36,14 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql);
         }
+
         public DetectionMethod GetById(byte id)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
+
         public DetectionMethod GetByCode(string methodCode)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE method_code = @MethodCode";
@@ -80,6 +82,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<byte>(sql, entity);
         }
+
         public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -98,6 +101,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(byte id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_methods WHERE id = @Id";
@@ -108,18 +112,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(byte id)
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
+
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
+
         public IEnumerable<DetectionMethod> GetPaged(int offset, int limit)
         {
             if (offset < 0)

@@ -38,18 +38,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql);
         }
+
         public AnomalyUnit GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyUnit>(sql, new { Id = id });
         }
+
         public IEnumerable<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId });
         }
+
         public long Insert(AnomalyUnit entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -71,6 +74,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(AnomalyUnit entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -92,6 +96,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_units WHERE id = @Id";
@@ -102,18 +107,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_units WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
+
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_units";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
+
         public IEnumerable<AnomalyUnit> GetPaged(int offset, int limit)
         {
             if (offset < 0)

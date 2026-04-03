@@ -39,18 +39,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnitProcessMapping>(sql);
         }
+
         public AnomalyUnitProcessMapping GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_unit_process_mapping WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyUnitProcessMapping>(sql, new { Id = id });
         }
+
         public IEnumerable<AnomalyUnitProcessMapping> GetByAnomalyUnitId(long anomalyUnitId)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_unit_process_mapping WHERE anomaly_unit_id = @AnomalyUnitId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnitProcessMapping>(sql, new { AnomalyUnitId = anomalyUnitId });
         }
+
         public long Insert(AnomalyUnitProcessMapping entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -70,6 +73,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(AnomalyUnitProcessMapping entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -91,6 +95,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_unit_process_mapping WHERE id = @Id";
@@ -101,18 +106,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_unit_process_mapping WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
+
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_unit_process_mapping";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
+
         public IEnumerable<AnomalyUnitProcessMapping> GetPaged(int offset, int limit)
         {
             if (offset < 0)

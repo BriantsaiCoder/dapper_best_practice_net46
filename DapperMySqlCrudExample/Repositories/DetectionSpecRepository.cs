@@ -43,12 +43,14 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql);
         }
+
         public DetectionSpec GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_specs ds WHERE ds.id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
+
         public IEnumerable<DetectionSpec> GetByProgramAndMethod(
             string program,
             byte detectionMethodId
@@ -66,6 +68,7 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodId = detectionMethodId }
                 );
         }
+
         public IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(
             string program,
             string detectionMethodName
@@ -86,6 +89,7 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodName = detectionMethodName }
                 );
         }
+
         public DetectionSpec GetLatestByProgramAndMethodName(
             string program,
             string detectionMethodName
@@ -106,6 +110,7 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodName = detectionMethodName }
                 );
         }
+
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -129,6 +134,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -153,6 +159,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_specs WHERE id = @Id";
@@ -163,18 +170,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
+
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
+
         public IEnumerable<DetectionSpec> GetPaged(int offset, int limit)
         {
             if (offset < 0)
