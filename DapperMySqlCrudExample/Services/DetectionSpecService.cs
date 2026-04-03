@@ -56,7 +56,7 @@ namespace DapperMySqlCrudExample.Services
             {
                 try
                 {
-                    var rows = _siteTestStatRepo.QuerySiteMeanRows(conn, tx, programName, siteId, testItemName);
+                    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
 
                     if (rows.Count == 0)
                         throw new InvalidOperationException(
