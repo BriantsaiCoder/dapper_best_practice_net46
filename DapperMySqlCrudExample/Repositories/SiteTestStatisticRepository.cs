@@ -65,6 +65,9 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName)
         {
+            if (string.IsNullOrWhiteSpace(testItemName))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
+
             var sql = $@"
                 SELECT {SelectColumns}
                 FROM   site_test_statistics
@@ -111,15 +114,20 @@ namespace DapperMySqlCrudExample.Repositories
         /// <summary>
         /// 雙策略查詢：優先取最近 1 個月且計數 ≥ 30 的資料；
         /// 若不足 30 筆則回退為最新 30 筆（不限時間範圍）。
+        /// 支援外部交易參與，遵循標準 Repository 模式。
         /// </summary>
         public IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
-            IDbConnection conn,
-            IDbTransaction tx,
             string programName,
             uint siteId,
-            string testItemName
+            string testItemName,
+            IDbTransaction transaction = null
         )
         {
+            if (string.IsNullOrWhiteSpace(programName))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(programName));
+            if (string.IsNullOrWhiteSpace(testItemName))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
+
             var p = new
             {
                 ProgramName = programName,
@@ -137,10 +145,6 @@ namespace DapperMySqlCrudExample.Repositories
                     AND  mean_value    IS NOT NULL
                   ORDER BY start_time DESC";
 
-            var rows = conn.Query<SiteMeanRow>(sql1, p, tx).ToList();
-            if (rows.Count >= PreferredHistoryCount)
-                return rows;
-
             const string sql2 =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics
@@ -151,7 +155,23 @@ namespace DapperMySqlCrudExample.Repositories
                   ORDER BY start_time DESC
                   LIMIT 30";
 
-            return conn.Query<SiteMeanRow>(sql2, p, tx).ToList();
+            if (transaction != null)
+            {
+                var rows = transaction.Connection.Query<SiteMeanRow>(sql1, p, transaction).ToList();
+                if (rows.Count >= PreferredHistoryCount)
+                    return rows;
+
+                return transaction.Connection.Query<SiteMeanRow>(sql2, p, transaction).ToList();
+            }
+
+            using (var conn = _factory.Create())
+            {
+                var rows = conn.Query<SiteMeanRow>(sql1, p).ToList();
+                if (rows.Count >= PreferredHistoryCount)
+                    return rows;
+
+                return conn.Query<SiteMeanRow>(sql2, p).ToList();
+            }
         }
 
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
