@@ -547,8 +547,8 @@ erDiagram
     tester_device_info ||--o{ tester_status : ""
 
     %% 隱含關聯（僅 INDEX，無明確 FK 約束）
-    ieda_title ||--o{ ieda_content : ""
-    tester_device_info ||--o{ tester_sw_version : ""
+    ieda_title ||..o{ ieda_content : ""
+    tester_device_info ||..o{ tester_sw_version : ""
 
     %% =========================================================
     %% 關聯：跨 Schema（Legacy → Core）
