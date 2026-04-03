@@ -23,7 +23,24 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
+        /// <summary>單表查詢用（與其他 Repository 一致，不帶表別名）。</summary>
         private const string SelectColumns =
+            @"id                   AS Id,
+              program              AS Program,
+              test_item_name       AS TestItemName,
+              site_id              AS SiteId,
+              detection_method_id  AS DetectionMethodId,
+              spec_upper_limit     AS SpecUpperLimit,
+              spec_lower_limit     AS SpecLowerLimit,
+              spec_calc_start_time AS SpecCalcStartTime,
+              spec_calc_end_time   AS SpecCalcEndTime,
+              spec_calc_mean       AS SpecCalcMean,
+              spec_calc_std        AS SpecCalcStd,
+              created_at           AS CreatedAt,
+              updated_at           AS UpdatedAt";
+
+        /// <summary>JOIN 查詢用（帶 ds. 表別名，避免與其他表欄位衝突）。</summary>
+        private const string JoinSelectColumns =
             @"ds.id                   AS Id,
               ds.program              AS Program,
               ds.test_item_name       AS TestItemName,
@@ -37,18 +54,21 @@ namespace DapperMySqlCrudExample.Repositories
               ds.spec_calc_std        AS SpecCalcStd,
               ds.created_at           AS CreatedAt,
               ds.updated_at           AS UpdatedAt";
+
         public IEnumerable<DetectionSpec> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs ds ORDER BY ds.id";
+            var sql = $"SELECT {SelectColumns} FROM detection_specs ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql);
         }
+
         public DetectionSpec GetById(long id)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs ds WHERE ds.id = @Id";
+            var sql = $"SELECT {SelectColumns} FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
+
         public IEnumerable<DetectionSpec> GetByProgramAndMethod(
             string program,
             byte detectionMethodId
@@ -56,9 +76,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             var sql =
                 $@"SELECT {SelectColumns}
-                   FROM   detection_specs ds
-                   WHERE  ds.program             = @Program
-                     AND  ds.detection_method_id = @DetectionMethodId";
+                   FROM   detection_specs
+                   WHERE  program             = @Program
+                     AND  detection_method_id = @DetectionMethodId";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
@@ -66,13 +86,14 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodId = detectionMethodId }
                 );
         }
+
         public IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(
             string program,
             string detectionMethodName
         )
         {
             var sql =
-                $@"SELECT {SelectColumns}
+                $@"SELECT {JoinSelectColumns}
                    FROM   detection_specs   ds
                    JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                    WHERE  ds.program     = @Program
@@ -86,13 +107,14 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodName = detectionMethodName }
                 );
         }
+
         public DetectionSpec GetLatestByProgramAndMethodName(
             string program,
             string detectionMethodName
         )
         {
             var sql =
-                $@"SELECT {SelectColumns}
+                $@"SELECT {JoinSelectColumns}
                    FROM   detection_specs   ds
                    JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                    WHERE  ds.program     = @Program
@@ -184,7 +206,7 @@ namespace DapperMySqlCrudExample.Repositories
                 throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
 
             var sql =
-                $"SELECT {SelectColumns} FROM detection_specs ds ORDER BY ds.id LIMIT @Offset, @Limit";
+                $"SELECT {SelectColumns} FROM detection_specs ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql, new { Offset = offset, Limit = limit });
         }

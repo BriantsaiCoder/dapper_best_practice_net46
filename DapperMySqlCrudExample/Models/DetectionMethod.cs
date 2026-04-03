@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 偵測方法主表，定義異常偵測的方法代碼與適用層級。
     /// </summary>
-    public class DetectionMethod
+    public sealed class DetectionMethod
     {
         /// <summary>主鍵（TINYINT，自動遞增）。</summary>
         public byte Id { get; set; }

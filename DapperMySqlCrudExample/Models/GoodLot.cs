@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 好批批號記錄，用於數值偏差偵測模組的 Spec 計算採樣來源。
     /// </summary>
-    public class GoodLot
+    public sealed class GoodLot
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }

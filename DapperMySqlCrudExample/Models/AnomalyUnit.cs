@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 異常 Unit 明細，記錄批號中各 Unit 的偵測值與規格範圍。
     /// </summary>
-    public class AnomalyUnit
+    public sealed class AnomalyUnit
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }

@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 異常 Unit Process Mapping，記錄 Unit 流經的 Boat ID、XY 座標與站點資訊。
     /// </summary>
-    public class AnomalyUnitProcessMapping
+    public sealed class AnomalyUnitProcessMapping
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }

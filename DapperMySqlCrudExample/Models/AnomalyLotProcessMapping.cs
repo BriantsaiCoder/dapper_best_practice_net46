@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 異常批號 Process Mapping，記錄批號流經的站點與機台資訊。
     /// </summary>
-    public class AnomalyLotProcessMapping
+    public sealed class AnomalyLotProcessMapping
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }
