@@ -213,6 +213,10 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         // ── SITE_MEAN 規格計算 ──────────────────────────────────────────────
+        /// <summary>
+        /// 依歷史 site_test_statistics 資料計算 SITE_MEAN 規格並插入 detection_specs。
+        /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
+        /// </summary>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,
@@ -237,50 +241,23 @@ namespace DapperMySqlCrudExample.Repositories
                                 + $"siteId={siteId}, testItem={testItemName}."
                         );
 
-                    double mean, std;
-                    if (rows.Count >= 2)
-                    {
-                        var values = rows.Select(r => (double)r.MeanValue).ToList();
-                        mean = Statistics.Mean(values);
-                        std = Statistics.StandardDeviation(values);
-                    }
-                    else
-                    {
-                        mean = (double)rows[0].MeanValue;
-                        std = 0.0;
-                    }
-
-                    var ucl = (decimal)(mean + 6.0 * std);
-                    var lcl = (decimal)(mean - 6.0 * std);
-
-                    var timesWithValue = rows.Where(r => r.StartTime.HasValue)
-                        .Select(r => r.StartTime.Value)
-                        .ToList();
-
-                    if (!timesWithValue.Any())
-                        throw new InvalidOperationException(
-                            "All start_time values are NULL in site_test_statistics; "
-                                + "cannot determine SpecCalcStartTime / SpecCalcEndTime."
-                        );
-
-                    var specCalcStart = timesWithValue.Min();
-                    var specCalcEnd = timesWithValue.Max();
-
+                    var (mean, std) = CalculateMeanAndStd(rows);
+                    var (ucl, lcl) = CalculateControlLimits(mean, std);
+                    var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
                     byte methodId = GetRequiredSiteMeanMethodId(conn, tx);
 
-                    var spec = new DetectionSpec
-                    {
-                        Program = programName,
-                        TestItemName = testItemName,
-                        SiteId = siteId,
-                        DetectionMethodId = methodId,
-                        SpecUpperLimit = ucl,
-                        SpecLowerLimit = lcl,
-                        SpecCalcStartTime = specCalcStart,
-                        SpecCalcEndTime = specCalcEnd,
-                        SpecCalcMean = (decimal)mean,
-                        SpecCalcStd = (decimal)std,
-                    };
+                    var spec = BuildDetectionSpec(
+                        programName,
+                        siteId,
+                        testItemName,
+                        methodId,
+                        ucl,
+                        lcl,
+                        specCalcStart,
+                        specCalcEnd,
+                        mean,
+                        std
+                    );
 
                     long newId = Insert(spec, tx);
                     tx.Commit();
@@ -300,6 +277,79 @@ namespace DapperMySqlCrudExample.Repositories
         {
             public decimal MeanValue { get; set; }
             public DateTime? StartTime { get; set; }
+        }
+
+        /// <summary>
+        /// 計算樣本平均值與標準差。
+        /// </summary>
+        private static (double mean, double std) CalculateMeanAndStd(IReadOnlyList<SiteMeanRow> rows)
+        {
+            if (rows.Count >= 2)
+            {
+                var values = rows.Select(r => (double)r.MeanValue).ToList();
+                return (Statistics.Mean(values), Statistics.StandardDeviation(values));
+            }
+
+            return ((double)rows[0].MeanValue, 0.0);
+        }
+
+        /// <summary>
+        /// 計算管制上下限（UCL/LCL）。使用 ±6σ 規則。
+        /// </summary>
+        private static (decimal ucl, decimal lcl) CalculateControlLimits(double mean, double std)
+        {
+            var ucl = (decimal)(mean + 6.0 * std);
+            var lcl = (decimal)(mean - 6.0 * std);
+            return (ucl, lcl);
+        }
+
+        /// <summary>
+        /// 從歷史資料中提取時間範圍（計算起迄時間）。
+        /// </summary>
+        private static (DateTime start, DateTime end) ExtractTimeRange(IReadOnlyList<SiteMeanRow> rows)
+        {
+            var timesWithValue = rows.Where(r => r.StartTime.HasValue)
+                .Select(r => r.StartTime.Value)
+                .ToList();
+
+            if (!timesWithValue.Any())
+                throw new InvalidOperationException(
+                    "All start_time values are NULL in site_test_statistics; "
+                        + "cannot determine SpecCalcStartTime / SpecCalcEndTime."
+                );
+
+            return (timesWithValue.Min(), timesWithValue.Max());
+        }
+
+        /// <summary>
+        /// 建立 DetectionSpec 實體。
+        /// </summary>
+        private static DetectionSpec BuildDetectionSpec(
+            string programName,
+            uint siteId,
+            string testItemName,
+            byte methodId,
+            decimal ucl,
+            decimal lcl,
+            DateTime specCalcStart,
+            DateTime specCalcEnd,
+            double mean,
+            double std
+        )
+        {
+            return new DetectionSpec
+            {
+                Program = programName,
+                TestItemName = testItemName,
+                SiteId = siteId,
+                DetectionMethodId = methodId,
+                SpecUpperLimit = ucl,
+                SpecLowerLimit = lcl,
+                SpecCalcStartTime = specCalcStart,
+                SpecCalcEndTime = specCalcEnd,
+                SpecCalcMean = (decimal)mean,
+                SpecCalcStd = (decimal)std,
+            };
         }
 
         /// <summary>
