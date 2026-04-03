@@ -3,6 +3,7 @@ using Dapper;
 using DapperMySqlCrudExample.Demos;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Repositories;
+using DapperMySqlCrudExample.Services;
 using NLog;
 
 namespace DapperMySqlCrudExample
@@ -35,11 +36,20 @@ namespace DapperMySqlCrudExample
 
                     var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
                     var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
+                    var detectionMethodRepository = new DetectionMethodRepository(connectionFactory);
+
+                    var detectionSpecService = new DetectionSpecService(
+                        connectionFactory,
+                        detectionSpecRepository,
+                        siteTestStatisticRepository,
+                        detectionMethodRepository
+                    );
 
                     CrudDemoRunner.RunAllDemos(
                         connectionFactory,
                         detectionSpecRepository,
-                        siteTestStatisticRepository
+                        siteTestStatisticRepository,
+                        detectionSpecService
                     );
                 }
                 else

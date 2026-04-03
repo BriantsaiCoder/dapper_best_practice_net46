@@ -48,6 +48,21 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodCode = methodCode });
         }
+
+        /// <summary>
+        /// 依 method_code 查詢主鍵 id。支援外部交易參與。
+        /// </summary>
+        public byte? GetIdByCode(string methodCode, IDbTransaction transaction = null)
+        {
+            const string sql = "SELECT id FROM detection_methods WHERE method_code = @MethodCode";
+
+            if (transaction != null)
+                return transaction.Connection.ExecuteScalar<byte?>(sql, new { MethodCode = methodCode }, transaction);
+
+            using (var conn = _factory.Create())
+                return conn.ExecuteScalar<byte?>(sql, new { MethodCode = methodCode });
+        }
+
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));

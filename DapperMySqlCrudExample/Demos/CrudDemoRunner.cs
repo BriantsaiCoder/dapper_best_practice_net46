@@ -4,6 +4,7 @@ using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
+using DapperMySqlCrudExample.Services;
 using NLog;
 
 namespace DapperMySqlCrudExample.Demos
@@ -23,12 +24,13 @@ namespace DapperMySqlCrudExample.Demos
         public static void RunAllDemos(
             DbConnectionFactory connectionFactory,
             DetectionSpecRepository detectionSpecRepository,
-            SiteTestStatisticRepository siteTestStatisticRepository
+            SiteTestStatisticRepository siteTestStatisticRepository,
+            DetectionSpecService detectionSpecService
         )
         {
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
-            RunComputeSiteMeanSpecExample(detectionSpecRepository, siteTestStatisticRepository);
+            RunComputeSiteMeanSpecExample(detectionSpecService, siteTestStatisticRepository, detectionSpecRepository);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -220,12 +222,13 @@ namespace DapperMySqlCrudExample.Demos
         // 範例三：SITE_MEAN 規格計算
         // ─────────────────────────────────────────────────────────────────────
         /// <summary>
-        /// 示範如何透過 Repository 依歷史統計資料建立 detection_specs 記錄。
+        /// 示範如何透過 Service 依歷史統計資料建立 detection_specs 記錄。
         /// 若目前資料庫尚無可用的 site_test_statistics 樣本資料，則會顯示略過訊息。
         /// </summary>
         private static void RunComputeSiteMeanSpecExample(
-            DetectionSpecRepository detectionSpecRepository,
-            SiteTestStatisticRepository siteTestStatisticRepository
+            DetectionSpecService detectionSpecService,
+            SiteTestStatisticRepository siteTestStatisticRepository,
+            DetectionSpecRepository detectionSpecRepository
         )
         {
             Console.WriteLine();
@@ -233,8 +236,8 @@ namespace DapperMySqlCrudExample.Demos
             Console.WriteLine("  範例三：SITE_MEAN 規格計算");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
-            var sample = siteTestStatisticRepository.GetLatestSampleForSpecCalculation();
-            if (sample == null)
+            var calcParams = siteTestStatisticRepository.GetCalcParamsFromLatestSample();
+            if (calcParams == null)
             {
                 Console.WriteLine(
                     "  [Skip] site_test_statistics 尚無 mean_value 與 start_time 俱全的樣本資料，略過規格計算示範。"
@@ -244,22 +247,22 @@ namespace DapperMySqlCrudExample.Demos
 
             try
             {
-                long newSpecId = detectionSpecRepository.ComputeAndInsertSiteMeanSpec(
-                    sample.Program,
-                    sample.SiteId,
-                    sample.TestItemName
+                long newSpecId = detectionSpecService.ComputeAndInsertSiteMeanSpec(
+                    calcParams.ProgramName,
+                    calcParams.SiteId,
+                    calcParams.TestItemName
                 );
                 var createdSpec = detectionSpecRepository.GetById(newSpecId);
 
                 _logger.Info(
                     "RunComputeSiteMeanSpecExample: 建立 DetectionSpec 成功，Id={Id}, Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
                     newSpecId,
-                    sample.Program,
-                    sample.SiteId,
-                    sample.TestItemName
+                    calcParams.ProgramName,
+                    calcParams.SiteId,
+                    calcParams.TestItemName
                 );
                 Console.WriteLine(
-                    $"  [Compute] 新增成功 → Id={newSpecId}, Program={sample.Program}, SiteId={sample.SiteId}, TestItem={sample.TestItemName}"
+                    $"  [Compute] 新增成功 → Id={newSpecId}, Program={calcParams.ProgramName}, SiteId={calcParams.SiteId}, TestItem={calcParams.TestItemName}"
                 );
                 Console.WriteLine(
                     $"  [Verify] UCL={createdSpec?.SpecUpperLimit}, LCL={createdSpec?.SpecLowerLimit}, Mean={createdSpec?.SpecCalcMean}, Std={createdSpec?.SpecCalcStd}"

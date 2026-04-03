@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -13,6 +14,8 @@ namespace DapperMySqlCrudExample.Repositories
     public sealed class SiteTestStatisticRepository
     {
         private readonly DbConnectionFactory _factory;
+
+        private const int PreferredHistoryCount = 30;
 
         /// <summary>建立 SiteTestStatisticRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
@@ -83,6 +86,72 @@ namespace DapperMySqlCrudExample.Repositories
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<SiteTestStatistic>(sql);
+        }
+
+        /// <summary>
+        /// 從最新有效樣本中取得 SITE_MEAN 規格計算所需的三個引數。
+        /// 僅 SELECT 必要欄位，減少資料傳輸量。
+        /// </summary>
+        public SiteMeanCalcParams GetCalcParamsFromLatestSample()
+        {
+            const string sql =
+                @"SELECT program        AS ProgramName,
+                         site_id        AS SiteId,
+                         test_item_name AS TestItemName
+                  FROM   site_test_statistics
+                  WHERE  mean_value IS NOT NULL
+                    AND  start_time IS NOT NULL
+                  ORDER BY start_time DESC
+                  LIMIT 1";
+
+            using (var conn = _factory.Create())
+                return conn.QueryFirstOrDefault<SiteMeanCalcParams>(sql);
+        }
+
+        /// <summary>
+        /// 雙策略查詢：優先取最近 1 個月且計數 ≥ 30 的資料；
+        /// 若不足 30 筆則回退為最新 30 筆（不限時間範圍）。
+        /// </summary>
+        public IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
+            IDbConnection conn,
+            IDbTransaction tx,
+            string programName,
+            uint siteId,
+            string testItemName
+        )
+        {
+            var p = new
+            {
+                ProgramName = programName,
+                SiteId = siteId,
+                TestItemName = testItemName,
+            };
+
+            const string sql1 =
+                @"SELECT mean_value AS MeanValue, start_time AS StartTime
+                  FROM   site_test_statistics
+                  WHERE  program        = @ProgramName
+                    AND  site_id        = @SiteId
+                    AND  test_item_name = @TestItemName
+                    AND  start_time    >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                    AND  mean_value    IS NOT NULL
+                  ORDER BY start_time DESC";
+
+            var rows = conn.Query<SiteMeanRow>(sql1, p, tx).ToList();
+            if (rows.Count >= PreferredHistoryCount)
+                return rows;
+
+            const string sql2 =
+                @"SELECT mean_value AS MeanValue, start_time AS StartTime
+                  FROM   site_test_statistics
+                  WHERE  program        = @ProgramName
+                    AND  site_id        = @SiteId
+                    AND  test_item_name = @TestItemName
+                    AND  mean_value    IS NOT NULL
+                  ORDER BY start_time DESC
+                  LIMIT 30";
+
+            return conn.Query<SiteMeanRow>(sql2, p, tx).ToList();
         }
 
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
