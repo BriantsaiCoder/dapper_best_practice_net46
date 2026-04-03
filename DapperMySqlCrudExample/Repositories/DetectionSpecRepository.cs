@@ -106,7 +106,8 @@ namespace DapperMySqlCrudExample.Repositories
                    WHERE  ds.program     = @Program
                      AND  dm.method_name = @DetectionMethodName
                      AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                   ORDER BY ds.spec_calc_end_time DESC";
+                   ORDER BY ds.spec_calc_end_time DESC
+                   LIMIT 1";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(
@@ -377,9 +378,9 @@ namespace DapperMySqlCrudExample.Repositories
                     AND  test_item_name = @TestItemName
                     AND  mean_value    IS NOT NULL
                   ORDER BY start_time DESC
-                  LIMIT 30";
+                  LIMIT @Limit";
 
-            return conn.Query<SiteMeanRow>(sql2, p, tx).ToList();
+            return conn.Query<SiteMeanRow>(sql2, new { p.ProgramName, p.SiteId, p.TestItemName, Limit = PreferredHistoryCount }, tx).ToList();
         }
 
         private static byte GetRequiredSiteMeanMethodId(IDbConnection conn, IDbTransaction tx)
