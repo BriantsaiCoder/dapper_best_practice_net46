@@ -98,7 +98,8 @@ namespace DapperMySqlCrudExample.Repositories
                    WHERE  ds.program     = @Program
                      AND  dm.method_name = @DetectionMethodName
                      AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                   ORDER BY ds.spec_calc_end_time DESC";
+                   ORDER BY ds.spec_calc_end_time DESC
+                   LIMIT 1";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(

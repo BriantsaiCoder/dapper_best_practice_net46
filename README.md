@@ -29,8 +29,7 @@
 - 可被外部工作流程協調的交易式資料寫入
 - 短生命週期連線與安全的連線字串管理
 - 啟動檢查、結構化日誌與失敗可觀測性
-- 最小必要抽象層，維持可讀性與延伸性
-- 最少抽象層，直接使用 Dapper 原生 API，降低學習曲線
+- 最少抽象層，直接使用 Dapper 原生 API，維持可讀性與延伸性
 - Repository 負責純 CRUD，業務邏輯集中於 Service 層
 
 ---
@@ -123,7 +122,7 @@ dapper_best_practice_net46.sln
         │   └── CrudDemoRunner.cs                # CRUD + 交易 + 規格計算示範
         ├── Sql/
         │   ├── schema.sql                       # 核心 9 張表 DDL
-        │   └── schema-legacy.sql                # 既有系統整合表格 DDL
+        │   └── schema-legacy.sql                # lots_info 外鍵依賴表 DDL
         ├── App.config                           # 連線字串後備設定
         ├── NLog.config                          # 日誌設定
         └── Program.cs                           # Composition Root / 啟動檢查
@@ -263,7 +262,7 @@ using (var tx = conn.BeginTransaction())
 using (var conn = _factory.Create())
 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    var rows = _siteTestStatRepo.QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
+    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);  // 1. 讀取
     var (mean, std) = CalculateMeanAndStd(rows);                    // 2. 計算
     _detectionSpecRepo.Insert(newSpec, tx);                         // 3. 寫入
     tx.Commit();
@@ -361,7 +360,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 # 建立資料庫
 mysql -u root -p -e "CREATE DATABASE dapper_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 若為全新環境，先建立既有系統整合資料表（含 lots_info 等外鍵依賴）
+# 若為全新環境，先建立 lots_info（核心資料表的外鍵依賴）
 mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema-legacy.sql
 
 # 套用核心 9 張資料表 DDL
