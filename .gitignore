@@ -42,6 +42,9 @@ ScaffoldingReadMe.txt
 *~
 CodeCoverage/
 
+# AI Agent
+.claude/
+
 # MSBuild Binary and Structured Log
 *.binlog
 

@@ -31,6 +31,7 @@
 - 啟動檢查、結構化日誌與失敗可觀測性
 - 最小必要抽象層，維持可讀性與延伸性
 - 最少抽象層，直接使用 Dapper 原生 API，降低學習曲線
+- Repository 負責純 CRUD，業務邏輯集中於 Service 層
 
 ---
 
@@ -69,7 +70,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 |------|----------|
 | `RunNonTransactionExample()` | 單筆 CRUD，不使用交易 |
 | `RunTransactionExample()` | 多個 Repository 在同一筆交易中協作 + Rollback |
-| `RunComputeSiteMeanSpecExample()` | 業務計算（查詢 → 統計 → 寫入）搭配交易 |
+| `RunComputeSiteMeanSpecExample()` | Service 業務計算（查詢 → 統計 → 寫入）搭配交易 |
 
 ### Step 4 — 動手加一張新表（5 min）
 
@@ -103,16 +104,21 @@ dapper_best_practice_net46.sln
         │   ├── DetectionMethod.cs
         │   ├── DetectionSpec.cs
         │   ├── SiteTestStatistic.cs
+        │   ├── SiteMeanCalcParams.cs            # SITE_MEAN 計算引數（sealed）
+        │   ├── SiteMeanRow.cs                   # SITE_MEAN 歷史資料列（sealed）
         │   ├── AnomalyLot.cs
         │   ├── GoodLot.cs
         │   ├── AnomalyLotProcessMapping.cs
         │   ├── AnomalyUnit.cs
         │   ├── AnomalyUnitProcessMapping.cs
         │   └── AnomalyTestItem.cs
-        ├── Repositories/                        # 具體類別（共 9 個）
+        ├── Repositories/                        # 具體類別（共 9 個，純 CRUD）
         │   ├── DetectionMethodRepository.cs
-        │   ├── DetectionSpecRepository.cs       # 含 SITE_MEAN 規格計算邏輯
-        │   └── ...                              # 其餘 7 個 Repository
+        │   ├── DetectionSpecRepository.cs
+        │   ├── SiteTestStatisticRepository.cs
+        │   └── ...                              # 其餘 6 個 Repository
+        ├── Services/                            # 業務邏輯層
+        │   └── DetectionSpecService.cs          # SITE_MEAN 規格計算與寫入編排
         ├── Demos/                               # 示範程式（非必要）
         │   └── CrudDemoRunner.cs                # CRUD + 交易 + 規格計算示範
         ├── Sql/
@@ -138,7 +144,8 @@ public IEnumerable<DetectionMethod> GetAll()
 }
 ```
 
-- `DbConnectionFactory` 統一封裝連線字串取得與開啟連線。
+- `DbConnectionFactory`（sealed concrete class）統一封裝連線字串取得與開啟連線。
+- 連線字串解析順序：環境變數 `MYSQL_CONNECTION_STRING` → `App.config` 的 `DefaultConnection`。
 - 每個方法使用 `using` 管理短生命週期連線。
 
 ### 2. 交易處理 — 直接使用 Dapper API
@@ -183,9 +190,10 @@ IEnumerable<T> GetPaged(int offset, int limit);
 
 分頁使用 MySQL 偏移優先語法：`LIMIT @Offset, @Limit`。
 
-### 5. SITE_MEAN 規格計算 — 業務邏輯 + 交易
+### 5. SITE_MEAN 規格計算 — Service 層業務邏輯
 
 ```csharp
+// DetectionSpecService.cs — 業務邏輯集中於 Service 層
 public long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string testItemName)
 {
     using (var conn = _factory.Create())
@@ -200,7 +208,8 @@ public long ComputeAndInsertSiteMeanSpec(string programName, uint siteId, string
 ```
 
 - 使用 `IsolationLevel.RepeatableRead` 確保讀取一致性。
-- 業務邏輯直接在 Repository 中實作，避免不必要的分層。
+- **Repository 只負責純 CRUD 與資料查詢**，統計計算與寫入編排由 `DetectionSpecService` 負責。
+- Service 注入 `DbConnectionFactory` + 三個 Repository（`DetectionSpecRepository`、`SiteTestStatisticRepository`、`DetectionMethodRepository`）進行跨 Repository 協調。
 
 ### 6. 交易整合模式
 
@@ -216,7 +225,7 @@ using (var tx = conn.BeginTransaction())
 
 - 不需引入 Unit of Work 類別。
 - 多個 Repository 可在同一筆交易中協作。
-- 交易邊界由應用工作流程決定，而非被資料層硬綁定。
+- 交易邊界由應用工作流程（Service 或呼叫端）決定，而非被資料層硬綁定。
 
 ---
 
@@ -233,7 +242,7 @@ using (var tx = conn.BeginTransaction())
 > **本專案範例**：異常批號建立 — 同時寫入 `anomaly_lots` → `anomaly_test_items` → `anomaly_units` → 對應的 process mapping 表。
 
 ```csharp
-// Program.cs — RunTransactionExample()
+// Demos/CrudDemoRunner.cs — RunTransactionExample()
 using (var conn = factory.Create())
 using (var tx = conn.BeginTransaction())
 {
@@ -247,16 +256,16 @@ using (var tx = conn.BeginTransaction())
 
 **通用場景**：庫存扣減（讀取庫存 → 計算 → 更新）、銀行轉帳（讀取餘額 → 驗證 → 扣款/入帳）、報表快照計算等。讀取與寫入之間若有其他交易修改了同一筆資料，會導致計算結果錯誤。通常需搭配較高的隔離層級（如 `RepeatableRead`）。
 
-> **本專案範例**：SITE_MEAN 規格計算 — 先從 `site_test_statistics` 讀取歷史資料計算平均值與標準差，再寫入 `detection_specs`。
+> **本專案範例**：SITE_MEAN 規格計算 — `DetectionSpecService` 先從 `site_test_statistics` 讀取歷史資料計算平均值與標準差，再寫入 `detection_specs`。
 
 ```csharp
-// DetectionSpecRepository.cs — ComputeAndInsertSiteMeanSpec()
+// Services/DetectionSpecService.cs — ComputeAndInsertSiteMeanSpec()
 using (var conn = _factory.Create())
 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    var rows = QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
-    var mean = rows.Mean();                        // 2. 計算
-    Insert(newSpec, tx);                           // 3. 寫入
+    var rows = _siteTestStatRepo.QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
+    var (mean, std) = CalculateMeanAndStd(rows);                    // 2. 計算
+    _detectionSpecRepo.Insert(newSpec, tx);                         // 3. 寫入
     tx.Commit();
 }
 ```
@@ -299,14 +308,14 @@ using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 | 隔離層級 | 適用場景 | 本專案範例 |
 |----------|---------|-----------|
 | `ReadCommitted`（預設） | 多表寫入、一般批量操作 | `RunTransactionExample()` — 多表 Commit / Rollback |
-| `RepeatableRead` | 先讀後寫，需防止幻讀 | `ComputeAndInsertSiteMeanSpec()` — 統計計算 |
+| `RepeatableRead` | 先讀後寫，需防止幻讀 | `DetectionSpecService.ComputeAndInsertSiteMeanSpec()` — 統計計算 |
 | `Serializable` | 最高一致性要求（少用，效能代價高） | — |
 
-對應 Program.cs 的三個展示方法：
+對應 `Demos/CrudDemoRunner.cs` 的三個展示方法：
 
 - `RunNonTransactionExample()` — 單筆 CRUD，不使用交易
 - `RunTransactionExample()` — 多表寫入的 Commit / Rollback 示範
-- `RunComputeSiteMeanSpecExample()` — 先讀後寫的 `RepeatableRead` 交易示範
+- `RunComputeSiteMeanSpecExample()` — 透過 `DetectionSpecService` 進行先讀後寫的 `RepeatableRead` 交易示範
 
 ---
 
@@ -393,6 +402,7 @@ export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;P
 1. **`Sql/schema.sql`** — 新增 DDL（`CREATE TABLE`、索引、外鍵）
 2. **`Models/Foo.cs`** — 建立 POCO，屬性名稱與 SQL `AS` 別名一致（`PascalCase`）
 3. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數與 `using (var conn = _factory.Create())` 模式
+4. **應用工作流程** — 若涉及跨 Repository 業務邏輯，新增 `Services/FooService.cs` 進行編排
 
 ```csharp
 // 標準 Repository 骨架
@@ -470,13 +480,14 @@ public sealed class FooRepository
 |------|------|------|
 | `Execute` 回傳型別 | `bool` | 消除呼叫端對 `row count > 0` 的重複判斷 |
 | 欄位對應方式 | SQL `AS` 別名 | 不污染 POCO，保持模型純淨 |
-| SITE_MEAN 計算位置 | Repository 內 | 避免不必要的 Service 層；CRUD 保持薄 Repository |
-| 交易管理位置 | 呼叫端 `using (var tx = ...)` | Repository 保持無狀態，交易邊界由業務邏輯決定 |
+| SITE_MEAN 計算位置 | `DetectionSpecService`（Service 層） | Repository 保持純 CRUD，業務邏輯集中於 Service 便於測試與維護 |
+| 交易管理位置 | Service 層 `using (var tx = ...)` | Repository 保持無狀態，交易邊界由業務邏輯決定 |
 | C# 語言版本 | 7.3 | .NET Framework 4.6.1 不支援 C# 8+ 功能 |
 | 分頁語法 | `LIMIT @Offset, @Limit` | MySQL 偏移優先語法，明確高效 |
 | DetectionMethod PK | `byte`（TINYINT） | 對應 schema 實際型別，避免隱式轉換 |
 | DI 方式 | Manual DI | 基底專案啟動邏輯薄，不需引入 DI 容器複雜度 |
 | 不使用 DapperExtensions | 直接呼叫 Dapper | 新工程師可直接看到 Dapper 原生 API，降低學習曲線 |
+| 無 Repository 介面 | 直接注入 sealed concrete class | 降低不必要的抽象層，此基底專案不需 mock 測試 |
 
 ---
 
@@ -486,5 +497,5 @@ public sealed class FooRepository
 
 - [ ] `MYSQL_CONNECTION_STRING` 或 `DefaultConnection` 已正確設定
 - [ ] 目標資料庫可連線，DDL 已套用
-- [ ] `detection_methods` 基礎資料已存在
+- [ ] `detection_methods` 基礎資料已存在（YIELD / SITE_STD / MEAN / SITE_MEAN）
 - [ ] `dotnet build dapper_best_practice_net46.sln` 建構成功（0 錯誤）

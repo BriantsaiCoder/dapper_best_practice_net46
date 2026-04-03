@@ -14,6 +14,9 @@ dotnet build dapper_best_practice_net46.sln
 # 執行啟動檢查（確認 App.config 或環境變數已設定連線字串）
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 
+# 執行 CRUD 展示（需帶 --demo 旗標）
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --demo
+
 # 亦可用 MSBuild
 msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
 
@@ -31,24 +34,27 @@ DapperMySqlCrudExample/bin/Debug/net461/DapperMySqlCrudExample.exe
 
 ## 架構總覽
 
-```
+```text
 Program.cs
    └─ 啟動檢查 / composition root
-       └─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
-           └─ Dapper 驗證連線 → MySQL DB
-
-應用工作流程
-   └─ XxxRepository（具體類別，接收 IDbConnectionFactory）
-       └─ Dapper 查詢 / 寫入 → MySQL DB
+       ├─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
+       │   └─ Dapper 驗證連線 → MySQL DB
+       └─ CrudDemoRunner（--demo 旗標時執行）
+           ├─ XxxRepository（sealed 具體類別，接收 DbConnectionFactory）
+           │   └─ Dapper 查詢 / 寫入 → MySQL DB
+           └─ XxxService（sealed 具體類別，接收 DbConnectionFactory + Repository）
+               └─ 業務邏輯編排（交易、計算、跨 Repository 協調）
 ```
 
-| 層次     | 目錄              | 職責                                           |
-| -------- | ----------------- | ---------------------------------------------- |
-| 進入點   | `Program.cs`      | 啟動檢查與 composition root，不預設執行資料寫入 |
-| 基礎建設 | `Infrastructure/` | `IDbConnectionFactory` & `DbConnectionFactory` |
-| 模型     | `Models/`         | Dapper 對應 POCO，無 ORM Attribute             |
-| 資料存取 | `Repositories/`   | 具體類別，已覆蓋 9 組核心資料表               |
-| 資料庫   | `Sql/schema.sql`  | 核心 9 張表 DDL（整合表見 schema-legacy.sql） |
+| 層次     | 目錄              | 職責                                                     |
+| -------- | ----------------- | -------------------------------------------------------- |
+| 進入點   | `Program.cs`      | 啟動檢查與 composition root，不預設執行資料寫入           |
+| 基礎建設 | `Infrastructure/` | `DbConnectionFactory`（sealed concrete class，無介面）    |
+| 模型     | `Models/`         | Dapper 對應 POCO（無 ORM Attribute）+ sealed DTO          |
+| 資料存取 | `Repositories/`   | sealed 具體類別，共 9 個，純 CRUD                         |
+| 業務邏輯 | `Services/`       | sealed 具體類別，跨 Repository 業務編排（交易、計算）      |
+| 展示     | `Demos/`          | `CrudDemoRunner`，3 個 Demo 方法（非必要）                |
+| 資料庫   | `Sql/`            | 核心 9 張表 DDL + 既有系統整合表 DDL                      |
 
 ---
 
@@ -56,17 +62,17 @@ Program.cs
 
 ### 新增 Repository 時，務必遵循以下模式
 
-#### 1. 實作：使用 `SelectColumns` 常數 + `using` 管理連線
+#### 1. 實作：使用 `SelectColumns` 常數 + `using` 管理連線 + 可選交易
 
 ```csharp
 // Repositories/FooRepository.cs
-public class FooRepository
+public sealed class FooRepository
 {
-    private readonly IDbConnectionFactory _factory;
+    private readonly DbConnectionFactory _factory;
 
-    public FooRepository(IDbConnectionFactory factory)
+    public FooRepository(DbConnectionFactory factory)
     {
-        _factory = factory;
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
     }
 
     // 必須：提取共用欄位 AS 別名為常數，遵循 DRY 原則
@@ -83,26 +89,41 @@ public class FooRepository
             return conn.Query<Foo>(sql);
     }
 
-    public long Insert(Foo entity)
+    public long Insert(Foo entity, IDbTransaction transaction = null)
     {
+        if (entity == null) throw new ArgumentNullException(nameof(entity));
+
         const string sql = @"
             INSERT INTO foos (foo_name) VALUES (@FooName);
             SELECT LAST_INSERT_ID();";
+
+        if (transaction != null)
+            return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+
         using (var conn = _factory.Create())
             return conn.ExecuteScalar<long>(sql, entity);
     }
 
-    public bool Update(Foo entity)
+    public bool Update(Foo entity, IDbTransaction transaction = null)
     {
-        const string sql = @"
-            UPDATE foos SET foo_name = @FooName WHERE id = @Id";
+        if (entity == null) throw new ArgumentNullException(nameof(entity));
+
+        const string sql = @"UPDATE foos SET foo_name = @FooName WHERE id = @Id";
+
+        if (transaction != null)
+            return transaction.Connection.Execute(sql, entity, transaction) > 0;
+
         using (var conn = _factory.Create())
             return conn.Execute(sql, entity) > 0;
     }
 
-    public bool Delete(long id)
+    public bool Delete(long id, IDbTransaction transaction = null)
     {
         const string sql = "DELETE FROM foos WHERE id = @Id";
+
+        if (transaction != null)
+            return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+
         using (var conn = _factory.Create())
             return conn.Execute(sql, new { Id = id }) > 0;
     }
@@ -120,23 +141,67 @@ public class Foo
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+// Models/FooCalcParams.cs — 唯讀 DTO 用 sealed class
+public sealed class FooCalcParams
+{
+    public long Id { get; set; }
+    public string Name { get; set; }
+}
+```
+
+### 新增 Service 時，務必遵循以下模式
+
+```csharp
+// Services/FooService.cs
+public sealed class FooService
+{
+    private readonly DbConnectionFactory _factory;
+    private readonly FooRepository _fooRepo;
+    private readonly BarRepository _barRepo;
+
+    public FooService(DbConnectionFactory factory, FooRepository fooRepo, BarRepository barRepo)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        _fooRepo = fooRepo ?? throw new ArgumentNullException(nameof(fooRepo));
+        _barRepo = barRepo ?? throw new ArgumentNullException(nameof(barRepo));
+    }
+
+    // Service 負責：交易邊界、業務計算、跨 Repository 編排
+    public long DoBusinessLogic(string param)
+    {
+        using (var conn = _factory.Create())
+        using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+        {
+            var data = _fooRepo.GetSomeData(conn, tx, param);
+            // 業務計算...
+            var id = _barRepo.Insert(result, tx);
+            tx.Commit();
+            return id;
+        }
+    }
+}
 ```
 
 ---
 
 ## 關鍵規則
 
-| 規則                                       | 說明                                                                    |
-| ------------------------------------------ | ----------------------------------------------------------------------- |
-| **`private const string SelectColumns`**   | 每個 Repository 必須有此常數，避免每個方法重複欄位 AS 清單              |
-| **`using (var conn = _factory.Create())`** | 每個方法自己管理連線生命週期，不共享連線                                |
-| **`SELECT LAST_INSERT_ID()`**              | Insert 後不做二次 SELECT，直接取取自動遞增 PK                           |
-| **`QueryFirstOrDefault`**                  | 查單筆時使用，不拋例外，由呼叫端處理 null                               |
-| **Parameterized Query**                    | 所有 SQL 參數使用 `@ParamName`，對應 Dapper 匿名物件或 entity 屬性      |
-| **欄位名稱轉換**                           | DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 對齊          |
-| **無 ORM Attribute**                       | 不使用 `[Column]`、`[Table]`，依賴 SQL 別名對應                         |
-| **C# 版本限制**                            | 語言版本為 `7.3`，不用 C# 8+ 語法（如 `??=`、record、switch 運算式）    |
-| **Nullable 停用**                          | 專案不使用可空參考型別分析（`Nullable: disable`），`string` 可能為 null |
+| 規則 | 說明 |
+| ---- | ---- |
+| **`sealed` 類別** | 所有 Repository、Service、DbConnectionFactory 皆為 `sealed`，不使用介面 |
+| **`private const string SelectColumns`** | 每個 Repository 必須有此常數，避免每個方法重複欄位 AS 清單 |
+| **`using (var conn = _factory.Create())`** | 每個方法自己管理連線生命週期，不共享連線 |
+| **`IDbTransaction transaction = null`** | CUD 方法皆接受可選交易參數，有交易時複用既有連線 |
+| **`SELECT LAST_INSERT_ID()`** | Insert 後不做二次 SELECT，直接取自動遞增 PK |
+| **`QueryFirstOrDefault`** | 查單筆時使用，不拋例外，由呼叫端處理 null |
+| **Parameterized Query** | 所有 SQL 參數使用 `@ParamName`，對應 Dapper 匿名物件或 entity 屬性 |
+| **欄位名稱轉換** | DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 對齊 |
+| **無 ORM Attribute** | 不使用 `[Column]`、`[Table]`，依賴 SQL 別名對應 |
+| **C# 版本限制** | 語言版本為 `7.3`，不用 C# 8+ 語法（如 `??=`、record、switch 運算式） |
+| **Nullable 停用** | 專案不使用可空參考型別分析（`Nullable: disable`），`string` 可能為 null |
+| **Repository = 純 CRUD** | Repository 不含業務邏輯，計算與編排由 Service 層負責 |
+| **Service = 業務邏輯** | 跨 Repository 協調、交易邊界、統計計算皆放在 Service |
 
 ---
 
@@ -144,8 +209,9 @@ public class Foo
 
 1. **`Sql/schema.sql`** — 新增 DDL（`CREATE TABLE`、索引、外鍵）
 2. **`Models/Foo.cs`** — 建立 POCO，屬性對應 Schema 欄位（可空欄位用 `?`）
-3. **`Repositories/FooRepository.cs`** — 實作，含 `SelectColumns` 常數
-4. **應用工作流程** — 在實際業務流程、批次或服務層中整合新的 Repository
+3. **`Repositories/FooRepository.cs`** — sealed 實作，含 `SelectColumns` 常數，CUD 支援可選 `IDbTransaction`
+4. **`Services/FooService.cs`**（選擇性） — 若涉及跨 Repository 業務邏輯或交易編排，新增 Service 層
+5. **應用工作流程** — 在 `Program.cs` 的 composition root 進行手動 DI 組裝
 
 ---
 
@@ -155,12 +221,15 @@ public class Foo
 - **MySql.Data 9.x 移除 MySQL 5.x 支援**：升級前確認 MySQL Server 版本。目前鎖定 8.0.33。
 - **net461 + MySql.Data 8.x 警告**：非功能性警告，已以 `SuppressTfmSupportBuildWarnings` 抑制，不需處理。
 - **`DbConnectionFactory()` 讀 App.config**：執行時若 `DefaultConnection` 未設定，會拋出 `InvalidOperationException` 並附帶明確說明；確認連線字串正確後再執行。
+- **交易與連線生命週期**：有交易時必須使用 `transaction.Connection`，不可自建新連線。無交易時使用 `using (var conn = _factory.Create())`。
 
 ---
 
 ## 相依套件版本
 
-| 套件         | 版本   | 備註                                             |
-| ------------ | ------ | ------------------------------------------------ |
-| `Dapper`     | 2.1.35 | 不升至 3.x（API 有異動）                         |
-| `MySql.Data` | 8.0.33 | 9.x 移除 MySQL 5.x；若升級需同步確認 Server 版本 |
+| 套件                | 版本   | 備註                                             |
+| ------------------- | ------ | ------------------------------------------------ |
+| `Dapper`            | 2.1.35 | 不升至 3.x（API 有異動）                         |
+| `MySql.Data`        | 8.0.33 | 9.x 移除 MySQL 5.x；若升級需同步確認 Server 版本 |
+| `MathNet.Numerics`  | 5.0.0  | 用於 SITE_MEAN 統計計算（平均值 / 標準差）        |
+| `NLog`              | 5.3.4  | 結構化日誌（主控台 + 檔案輪替）                    |
