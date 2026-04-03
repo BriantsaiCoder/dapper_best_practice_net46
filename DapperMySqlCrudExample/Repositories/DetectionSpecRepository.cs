@@ -32,21 +32,6 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         private const string SelectColumns =
-            @"id                   AS Id,
-              program              AS Program,
-              test_item_name       AS TestItemName,
-              site_id              AS SiteId,
-              detection_method_id  AS DetectionMethodId,
-              spec_upper_limit     AS SpecUpperLimit,
-              spec_lower_limit     AS SpecLowerLimit,
-              spec_calc_start_time AS SpecCalcStartTime,
-              spec_calc_end_time   AS SpecCalcEndTime,
-              spec_calc_mean       AS SpecCalcMean,
-              spec_calc_std        AS SpecCalcStd,
-              created_at           AS CreatedAt,
-              updated_at           AS UpdatedAt";
-
-        private const string JoinSelectColumns =
             @"ds.id                   AS Id,
               ds.program              AS Program,
               ds.test_item_name       AS TestItemName,
@@ -62,13 +47,13 @@ namespace DapperMySqlCrudExample.Repositories
               ds.updated_at           AS UpdatedAt";
         public IEnumerable<DetectionSpec> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs ORDER BY id";
+            var sql = $"SELECT {SelectColumns} FROM detection_specs ds ORDER BY ds.id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql);
         }
         public DetectionSpec GetById(long id)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs WHERE id = @Id";
+            var sql = $"SELECT {SelectColumns} FROM detection_specs ds WHERE ds.id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
@@ -79,9 +64,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             var sql =
                 $@"SELECT {SelectColumns}
-                   FROM   detection_specs
-                   WHERE  program             = @Program
-                     AND  detection_method_id = @DetectionMethodId";
+                   FROM   detection_specs ds
+                   WHERE  ds.program             = @Program
+                     AND  ds.detection_method_id = @DetectionMethodId";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
@@ -95,7 +80,7 @@ namespace DapperMySqlCrudExample.Repositories
         )
         {
             var sql =
-                $@"SELECT {JoinSelectColumns}
+                $@"SELECT {SelectColumns}
                    FROM   detection_specs   ds
                    JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                    WHERE  ds.program     = @Program
@@ -115,7 +100,7 @@ namespace DapperMySqlCrudExample.Repositories
         )
         {
             var sql =
-                $@"SELECT {JoinSelectColumns}
+                $@"SELECT {SelectColumns}
                    FROM   detection_specs   ds
                    JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                    WHERE  ds.program     = @Program
@@ -207,7 +192,7 @@ namespace DapperMySqlCrudExample.Repositories
                 throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
 
             var sql =
-                $"SELECT {SelectColumns} FROM detection_specs ORDER BY id LIMIT @Offset, @Limit";
+                $"SELECT {SelectColumns} FROM detection_specs ds ORDER BY ds.id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql, new { Offset = offset, Limit = limit });
         }
