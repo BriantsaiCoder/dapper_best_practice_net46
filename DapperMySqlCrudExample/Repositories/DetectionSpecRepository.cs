@@ -106,8 +106,7 @@ namespace DapperMySqlCrudExample.Repositories
                    WHERE  ds.program     = @Program
                      AND  dm.method_name = @DetectionMethodName
                      AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                   ORDER BY ds.spec_calc_end_time DESC
-                   LIMIT 1";
+                   ORDER BY ds.spec_calc_end_time DESC";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(
@@ -386,7 +385,7 @@ namespace DapperMySqlCrudExample.Repositories
         private static byte GetRequiredSiteMeanMethodId(IDbConnection conn, IDbTransaction tx)
         {
             const string sql =
-                "SELECT id FROM detection_methods WHERE method_code = @MethodCode LIMIT 1";
+                "SELECT id FROM detection_methods WHERE method_code = @MethodCode";
 
             var methodId = conn.ExecuteScalar<byte?>(sql, new { MethodCode = SiteMeanMethodCode }, tx);
             if (!methodId.HasValue)
