@@ -263,7 +263,7 @@ using (var tx = conn.BeginTransaction())
 using (var conn = _factory.Create())
 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    var rows = _siteTestStatRepo.QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
+    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);  // 1. 讀取
     var (mean, std) = CalculateMeanAndStd(rows);                    // 2. 計算
     _detectionSpecRepo.Insert(newSpec, tx);                         // 3. 寫入
     tx.Commit();
