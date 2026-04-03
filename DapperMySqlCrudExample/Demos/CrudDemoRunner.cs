@@ -245,9 +245,10 @@ namespace DapperMySqlCrudExample.Demos
                 return;
             }
 
+            long newSpecId = 0;
             try
             {
-                long newSpecId = detectionSpecService.ComputeAndInsertSiteMeanSpec(
+                newSpecId = detectionSpecService.ComputeAndInsertSiteMeanSpec(
                     calcParams.ProgramName,
                     calcParams.SiteId,
                     calcParams.TestItemName
@@ -267,14 +268,28 @@ namespace DapperMySqlCrudExample.Demos
                 Console.WriteLine(
                     $"  [Verify] UCL={createdSpec?.SpecUpperLimit}, LCL={createdSpec?.SpecLowerLimit}, Mean={createdSpec?.SpecCalcMean}, Std={createdSpec?.SpecCalcStd}"
                 );
-
-                bool cleaned = detectionSpecRepository.Delete(newSpecId);
-                Console.WriteLine($"  [Cleanup] 示範資料已清除={cleaned}");
             }
             catch (InvalidOperationException ex)
             {
                 _logger.Warn(ex, "RunComputeSiteMeanSpecExample: 示範略過");
                 Console.WriteLine($"  [Skip] {ex.Message}");
+            }
+            finally
+            {
+                // 確保示範資料清理，即使發生例外也要執行
+                if (newSpecId > 0)
+                {
+                    try
+                    {
+                        bool cleaned = detectionSpecRepository.Delete(newSpecId);
+                        Console.WriteLine($"  [Cleanup] 示範資料已清除={cleaned}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn(ex, "RunComputeSiteMeanSpecExample: 清理示範資料失敗，Id={Id}", newSpecId);
+                        Console.WriteLine($"  [Cleanup] 清理失敗（非致命錯誤）");
+                    }
+                }
             }
         }
     }

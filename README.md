@@ -393,6 +393,27 @@ export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;P
 
 > 不要把正式密碼直接提交到版本控制。
 
+### 連線池配置（選配）
+
+MySql.Data 預設啟用連線池。若需調整，可在連線字串加入：
+
+```bash
+export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;Pwd=your_password;Pooling=true;Min Pool Size=5;Max Pool Size=100;Connection Lifetime=0;"
+```
+
+| 參數 | 預設值 | 說明 |
+|------|--------|------|
+| `Pooling` | `true` | 是否啟用連線池 |
+| `Min Pool Size` | `0` | 最小連線數 |
+| `Max Pool Size` | `100` | 最大連線數 |
+| `Connection Lifetime` | `0` | 連線最大存活時間（秒），0 表示無限制 |
+
+> 💡 **最佳實踐**：
+> - 生產環境建議保持連線池啟用（`Pooling=true`）
+> - `Min Pool Size` 可設為 5-10，減少首次連線延遲
+> - `Max Pool Size` 需依據資料庫連線數上限與應用程式並行需求調整
+> - 短生命週期連線（`using` 模式）搭配連線池可有效復用連線，無需手動管理
+
 ---
 
 ## Repository 擴充規範
