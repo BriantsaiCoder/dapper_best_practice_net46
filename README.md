@@ -14,6 +14,7 @@
 - [交易使用情境](#交易使用情境)
 - [快速開始](#快速開始)
 - [資料庫設定](#資料庫設定)
+- [資料庫 Schema 關聯圖](#資料庫-schema-關聯圖)
 - [連線設定](#連線設定)
 - [Repository 擴充規範](#repository-擴充規範)
 - [主要工程決策](#主要工程決策)
@@ -124,7 +125,7 @@ dapper_best_practice_net46.sln
         │   └── CrudDemoRunner.cs                # CRUD + 交易 + 規格計算示範
         ├── Sql/
         │   ├── schema.sql                       # 核心 9 張表 DDL
-        │   └── schema-legacy.sql                # lots_info 外鍵依賴表 DDL
+        │   └── schema-legacy.sql                # 既有系統整合表 DDL（17 張）
         ├── App.config                           # 連線字串後備設定
         ├── NLog.config                          # 日誌設定
         └── Program.cs                           # Composition Root / 啟動檢查
@@ -362,7 +363,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 # 建立資料庫
 mysql -u root -p -e "CREATE DATABASE dapper_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 若為全新環境，先建立 lots_info 資料表（核心表的外鍵依賴）
+# 若為全新環境，先建立既有系統整合資料表（含 lots_info 外鍵依賴）
 mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema-legacy.sql
 
 # 套用核心 9 張資料表 DDL
@@ -370,7 +371,222 @@ mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema.sql
 ```
 
 > ⚠️ **外部依賴**：`anomaly_lots`、`site_test_statistics`、`good_lots` 含 `lots_info(id)` 外鍵，  
-> 此資料表須在執行 `schema.sql` **前**存在。若環境中已有 `lots_info`，可跳過 `schema-legacy.sql`。
+> 此資料表須在執行 `schema.sql` **前**存在。若環境中已有這些整合資料表，可跳過 `schema-legacy.sql`。
+
+---
+
+## 資料庫 Schema 關聯圖
+
+以下 ER Diagram 涵蓋 **schema-legacy.sql**（17 張既有系統整合表）與 **schema.sql**（9 張核心表）的完整外鍵關聯。
+
+> 虛線（`..`）表示僅有索引但無明確 `FOREIGN KEY` 約束的隱含關聯。
+
+```mermaid
+erDiagram
+    %% =========================================================
+    %% schema-legacy.sql — 既有系統整合資料表（17 張）
+    %% =========================================================
+
+    db_key {
+        int id PK
+        varchar db_key
+    }
+
+    db_key_ui_status {
+        int id PK
+        varchar db_key
+    }
+
+    fail_pin_rate_info {
+        int id PK
+        varchar db_key
+        varchar ao_lot
+    }
+
+    fail_pin_rate_list {
+        int id PK
+        int fail_pin_rate_info_id FK
+    }
+
+    fail_pin_rate_list_pin_ball {
+        int id PK
+        int fail_pin_rate_list_id FK
+    }
+
+    fail_pin_rate_test_result {
+        int id PK
+        int fail_pin_rate_list_id FK
+    }
+
+    ieda_title {
+        int id PK
+        varchar ase_lot
+    }
+
+    ieda_content {
+        int id PK
+        int title_id FK
+    }
+
+    lots_info {
+        int id PK
+        varchar program
+        varchar file_name UK
+    }
+
+    lots_result {
+        bigint id PK
+        int lot_id FK
+    }
+
+    lots_statistic {
+        bigint id PK
+        int lot_id FK
+    }
+
+    recovery_rate {
+        int id PK
+        varchar db_key
+    }
+
+    tester_device_info {
+        int id PK
+        varchar db_key
+        varchar test_program
+    }
+
+    tester_production_analysis {
+        int id PK
+        int device_info_id FK
+    }
+
+    tester_status {
+        int id PK
+        int device_info_id FK
+    }
+
+    tester_sw_version {
+        int id PK
+        int device_info_id FK
+    }
+
+    ui_status {
+        int id PK
+        varchar mac_address
+    }
+
+    %% =========================================================
+    %% schema.sql — 核心 9 張資料表（Repository 管理）
+    %% =========================================================
+
+    detection_methods {
+        tinyint id PK
+        varchar method_code UK
+        varchar method_name
+    }
+
+    anomaly_lots {
+        bigint id PK
+        int lots_info_id FK
+        tinyint detection_method_id FK
+    }
+
+    anomaly_test_items {
+        bigint id PK
+        bigint anomaly_lot_id FK
+        varchar test_item_name
+    }
+
+    anomaly_units {
+        bigint id PK
+        bigint anomaly_test_item_id FK
+        varchar unit_id
+    }
+
+    anomaly_lot_process_mapping {
+        bigint id PK
+        bigint anomaly_lot_id FK
+        varchar station_name
+        varchar equipment_id
+    }
+
+    anomaly_unit_process_mapping {
+        bigint id PK
+        bigint anomaly_unit_id FK
+        varchar boat_id
+    }
+
+    detection_specs {
+        bigint id PK
+        varchar program
+        tinyint detection_method_id FK
+    }
+
+    site_test_statistics {
+        bigint id PK
+        int lots_info_id FK
+        varchar program
+        int site_id
+    }
+
+    good_lots {
+        bigint id PK
+        int lots_info_id FK
+        tinyint detection_method_id FK
+    }
+
+    %% =========================================================
+    %% 關聯：Legacy 內部
+    %% =========================================================
+    fail_pin_rate_info ||--o{ fail_pin_rate_list : ""
+    fail_pin_rate_list ||--o{ fail_pin_rate_list_pin_ball : ""
+    fail_pin_rate_list ||--o{ fail_pin_rate_test_result : ""
+    lots_info ||--o{ lots_result : ""
+    lots_info ||--o{ lots_statistic : ""
+    tester_device_info ||--o{ tester_production_analysis : ""
+    tester_device_info ||--o{ tester_status : ""
+
+    %% 隱含關聯（僅 INDEX，無明確 FK 約束）
+    ieda_title ||--o{ ieda_content : ""
+    tester_device_info ||--o{ tester_sw_version : ""
+
+    %% =========================================================
+    %% 關聯：跨 Schema（Legacy → Core）
+    %% =========================================================
+    lots_info ||--o{ anomaly_lots : ""
+    lots_info ||--o{ site_test_statistics : ""
+    lots_info ||--o{ good_lots : ""
+
+    %% =========================================================
+    %% 關聯：Core 內部
+    %% =========================================================
+    detection_methods ||--o{ anomaly_lots : ""
+    detection_methods ||--o{ detection_specs : ""
+    detection_methods ||--o{ good_lots : ""
+    anomaly_lots ||--o{ anomaly_test_items : ""
+    anomaly_lots ||--o{ anomaly_lot_process_mapping : ""
+    anomaly_test_items ||--o{ anomaly_units : ""
+    anomaly_units ||--o{ anomaly_unit_process_mapping : ""
+```
+
+### 表格分類摘要
+
+| 分類 | 檔案 | 表數 | 表名 |
+|------|------|------|------|
+| **核心表（Repository 管理）** | `schema.sql` | 9 | `detection_methods`、`anomaly_lots`、`anomaly_test_items`、`anomaly_units`、`anomaly_lot_process_mapping`、`anomaly_unit_process_mapping`、`detection_specs`、`site_test_statistics`、`good_lots` |
+| **既有系統整合表** | `schema-legacy.sql` | 17 | `db_key`、`db_key_ui_status`、`fail_pin_rate_info`、`fail_pin_rate_list`、`fail_pin_rate_list_pin_ball`、`fail_pin_rate_test_result`、`ieda_title`、`ieda_content`、`lots_info`、`lots_result`、`lots_statistic`、`recovery_rate`、`tester_device_info`、`tester_production_analysis`、`tester_status`、`tester_sw_version`、`ui_status` |
+
+### 跨 Schema 外鍵依賴
+
+核心表中有 3 張表依賴 `schema-legacy.sql` 的 `lots_info`：
+
+| 核心表 | 外鍵欄位 | 參照 |
+|--------|----------|------|
+| `anomaly_lots` | `lots_info_id` | `lots_info(id)` |
+| `site_test_statistics` | `lots_info_id` | `lots_info(id)` |
+| `good_lots` | `lots_info_id` | `lots_info(id)` |
+
+> 因此在全新環境中，必須先執行 `schema-legacy.sql` 建立 `lots_info`，再執行 `schema.sql`。
 
 ---
 
