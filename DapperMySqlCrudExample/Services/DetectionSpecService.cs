@@ -60,8 +60,8 @@ namespace DapperMySqlCrudExample.Services
 
                     if (rows.Count == 0)
                         throw new InvalidOperationException(
-                            $"No site_test_statistics data for program={programName}, "
-                                + $"siteId={siteId}, testItem={testItemName}."
+                            $"site_test_statistics 中找不到符合條件的資料：program={programName}, "
+                                + $"siteId={siteId}, testItem={testItemName}。"
                         );
 
                     var (mean, std) = CalculateMeanAndStd(rows);
@@ -132,8 +132,8 @@ namespace DapperMySqlCrudExample.Services
 
             if (!timesWithValue.Any())
                 throw new InvalidOperationException(
-                    "All start_time values are NULL in site_test_statistics; "
-                        + "cannot determine SpecCalcStartTime / SpecCalcEndTime."
+                    "site_test_statistics 中所有 start_time 皆為 NULL，"
+                        + "無法判定 SpecCalcStartTime / SpecCalcEndTime。"
                 );
 
             return (timesWithValue.Min(), timesWithValue.Max());

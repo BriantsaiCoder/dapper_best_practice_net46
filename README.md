@@ -47,6 +47,7 @@ dotnet build dapper_best_practice_net46.sln          # 建構
 export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;Pwd=your_password;"
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj            # 啟動檢查
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --demo  # CRUD 展示
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --help  # 顯示用法說明
 ```
 
 觀察 Console 輸出，理解完整 CRUD 流程。
@@ -100,12 +101,12 @@ dapper_best_practice_net46.sln
     └── DapperMySqlCrudExample/                  # 主專案（net461）
         ├── Infrastructure/
         │   └── DbConnectionFactory.cs           # 讀取環境變數 / App.config
-        ├── Models/                              # Dapper 對應 POCO（無 ORM Attribute）
+        ├── Models/                              # Dapper 對應 POCO（sealed，無 ORM Attribute）
         │   ├── DetectionMethod.cs
         │   ├── DetectionSpec.cs
         │   ├── SiteTestStatistic.cs
-        │   ├── SiteMeanCalcParams.cs            # SITE_MEAN 計算引數（sealed）
-        │   ├── SiteMeanRow.cs                   # SITE_MEAN 歷史資料列（sealed）
+        │   ├── SiteMeanCalcParams.cs            # SITE_MEAN 計算引數
+        │   ├── SiteMeanRow.cs                   # SITE_MEAN 歷史資料列
         │   ├── AnomalyLot.cs
         │   ├── GoodLot.cs
         │   ├── AnomalyLotProcessMapping.cs
@@ -123,7 +124,7 @@ dapper_best_practice_net46.sln
         │   └── CrudDemoRunner.cs                # CRUD + 交易 + 規格計算示範
         ├── Sql/
         │   ├── schema.sql                       # 核心 9 張表 DDL
-        │   └── schema-legacy.sql                # 既有系統整合表格 DDL
+        │   └── schema-legacy.sql                # lots_info 外鍵依賴表 DDL
         ├── App.config                           # 連線字串後備設定
         ├── NLog.config                          # 日誌設定
         └── Program.cs                           # Composition Root / 啟動檢查
@@ -263,9 +264,9 @@ using (var tx = conn.BeginTransaction())
 using (var conn = _factory.Create())
 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    var rows = _siteTestStatRepo.QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
-    var (mean, std) = CalculateMeanAndStd(rows);                    // 2. 計算
-    _detectionSpecRepo.Insert(newSpec, tx);                         // 3. 寫入
+    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);  // 1. 讀取
+    var (mean, std) = CalculateMeanAndStd(rows);                                            // 2. 計算
+    _detectionSpecRepo.Insert(newSpec, tx);                                                 // 3. 寫入
     tx.Commit();
 }
 ```
@@ -361,7 +362,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 # 建立資料庫
 mysql -u root -p -e "CREATE DATABASE dapper_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 若為全新環境，先建立既有系統整合資料表（含 lots_info 等外鍵依賴）
+# 若為全新環境，先建立 lots_info 資料表（核心表的外鍵依賴）
 mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema-legacy.sql
 
 # 套用核心 9 張資料表 DDL
@@ -488,6 +489,7 @@ public sealed class FooRepository
 | DI 方式 | Manual DI | 基底專案啟動邏輯薄，不需引入 DI 容器複雜度 |
 | 不使用 DapperExtensions | 直接呼叫 Dapper | 新工程師可直接看到 Dapper 原生 API，降低學習曲線 |
 | 無 Repository 介面 | 直接注入 sealed concrete class | 降低不必要的抽象層，此基底專案不需 mock 測試 |
+| Read 方法不帶交易參數 | `GetAll` / `GetById` 等查詢方法不接受 `IDbTransaction` | 純查詢不需參與交易邊界；需在交易內查詢的特殊方法（如 `GetIdByCode`、`QuerySiteMeanRows`）才加上可選交易參數 |
 
 ---
 

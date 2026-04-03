@@ -20,6 +20,13 @@ namespace DapperMySqlCrudExample
         private static int Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+            if (ShouldShowHelp(args))
+            {
+                ShowUsage();
+                return 0;
+            }
+
             var shouldRunDemo = ShouldRunDemo(args);
 
             try
@@ -95,6 +102,33 @@ namespace DapperMySqlCrudExample
             }
 
             return false;
+        }
+
+        private static bool ShouldShowHelp(string[] args)
+        {
+            if (args == null || args.Length == 0)
+                return false;
+
+            foreach (var arg in args)
+            {
+                if (string.Equals(arg, "--help", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(arg, "-h", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void ShowUsage()
+        {
+            Console.WriteLine("DapperMySqlCrudExample — .NET 4.6.1 + Dapper + MySQL 資料存取基底");
+            Console.WriteLine();
+            Console.WriteLine("用法：DapperMySqlCrudExample [選項]");
+            Console.WriteLine();
+            Console.WriteLine("選項：");
+            Console.WriteLine("  (無參數)    僅執行啟動檢查（驗證資料庫連線），不寫入任何資料");
+            Console.WriteLine("  --demo      執行 CRUD 示範（含新增/更新/刪除/交易/SITE_MEAN 計算）");
+            Console.WriteLine("  --help, -h  顯示本說明");
         }
     }
 }

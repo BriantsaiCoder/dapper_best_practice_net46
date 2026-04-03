@@ -23,29 +23,29 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
-        private const string SelectColumns =
-            @"ds.id                   AS Id,
-              ds.program              AS Program,
-              ds.test_item_name       AS TestItemName,
-              ds.site_id              AS SiteId,
-              ds.detection_method_id  AS DetectionMethodId,
-              ds.spec_upper_limit     AS SpecUpperLimit,
-              ds.spec_lower_limit     AS SpecLowerLimit,
-              ds.spec_calc_start_time AS SpecCalcStartTime,
-              ds.spec_calc_end_time   AS SpecCalcEndTime,
-              ds.spec_calc_mean       AS SpecCalcMean,
-              ds.spec_calc_std        AS SpecCalcStd,
-              ds.created_at           AS CreatedAt,
-              ds.updated_at           AS UpdatedAt";
+        private const string SelectColumns = @"
+            id                   AS Id,
+            program              AS Program,
+            test_item_name       AS TestItemName,
+            site_id              AS SiteId,
+            detection_method_id  AS DetectionMethodId,
+            spec_upper_limit     AS SpecUpperLimit,
+            spec_lower_limit     AS SpecLowerLimit,
+            spec_calc_start_time AS SpecCalcStartTime,
+            spec_calc_end_time   AS SpecCalcEndTime,
+            spec_calc_mean       AS SpecCalcMean,
+            spec_calc_std        AS SpecCalcStd,
+            created_at           AS CreatedAt,
+            updated_at           AS UpdatedAt";
         public IEnumerable<DetectionSpec> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs ds ORDER BY ds.id";
+            var sql = $"SELECT {SelectColumns} FROM detection_specs ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql);
         }
         public DetectionSpec GetById(long id)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs ds WHERE ds.id = @Id";
+            var sql = $"SELECT {SelectColumns} FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
@@ -56,9 +56,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             var sql =
                 $@"SELECT {SelectColumns}
-                   FROM   detection_specs ds
-                   WHERE  ds.program             = @Program
-                     AND  ds.detection_method_id = @DetectionMethodId";
+                   FROM   detection_specs
+                   WHERE  program             = @Program
+                     AND  detection_method_id = @DetectionMethodId";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
@@ -66,19 +66,37 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodId = detectionMethodId }
                 );
         }
+
+        /// <summary>
+        /// 依 program 與偵測方法名稱查詢最近一個月內的規格記錄，依計算結束時間降冪排序。
+        /// 若需取最新單筆，請使用 <see cref="GetLatestByProgramAndMethodName"/>。
+        /// </summary>
         public IEnumerable<DetectionSpec> GetRecentByProgramAndMethodName(
             string program,
             string detectionMethodName
         )
         {
-            var sql =
-                $@"SELECT {SelectColumns}
-                   FROM   detection_specs   ds
-                   JOIN   detection_methods dm ON dm.id = ds.detection_method_id
-                   WHERE  ds.program     = @Program
-                     AND  dm.method_name = @DetectionMethodName
-                     AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                   ORDER BY ds.spec_calc_end_time DESC";
+            const string sql =
+                @"SELECT ds.id                   AS Id,
+                         ds.program              AS Program,
+                         ds.test_item_name       AS TestItemName,
+                         ds.site_id              AS SiteId,
+                         ds.detection_method_id  AS DetectionMethodId,
+                         ds.spec_upper_limit     AS SpecUpperLimit,
+                         ds.spec_lower_limit     AS SpecLowerLimit,
+                         ds.spec_calc_start_time AS SpecCalcStartTime,
+                         ds.spec_calc_end_time   AS SpecCalcEndTime,
+                         ds.spec_calc_mean       AS SpecCalcMean,
+                         ds.spec_calc_std        AS SpecCalcStd,
+                         ds.created_at           AS CreatedAt,
+                         ds.updated_at           AS UpdatedAt
+                  FROM   detection_specs   ds
+                  JOIN   detection_methods dm ON dm.id = ds.detection_method_id
+                  WHERE  ds.program     = @Program
+                    AND  dm.method_name = @DetectionMethodName
+                    AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                  ORDER BY ds.spec_calc_end_time DESC
+                  LIMIT 100";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
@@ -86,19 +104,37 @@ namespace DapperMySqlCrudExample.Repositories
                     new { Program = program, DetectionMethodName = detectionMethodName }
                 );
         }
+
+        /// <summary>
+        /// 依 program 與偵測方法名稱取得最近一個月內最新的單筆規格記錄。
+        /// 若需取多筆，請使用 <see cref="GetRecentByProgramAndMethodName"/>。
+        /// </summary>
         public DetectionSpec GetLatestByProgramAndMethodName(
             string program,
             string detectionMethodName
         )
         {
-            var sql =
-                $@"SELECT {SelectColumns}
-                   FROM   detection_specs   ds
-                   JOIN   detection_methods dm ON dm.id = ds.detection_method_id
-                   WHERE  ds.program     = @Program
-                     AND  dm.method_name = @DetectionMethodName
-                     AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
-                   ORDER BY ds.spec_calc_end_time DESC";
+            const string sql =
+                @"SELECT ds.id                   AS Id,
+                         ds.program              AS Program,
+                         ds.test_item_name       AS TestItemName,
+                         ds.site_id              AS SiteId,
+                         ds.detection_method_id  AS DetectionMethodId,
+                         ds.spec_upper_limit     AS SpecUpperLimit,
+                         ds.spec_lower_limit     AS SpecLowerLimit,
+                         ds.spec_calc_start_time AS SpecCalcStartTime,
+                         ds.spec_calc_end_time   AS SpecCalcEndTime,
+                         ds.spec_calc_mean       AS SpecCalcMean,
+                         ds.spec_calc_std        AS SpecCalcStd,
+                         ds.created_at           AS CreatedAt,
+                         ds.updated_at           AS UpdatedAt
+                  FROM   detection_specs   ds
+                  JOIN   detection_methods dm ON dm.id = ds.detection_method_id
+                  WHERE  ds.program     = @Program
+                    AND  dm.method_name = @DetectionMethodName
+                    AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                  ORDER BY ds.spec_calc_end_time DESC
+                  LIMIT 1";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(
@@ -183,7 +219,7 @@ namespace DapperMySqlCrudExample.Repositories
                 throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
 
             var sql =
-                $"SELECT {SelectColumns} FROM detection_specs ds ORDER BY ds.id LIMIT @Offset, @Limit";
+                $"SELECT {SelectColumns} FROM detection_specs ORDER BY id LIMIT @Offset, @Limit";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(sql, new { Offset = offset, Limit = limit });
         }

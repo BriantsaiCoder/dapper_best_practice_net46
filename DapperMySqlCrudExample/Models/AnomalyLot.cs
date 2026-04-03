@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 異常批號主表，記錄觸發偵測的批號與對應的 Spec 上下限。
     /// </summary>
-    public class AnomalyLot
+    public sealed class AnomalyLot
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }
