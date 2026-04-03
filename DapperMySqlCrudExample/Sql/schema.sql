@@ -30,7 +30,7 @@ CREATE TABLE detection_methods (
 
 INSERT INTO detection_methods (method_code, method_name, has_test_item, has_unit_level) VALUES
 ('YIELD',     '良率偵測',       FALSE, FALSE),
-('STD',       '標準差偵測',     TRUE,  FALSE),
+('SITE_STD',  '標準差偵測',     TRUE,  FALSE),
 ('MEAN',      '平均值偵測',     FALSE, TRUE),
 ('SITE_MEAN', 'Site平均值偵測', TRUE,  FALSE);
 
