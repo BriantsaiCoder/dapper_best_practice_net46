@@ -1,42 +1,20 @@
 -- =============================================================================
 -- Dapper Best Practice (.NET 4.6 + MySQL) — 資料庫 Schema
--- 請先建立資料庫後再執行此腳本：CREATE DATABASE your_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- =============================================================================
+-- 請先建立資料庫：CREATE DATABASE your_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 --
--- MySQL 版本說明：
---   • MySQL 5.5.3+：支援 utf8mb4 字元集。
---   • 所有時間欄位統一使用 DATETIME（非 TIMESTAMP），避免 2038 年溢位及
---     時區自動轉換問題，確保製造業本地事件時間的一致性。
---   • MySQL 5.7+：可直接使用 BOOLEAN (TINYINT(1) 別名)，行為一致。
--- =============================================================================
--- ★ 執行順序說明
--- =============================================================================
--- 本檔案僅包含本專案 Repository 直接管理的 9 張核心資料表。
--- 既有系統整合資料表（lots_info 等）的 DDL 請參閱 schema-legacy.sql。
+-- ★ 執行順序：若為全新環境，請先執行 schema-legacy.sql 建立 lots_info 等外鍵依賴資料表。
 --
--- 執行前請確認外部依賴 lots_info 已存在於資料庫中：
---   若為全新環境，請先執行 schema-legacy.sql 建立整合資料表。
---
--- =============================================================================
--- ★ 本專案核心資料表（Repository 直接管理，共 9 張）
--- =============================================================================
---   1. detection_methods            — 偵測方法主表（TINYINT PK，固定 4 筆種子資料）
---   2. anomaly_lots                 — 異常批號主表（FK → lots_info, detection_methods）
---   3. anomaly_test_items           — 異常測項明細表（FK → anomaly_lots）
---   4. anomaly_units                — 異常 Unit 明細表（FK → anomaly_test_items）
---   5. anomaly_lot_process_mapping  — 批號 Process Mapping 表（FK → anomaly_lots）
---   6. anomaly_unit_process_mapping — Unit Process Mapping 表（FK → anomaly_units）
---   7. detection_specs              — Spec 規格表（FK → detection_methods）
---   8. site_test_statistics         — Site 測項統計值表（FK → lots_info）
---   9. good_lots                    — 好批批號記錄表（FK → lots_info, detection_methods）
---
--- =============================================================================
--- ★ 外部依賴資料表（需由既有系統提供，本專案不負責建立）
--- =============================================================================
---   ◆ 關鍵 FK 依賴（執行本檔前必須先存在）：
---      • lots_info                   — 批號主資料（anomaly_lots / site_test_statistics /
---                                      good_lots 均以其 id 為外鍵）
---
---   ◆ 既有系統整合資料表的完整 DDL 請參閱 schema-legacy.sql。
+-- ★ 本檔包含 9 張核心資料表，由 Repository 直接管理：
+--    1. detection_methods            — 偵測方法主表
+--    2. anomaly_lots                 — 異常批號主表
+--    3. anomaly_test_items           — 異常測項明細
+--    4. anomaly_units                — 異常 Unit 明細
+--    5. anomaly_lot_process_mapping  — 批號 Process Mapping
+--    6. anomaly_unit_process_mapping — Unit Process Mapping
+--    7. detection_specs              — Spec 規格表
+--    8. site_test_statistics         — Site 測項統計值表
+--    9. good_lots                    — 好批批號記錄表
 -- =============================================================================
 
 -- 1. 偵測方法主表
@@ -52,18 +30,11 @@ CREATE TABLE detection_methods (
 
 INSERT INTO detection_methods (method_code, method_name, has_test_item, has_unit_level) VALUES
 ('YIELD',     '良率偵測',       FALSE, FALSE),
-('STD',       '標準差偵測',     TRUE,  FALSE),
+('SITE_STD',  '標準差偵測',     TRUE,  FALSE),
 ('MEAN',      '平均值偵測',     FALSE, TRUE),
 ('SITE_MEAN', 'Site平均值偵測', TRUE,  FALSE);
 
--- =============================================================================
--- ★ 以下為本專案核心資料表（Repository 直接管理，共 8 張）
--- =============================================================================
--- 注意：下列資料表的外鍵依賴 lots_info(id)，須先確認 lots_info 已存在於您的系統中。
--- =============================================================================
-
 -- 2. 異常批號主表
---    注意：lots_info(id) 須已存在於您的系統中
 CREATE TABLE anomaly_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT(11) NOT NULL,

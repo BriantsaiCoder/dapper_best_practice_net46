@@ -61,7 +61,9 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 | `using (var conn = _factory.Create())` | 每個方法 | 短生命週期連線管理 |
 | `if (transaction != null)` 分支 | Insert / Update / Delete | 交易複用既有連線 vs. 自建連線 |
 
-### Step 3 — 讀 Program.cs 的三個展示方法（10 min）
+### Step 3 — 讀示範方法（10 min）
+
+打開 `Demos/CrudDemoRunner.cs`，查看三個展示方法：
 
 | 方法 | 展示情境 |
 |------|----------|
@@ -97,26 +99,28 @@ dapper_best_practice_net46.sln
     └── DapperMySqlCrudExample/                  # 主專案（net461）
         ├── Infrastructure/
         │   └── DbConnectionFactory.cs           # 讀取環境變數 / App.config
-    ├── Models/                              # Dapper 對應 POCO（無 ORM Attribute）
-    │   ├── DetectionMethod.cs
-    │   ├── DetectionSpec.cs
-    │   ├── SiteTestStatistic.cs
-    │   ├── AnomalyLot.cs
-    │   ├── GoodLot.cs
-    │   ├── AnomalyLotProcessMapping.cs
-    │   ├── AnomalyUnit.cs
-    │   ├── AnomalyUnitProcessMapping.cs
-    │   └── AnomalyTestItem.cs
-    ├── Repositories/                        # 具體類別（共 9 個）
-    │   ├── DetectionMethodRepository.cs
-    │   ├── DetectionSpecRepository.cs       # 含 SITE_MEAN 規格計算邏輯
-    │   └── ...                              # 其餘 7 個 Repository
-    ├── Sql/
-    │   ├── schema.sql                       # 核心 9 張表 DDL
-    │   └── schema-legacy.sql                # 既有系統整合表格 DDL
-    ├── App.config                           # 連線字串後備設定
-    ├── NLog.config                          # 日誌設定
-    └── Program.cs                           # Composition Root / CRUD + 規格計算展示
+        ├── Models/                              # Dapper 對應 POCO（無 ORM Attribute）
+        │   ├── DetectionMethod.cs
+        │   ├── DetectionSpec.cs
+        │   ├── SiteTestStatistic.cs
+        │   ├── AnomalyLot.cs
+        │   ├── GoodLot.cs
+        │   ├── AnomalyLotProcessMapping.cs
+        │   ├── AnomalyUnit.cs
+        │   ├── AnomalyUnitProcessMapping.cs
+        │   └── AnomalyTestItem.cs
+        ├── Repositories/                        # 具體類別（共 9 個）
+        │   ├── DetectionMethodRepository.cs
+        │   ├── DetectionSpecRepository.cs       # 含 SITE_MEAN 規格計算邏輯
+        │   └── ...                              # 其餘 7 個 Repository
+        ├── Demos/                               # 示範程式（非必要）
+        │   └── CrudDemoRunner.cs                # CRUD + 交易 + 規格計算示範
+        ├── Sql/
+        │   ├── schema.sql                       # 核心 9 張表 DDL
+        │   └── schema-legacy.sql                # 既有系統整合表格 DDL
+        ├── App.config                           # 連線字串後備設定
+        ├── NLog.config                          # 日誌設定
+        └── Program.cs                           # Composition Root / 啟動檢查
 ```
 
 ---
