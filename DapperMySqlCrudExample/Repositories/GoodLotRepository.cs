@@ -10,13 +10,13 @@ namespace DapperMySqlCrudExample.Repositories
     /// <summary>
     /// GoodLotRepository — good_lots 資料表的 Dapper 資料存取。
     /// </summary>
-    public class GoodLotRepository
+    public sealed class GoodLotRepository
     {
-        private readonly IDbConnectionFactory _factory;
+        private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 GoodLotRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
-        public GoodLotRepository(IDbConnectionFactory factory)
+        public GoodLotRepository(DbConnectionFactory factory)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
@@ -31,32 +31,24 @@ namespace DapperMySqlCrudExample.Repositories
             spec_calc_end_time   AS SpecCalcEndTime,
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
-
-        /// <inheritdoc/>
         public IEnumerable<GoodLot> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM good_lots ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<GoodLot>(sql);
         }
-
-        /// <inheritdoc/>
         public GoodLot GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM good_lots WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<GoodLot>(sql, new { Id = id });
         }
-
-        /// <inheritdoc/>
         public IEnumerable<GoodLot> GetByLotsInfoId(int lotsInfoId)
         {
             var sql = $"SELECT {SelectColumns} FROM good_lots WHERE lots_info_id = @LotsInfoId";
             using (var conn = _factory.Create())
                 return conn.Query<GoodLot>(sql, new { LotsInfoId = lotsInfoId });
         }
-
-        /// <inheritdoc/>
         public long Insert(GoodLot entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -76,8 +68,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
-
-        /// <inheritdoc/>
         public bool Update(GoodLot entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -98,8 +88,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM good_lots WHERE id = @Id";
@@ -110,24 +98,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM good_lots WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM good_lots";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
-
-        /// <inheritdoc/>
         public IEnumerable<GoodLot> GetPaged(int offset, int limit)
         {
             if (offset < 0)

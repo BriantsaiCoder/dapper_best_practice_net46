@@ -11,13 +11,13 @@ namespace DapperMySqlCrudExample.Repositories
     /// AnomalyLotProcessMappingRepository —
     /// anomaly_lot_process_mapping 資料表的 Dapper 資料存取。
     /// </summary>
-    public class AnomalyLotProcessMappingRepository
+    public sealed class AnomalyLotProcessMappingRepository
     {
-        private readonly IDbConnectionFactory _factory;
+        private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 AnomalyLotProcessMappingRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
-        public AnomalyLotProcessMappingRepository(IDbConnectionFactory factory)
+        public AnomalyLotProcessMappingRepository(DbConnectionFactory factory)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
@@ -30,32 +30,24 @@ namespace DapperMySqlCrudExample.Repositories
             process_time     AS ProcessTime,
             created_at       AS CreatedAt,
             updated_at       AS UpdatedAt";
-
-        /// <inheritdoc/>
         public IEnumerable<AnomalyLotProcessMapping> GetAll()
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLotProcessMapping>(sql);
         }
-
-        /// <inheritdoc/>
         public AnomalyLotProcessMapping GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyLotProcessMapping>(sql, new { Id = id });
         }
-
-        /// <inheritdoc/>
         public IEnumerable<AnomalyLotProcessMapping> GetByAnomalyLotId(long anomalyLotId)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE anomaly_lot_id = @AnomalyLotId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLotProcessMapping>(sql, new { AnomalyLotId = anomalyLotId });
         }
-
-        /// <inheritdoc/>
         public long Insert(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -73,8 +65,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
-
-        /// <inheritdoc/>
         public bool Update(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -93,8 +83,6 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_lot_process_mapping WHERE id = @Id";
@@ -105,24 +93,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public bool Exists(long id)
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_lot_process_mapping WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
         }
-
-        /// <inheritdoc/>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_lot_process_mapping";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
-
-        /// <inheritdoc/>
         public IEnumerable<AnomalyLotProcessMapping> GetPaged(int offset, int limit)
         {
             if (offset < 0)
