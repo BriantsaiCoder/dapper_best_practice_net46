@@ -21,13 +21,13 @@ namespace DapperMySqlCrudExample
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            if (ShouldShowHelp(args))
+            if (HasArgument(args, "--help", "-h"))
             {
                 ShowUsage();
                 return 0;
             }
 
-            var shouldRunSample = ShouldRunSample(args);
+            var shouldRunSample = HasArgument(args, "--sample", "--demo");
 
             try
             {
@@ -42,8 +42,12 @@ namespace DapperMySqlCrudExample
                     Console.WriteLine("已啟用 sample 模式，開始執行資料存取示範。");
 
                     var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
-                    var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
-                    var detectionMethodRepository = new DetectionMethodRepository(connectionFactory);
+                    var siteTestStatisticRepository = new SiteTestStatisticRepository(
+                        connectionFactory
+                    );
+                    var detectionMethodRepository = new DetectionMethodRepository(
+                        connectionFactory
+                    );
 
                     var detectionSpecService = new DetectionSpecService(
                         connectionFactory,
@@ -90,31 +94,18 @@ namespace DapperMySqlCrudExample
             }
         }
 
-        private static bool ShouldRunSample(string[] args)
+        private static bool HasArgument(string[] args, params string[] flags)
         {
             if (args == null || args.Length == 0)
                 return false;
 
             foreach (var arg in args)
             {
-                if (string.Equals(arg, "--sample", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(arg, "--demo", StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static bool ShouldShowHelp(string[] args)
-        {
-            if (args == null || args.Length == 0)
-                return false;
-
-            foreach (var arg in args)
-            {
-                if (string.Equals(arg, "--help", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(arg, "-h", StringComparison.OrdinalIgnoreCase))
-                    return true;
+                foreach (var flag in flags)
+                {
+                    if (string.Equals(arg, flag, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
             }
 
             return false;
