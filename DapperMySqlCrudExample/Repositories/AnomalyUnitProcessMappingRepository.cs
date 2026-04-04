@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -43,17 +44,18 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<AnomalyUnitProcessMapping>(sql, new { Id = id });
         }
 
-        public IEnumerable<AnomalyUnitProcessMapping> GetByAnomalyUnitId(long anomalyUnitId)
+        public IReadOnlyList<AnomalyUnitProcessMapping> GetByAnomalyUnitId(long anomalyUnitId)
         {
             const string sql =
                 "SELECT "
                 + SelectColumns
-                + " FROM anomaly_unit_process_mapping WHERE anomaly_unit_id = @AnomalyUnitId";
+                + " FROM anomaly_unit_process_mapping WHERE anomaly_unit_id = @AnomalyUnitId ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnitProcessMapping>(
-                    sql,
-                    new { AnomalyUnitId = anomalyUnitId }
-                );
+                        sql,
+                        new { AnomalyUnitId = anomalyUnitId }
+                    )
+                    .ToList();
         }
 
         public long Insert(AnomalyUnitProcessMapping entity, IDbTransaction transaction = null)

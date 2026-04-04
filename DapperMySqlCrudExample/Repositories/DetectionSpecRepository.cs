@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -46,7 +47,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
 
-        public IEnumerable<DetectionSpec> GetByProgramAndMethodId(
+        public IReadOnlyList<DetectionSpec> GetByProgramAndMethodId(
             string program,
             byte detectionMethodId
         )
@@ -60,13 +61,15 @@ namespace DapperMySqlCrudExample.Repositories
                 + @"
                    FROM   detection_specs
                    WHERE  program             = @Program
-                     AND  detection_method_id = @DetectionMethodId";
+                     AND  detection_method_id = @DetectionMethodId
+                   ORDER BY id";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
-                    sql,
-                    new { Program = program, DetectionMethodId = detectionMethodId }
-                );
+                        sql,
+                        new { Program = program, DetectionMethodId = detectionMethodId }
+                    )
+                    .ToList();
         }
 
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -36,11 +37,11 @@ namespace DapperMySqlCrudExample.Repositories
         /// 取得全部偵測方法。
         /// detection_methods 為低筆數主檔表，保留此方法作為 lookup 與教學用途。
         /// </summary>
-        public IEnumerable<DetectionMethod> GetAll()
+        public IReadOnlyList<DetectionMethod> GetAll()
         {
             const string sql = "SELECT " + SelectColumns + " FROM detection_methods ORDER BY id";
             using (var conn = _factory.Create())
-                return conn.Query<DetectionMethod>(sql);
+                return conn.Query<DetectionMethod>(sql).ToList();
         }
 
         public DetectionMethod GetById(byte id)

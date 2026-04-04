@@ -52,14 +52,14 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<SiteTestStatistic>(sql, new { Id = id });
         }
 
-        public IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId)
+        public IReadOnlyList<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId)
         {
             const string sql =
                 "SELECT "
                 + SelectColumns
-                + " FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
+                + " FROM site_test_statistics WHERE lots_info_id = @LotsInfoId ORDER BY id";
             using (var conn = _factory.Create())
-                return conn.Query<SiteTestStatistic>(sql, new { LotsInfoId = lotsInfoId });
+                return conn.Query<SiteTestStatistic>(sql, new { LotsInfoId = lotsInfoId }).ToList();
         }
 
         /// <summary>

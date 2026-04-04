@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
@@ -41,14 +42,15 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<AnomalyUnit>(sql, new { Id = id });
         }
 
-        public IEnumerable<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
+        public IReadOnlyList<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
         {
             const string sql =
                 "SELECT "
                 + SelectColumns
-                + " FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
+                + " FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId ORDER BY id";
             using (var conn = _factory.Create())
-                return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId });
+                return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId })
+                    .ToList();
         }
 
         public long Insert(AnomalyUnit entity, IDbTransaction transaction = null)
