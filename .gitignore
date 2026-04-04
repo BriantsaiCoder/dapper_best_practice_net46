@@ -45,6 +45,8 @@ CodeCoverage/
 # AI Agent
 .claude/
 
+// Visual Studio files
+.vs/
 # MSBuild Binary and Structured Log
 *.binlog
 
