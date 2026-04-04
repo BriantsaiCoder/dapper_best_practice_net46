@@ -92,6 +92,7 @@ namespace DapperMySqlCrudExample.Repositories
             string detectionMethodName
         )
         {
+            var sinceTime = DateTime.Now.AddMonths(-1);
             var sql =
                 $@"SELECT {JoinSelectColumns}
                    FROM   detection_specs   ds
@@ -108,7 +109,7 @@ namespace DapperMySqlCrudExample.Repositories
                     {
                         Program = program,
                         DetectionMethodName = detectionMethodName,
-                        SinceTime = DateTime.Now.AddMonths(-1)
+                        SinceTime = sinceTime
                     }
                 );
         }
@@ -118,6 +119,7 @@ namespace DapperMySqlCrudExample.Repositories
             string detectionMethodName
         )
         {
+            var sinceTime = DateTime.Now.AddMonths(-1);
             var sql =
                 $@"SELECT {JoinSelectColumns}
                    FROM   detection_specs   ds
@@ -135,7 +137,7 @@ namespace DapperMySqlCrudExample.Repositories
                     {
                         Program = program,
                         DetectionMethodName = detectionMethodName,
-                        SinceTime = DateTime.Now.AddMonths(-1)
+                        SinceTime = sinceTime
                     }
                 );
         }

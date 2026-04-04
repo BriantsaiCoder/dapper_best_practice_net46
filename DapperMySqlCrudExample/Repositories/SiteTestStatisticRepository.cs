@@ -129,12 +129,13 @@ namespace DapperMySqlCrudExample.Repositories
             if (string.IsNullOrWhiteSpace(testItemName))
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
 
+            var sinceTime = DateTime.Now.AddMonths(-1);
             var p = new
             {
                 ProgramName = programName,
                 SiteId = siteId,
                 TestItemName = testItemName,
-                SinceTime = DateTime.Now.AddMonths(-1),
+                SinceTime = sinceTime,
             };
 
             const string sql1 =
