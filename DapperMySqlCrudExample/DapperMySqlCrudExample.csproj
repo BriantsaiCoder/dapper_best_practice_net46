@@ -6,7 +6,6 @@
     <LangVersion>7.3</LangVersion>
     <AssemblyName>DapperMySqlCrudExample</AssemblyName>
     <RootNamespace>DapperMySqlCrudExample</RootNamespace>
-    <Nullable>disable</Nullable>
     <!-- MySql.Data 8.x 的部分間接依賴（System.Text.Json 等）僅宣告支援 net462+，
          但本專案使用的 API 範圍在 net461 執行時完全正常，
          此旗標僅抑制 NuGet 建置警告，不影響功能正確性。 -->

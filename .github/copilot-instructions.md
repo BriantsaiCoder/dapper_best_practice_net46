@@ -225,7 +225,7 @@ public sealed class FooService
 | **欄位名稱轉換** | DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 對齊 |
 | **無 ORM Attribute** | 不使用 `[Column]`、`[Table]`，依賴 SQL 別名對應 |
 | **C# 版本限制** | 語言版本為 `7.3`，不用 C# 8+ 語法（如 `??=`、record、switch 運算式） |
-| **Nullable 停用** | 專案不使用可空參考型別分析（`Nullable: disable`），`string` 可能為 null |
+| **Nullable 未啟用** | C# 7.3 + net461 不支援可空參考型別分析，`string` 可能為 null |
 | **Repository = 純 CRUD** | Repository 不含業務邏輯，計算與編排由 Service 層負責 |
 | **Service = 業務邏輯** | 跨 Repository 協調、交易邊界、統計計算皆放在 Service |
 | **讀取查詢用 `const string` 串接** | 使用 `SelectColumns` 的查詢必須用 `const string sql = "SELECT " + SelectColumns + " FROM ...";`，不可用 `var sql = $"SELECT {SelectColumns} ..."`（`$` 插值無法在編譯期常數折疊） |
