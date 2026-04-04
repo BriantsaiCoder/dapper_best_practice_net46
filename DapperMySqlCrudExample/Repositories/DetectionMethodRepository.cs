@@ -52,6 +52,9 @@ namespace DapperMySqlCrudExample.Repositories
 
         public DetectionMethod GetByKey(string methodKey)
         {
+            if (string.IsNullOrWhiteSpace(methodKey))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(methodKey));
+
             var sql =
                 $"SELECT {SelectColumns} FROM detection_methods WHERE method_key = @MethodKey";
             using (var conn = _factory.Create())
@@ -66,6 +69,9 @@ namespace DapperMySqlCrudExample.Repositories
         /// </summary>
         public byte? GetIdByKey(string methodKey, IDbTransaction transaction = null)
         {
+            if (string.IsNullOrWhiteSpace(methodKey))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(methodKey));
+
             const string sql = "SELECT id FROM detection_methods WHERE method_key = @MethodKey";
 
             if (transaction != null)

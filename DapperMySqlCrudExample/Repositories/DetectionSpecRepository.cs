@@ -51,6 +51,9 @@ namespace DapperMySqlCrudExample.Repositories
             byte detectionMethodId
         )
         {
+            if (string.IsNullOrWhiteSpace(program))
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(program));
+
             var sql =
                 $@"SELECT {SelectColumns}
                    FROM   detection_specs
