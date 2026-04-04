@@ -24,21 +24,21 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
-        /// <summary>單表查詢用（與其他 Repository 一致，不帶表別名）。</summary>
         private const string SelectColumns =
-            @"id                   AS Id,
-              program              AS Program,
-              test_item_name       AS TestItemName,
-              site_id              AS SiteId,
-              detection_method_id  AS DetectionMethodId,
-              spec_upper_limit     AS SpecUpperLimit,
-              spec_lower_limit     AS SpecLowerLimit,
-              spec_calc_start_time AS SpecCalcStartTime,
-              spec_calc_end_time   AS SpecCalcEndTime,
-              spec_calc_mean       AS SpecCalcMean,
-              spec_calc_std        AS SpecCalcStd,
-              created_at           AS CreatedAt,
-              updated_at           AS UpdatedAt";
+            @"
+            id                   AS Id,
+            program              AS Program,
+            test_item_name       AS TestItemName,
+            site_id              AS SiteId,
+            detection_method_id  AS DetectionMethodId,
+            spec_upper_limit     AS SpecUpperLimit,
+            spec_lower_limit     AS SpecLowerLimit,
+            spec_calc_start_time AS SpecCalcStartTime,
+            spec_calc_end_time   AS SpecCalcEndTime,
+            spec_calc_mean       AS SpecCalcMean,
+            spec_calc_std        AS SpecCalcStd,
+            created_at           AS CreatedAt,
+            updated_at           AS UpdatedAt";
 
         public DetectionSpec GetById(long id)
         {
