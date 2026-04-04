@@ -127,6 +127,13 @@ public sealed class FooRepository
         using (var conn = _factory.Create())
             return conn.Execute(sql, new { Id = id }) > 0;
     }
+
+    public bool Exists(long id)
+    {
+        const string sql = "SELECT 1 FROM foos WHERE id = @Id LIMIT 1";
+        using (var conn = _factory.Create())
+            return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
+    }
 }
 ```
 
@@ -134,7 +141,7 @@ public sealed class FooRepository
 
 ```csharp
 // Models/Foo.cs
-public class Foo
+public sealed class Foo
 {
     public long Id { get; set; }
     public string FooName { get; set; }   // 屬性名稱必須與 SQL AS 別名一致
@@ -202,6 +209,8 @@ public sealed class FooService
 | **Nullable 停用** | 專案不使用可空參考型別分析（`Nullable: disable`），`string` 可能為 null |
 | **Repository = 純 CRUD** | Repository 不含業務邏輯，計算與編排由 Service 層負責 |
 | **Service = 業務邏輯** | 跨 Repository 協調、交易邊界、統計計算皆放在 Service |
+| **`Exists()` 使用 `LIMIT 1`** | `SELECT 1 FROM table WHERE id = @Id LIMIT 1` + `QueryFirstOrDefault<int?>().HasValue`，不使用 `COUNT(1)` |
+| **時間過濾參數化** | 不使用 SQL 端 `DATE_SUB(NOW(), ...)`，改在 C# 端以 `var sinceTime = DateTime.Now.AddMonths(-1)` 計算後傳入 `@SinceTime` 參數 |
 
 ---
 
