@@ -235,7 +235,7 @@ ALTER TABLE detection_methods
 4. 在 `Repositories/` 新增 Repository，只實作真正需要的查詢
 5. 若流程跨多個 Repository，再新增 `Services/` 類別協調
 
-> 📄 完整的程式碼範本與慯例規則請參閱 [`.github/copilot-instructions.md`](.github/copilot-instructions.md)。
+> 📄 完整的程式碼範本與慣例規則請參閱 [`.github/copilot-instructions.md`](.github/copilot-instructions.md)。
 
 ### Repository 實作原則
 
