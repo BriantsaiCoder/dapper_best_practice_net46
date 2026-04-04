@@ -129,22 +129,14 @@ namespace DapperMySqlCrudExample.Services
 
         /// <summary>
         /// 從歷史資料中提取時間範圍（計算起迄時間）。
+        /// QuerySiteMeanRows 已篩選 start_time IS NOT NULL，此處直接取 Min/Max。
         /// </summary>
         private static (DateTime start, DateTime end) ExtractTimeRange(
             IReadOnlyList<SiteMeanRow> rows
         )
         {
-            var timesWithValue = rows.Where(r => r.StartTime.HasValue)
-                .Select(r => r.StartTime.Value)
-                .ToList();
-
-            if (!timesWithValue.Any())
-                throw new InvalidOperationException(
-                    "site_test_statistics 中所有 start_time 值皆為 NULL，"
-                        + "無法決定 SpecCalcStartTime / SpecCalcEndTime。"
-                );
-
-            return (timesWithValue.Min(), timesWithValue.Max());
+            var times = rows.Select(r => r.StartTime).ToList();
+            return (times.Min(), times.Max());
         }
 
         private byte GetRequiredSiteMeanMethodId(IDbTransaction tx)
