@@ -32,12 +32,6 @@ namespace DapperMySqlCrudExample.Repositories
             spec_calc_end_time    AS SpecCalcEndTime,
             created_at            AS CreatedAt,
             updated_at            AS UpdatedAt";
-        public IEnumerable<AnomalyUnit> GetAll()
-        {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_units ORDER BY id";
-            using (var conn = _factory.Create())
-                return conn.Query<AnomalyUnit>(sql);
-        }
         public AnomalyUnit GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE id = @Id";
@@ -113,17 +107,6 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "SELECT COUNT(1) FROM anomaly_units";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
-        }
-        public IEnumerable<AnomalyUnit> GetPaged(int offset, int limit)
-        {
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException(nameof(offset), offset, "offset 不可小於 0。");
-            if (limit <= 0)
-                throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
-
-            var sql = $"SELECT {SelectColumns} FROM anomaly_units ORDER BY id LIMIT @Offset, @Limit";
-            using (var conn = _factory.Create())
-                return conn.Query<AnomalyUnit>(sql, new { Offset = offset, Limit = limit });
         }
     }
 }

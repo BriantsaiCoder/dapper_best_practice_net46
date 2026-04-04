@@ -1,8 +1,8 @@
 using System;
 using Dapper;
-using DapperMySqlCrudExample.Demos;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Repositories;
+using DapperMySqlCrudExample.Samples;
 using DapperMySqlCrudExample.Services;
 using NLog;
 
@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample
     /// <summary>
     /// 應用程式進入點。
     /// 負責初始化基礎設施並驗證資料庫連線可用性。
-    /// 使用 --demo 參數可執行 CRUD 示範（參見 Demos/CrudDemoRunner.cs）。
+    /// 使用 --sample 參數可執行 sample（參見 Samples/CrudSampleRunner.cs）。
     /// </summary>
     internal static class Program
     {
@@ -27,7 +27,7 @@ namespace DapperMySqlCrudExample
                 return 0;
             }
 
-            var shouldRunDemo = ShouldRunDemo(args);
+            var shouldRunSample = ShouldRunSample(args);
 
             try
             {
@@ -37,9 +37,9 @@ namespace DapperMySqlCrudExample
                 _logger.Info("應用程式啟動檢查完成，資料庫連線驗證成功。");
                 Console.WriteLine("啟動檢查完成，資料庫連線正常。");
 
-                if (shouldRunDemo)
+                if (shouldRunSample)
                 {
-                    Console.WriteLine("已啟用 --demo，開始執行資料存取示範。");
+                    Console.WriteLine("已啟用 sample 模式，開始執行資料存取示範。");
 
                     var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
                     var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
@@ -52,7 +52,7 @@ namespace DapperMySqlCrudExample
                         detectionMethodRepository
                     );
 
-                    CrudDemoRunner.RunAllDemos(
+                    CrudSampleRunner.RunAllSamples(
                         connectionFactory,
                         detectionSpecRepository,
                         siteTestStatisticRepository,
@@ -62,7 +62,7 @@ namespace DapperMySqlCrudExample
                 else
                 {
                     Console.WriteLine("目前為安全模式，僅進行啟動檢查。");
-                    Console.WriteLine("若要執行新增 / 更新 / 刪除示範，請以 --demo 重新啟動。");
+                    Console.WriteLine("若要執行 sample，請以 --sample 重新啟動。");
                 }
 
                 return 0;
@@ -90,14 +90,15 @@ namespace DapperMySqlCrudExample
             }
         }
 
-        private static bool ShouldRunDemo(string[] args)
+        private static bool ShouldRunSample(string[] args)
         {
             if (args == null || args.Length == 0)
                 return false;
 
             foreach (var arg in args)
             {
-                if (string.Equals(arg, "--demo", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(arg, "--sample", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(arg, "--demo", StringComparison.OrdinalIgnoreCase))
                     return true;
             }
 
@@ -127,7 +128,7 @@ namespace DapperMySqlCrudExample
             Console.WriteLine();
             Console.WriteLine("選項：");
             Console.WriteLine("  （無參數）   啟動檢查模式，僅驗證資料庫連線");
-            Console.WriteLine("  --demo       執行 CRUD 與交易示範");
+            Console.WriteLine("  --sample     執行 CRUD sample（--demo 仍可作為相容別名）");
             Console.WriteLine("  --help, -h   顯示此說明");
         }
     }

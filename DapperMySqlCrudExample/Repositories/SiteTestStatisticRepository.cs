@@ -5,6 +5,7 @@ using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
+using DapperMySqlCrudExample.Models.QueryModels;
 
 namespace DapperMySqlCrudExample.Repositories
 {
@@ -42,13 +43,6 @@ namespace DapperMySqlCrudExample.Repositories
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
 
-        public IEnumerable<SiteTestStatistic> GetAll()
-        {
-            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id";
-            using (var conn = _factory.Create())
-                return conn.Query<SiteTestStatistic>(sql);
-        }
-
         public SiteTestStatistic GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE id = @Id";
@@ -78,20 +72,6 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<SiteTestStatistic>(sql, new { SiteId = siteId, TestItemName = testItemName });
         }
 
-        public SiteTestStatistic GetLatestSampleForSpecCalculation()
-        {
-            var sql = $@"
-                SELECT {SelectColumns}
-                FROM   site_test_statistics
-                WHERE  mean_value IS NOT NULL
-                  AND  start_time IS NOT NULL
-                ORDER BY start_time DESC
-                LIMIT 1";
-
-            using (var conn = _factory.Create())
-                return conn.QueryFirstOrDefault<SiteTestStatistic>(sql);
-        }
-
         /// <summary>
         /// 從最新有效樣本中取得 SITE_MEAN 規格計算所需的三個引數。
         /// 僅 SELECT 必要欄位，減少資料傳輸量。
@@ -113,14 +93,15 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>
-        /// 雙策略查詢：優先取最近 1 個月且計數 ≥ 30 的資料；
-        /// 若不足 30 筆則回退為最新 30 筆（不限時間範圍）。
+        /// 雙策略查詢：優先取最近 1 個月內的最新 30 筆資料；
+        /// 若不足 30 筆則回退為不限時間範圍的最新 30 筆。
         /// 支援外部交易參與，遵循標準 Repository 模式。
         /// </summary>
         public IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
             string programName,
             uint siteId,
             string testItemName,
+            DateTime sinceTime,
             IDbTransaction transaction = null
         )
         {
@@ -129,51 +110,54 @@ namespace DapperMySqlCrudExample.Repositories
             if (string.IsNullOrWhiteSpace(testItemName))
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
 
-            var sinceTime = DateTime.Now.AddMonths(-1);
             var p = new
             {
                 ProgramName = programName,
                 SiteId = siteId,
                 TestItemName = testItemName,
                 SinceTime = sinceTime,
+                Limit = PreferredHistoryCount
             };
 
-            const string sql1 =
+            const string sqlRecent =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics
                   WHERE  program        = @ProgramName
                     AND  site_id        = @SiteId
                     AND  test_item_name = @TestItemName
                     AND  start_time    >= @SinceTime
+                    AND  start_time    IS NOT NULL
                     AND  mean_value    IS NOT NULL
-                  ORDER BY start_time DESC";
+                  ORDER BY start_time DESC
+                  LIMIT @Limit";
 
-            const string sql2 =
+            const string sqlFallback =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics
                   WHERE  program        = @ProgramName
                     AND  site_id        = @SiteId
                     AND  test_item_name = @TestItemName
+                    AND  start_time    IS NOT NULL
                     AND  mean_value    IS NOT NULL
                   ORDER BY start_time DESC
-                  LIMIT 30";
+                  LIMIT @Limit";
 
             if (transaction != null)
             {
-                var rows = transaction.Connection.Query<SiteMeanRow>(sql1, p, transaction).ToList();
-                if (rows.Count >= PreferredHistoryCount)
+                var rows = transaction.Connection.Query<SiteMeanRow>(sqlRecent, p, transaction).ToList();
+                if (rows.Count == PreferredHistoryCount)
                     return rows;
 
-                return transaction.Connection.Query<SiteMeanRow>(sql2, p, transaction).ToList();
+                return transaction.Connection.Query<SiteMeanRow>(sqlFallback, p, transaction).ToList();
             }
 
             using (var conn = _factory.Create())
             {
-                var rows = conn.Query<SiteMeanRow>(sql1, p).ToList();
-                if (rows.Count >= PreferredHistoryCount)
+                var rows = conn.Query<SiteMeanRow>(sqlRecent, p).ToList();
+                if (rows.Count == PreferredHistoryCount)
                     return rows;
 
-                return conn.Query<SiteMeanRow>(sql2, p).ToList();
+                return conn.Query<SiteMeanRow>(sqlFallback, p).ToList();
             }
         }
 
@@ -254,16 +238,5 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<int>(sql);
         }
 
-        public IEnumerable<SiteTestStatistic> GetPaged(int offset, int limit)
-        {
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException(nameof(offset), offset, "offset 不可小於 0。");
-            if (limit <= 0)
-                throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
-
-            var sql = $"SELECT {SelectColumns} FROM site_test_statistics ORDER BY id LIMIT @Offset, @Limit";
-            using (var conn = _factory.Create())
-                return conn.Query<SiteTestStatistic>(sql, new { Offset = offset, Limit = limit });
-        }
     }
 }

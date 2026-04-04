@@ -33,12 +33,6 @@ namespace DapperMySqlCrudExample.Repositories
             equipment_id      AS EquipmentId,
             created_at        AS CreatedAt,
             updated_at        AS UpdatedAt";
-        public IEnumerable<AnomalyUnitProcessMapping> GetAll()
-        {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_unit_process_mapping ORDER BY id";
-            using (var conn = _factory.Create())
-                return conn.Query<AnomalyUnitProcessMapping>(sql);
-        }
         public AnomalyUnitProcessMapping GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_unit_process_mapping WHERE id = @Id";
@@ -112,17 +106,6 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "SELECT COUNT(1) FROM anomaly_unit_process_mapping";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
-        }
-        public IEnumerable<AnomalyUnitProcessMapping> GetPaged(int offset, int limit)
-        {
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException(nameof(offset), offset, "offset 不可小於 0。");
-            if (limit <= 0)
-                throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
-
-            var sql = $"SELECT {SelectColumns} FROM anomaly_unit_process_mapping ORDER BY id LIMIT @Offset, @Limit";
-            using (var conn = _factory.Create())
-                return conn.Query<AnomalyUnitProcessMapping>(sql, new { Offset = offset, Limit = limit });
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
+using DapperMySqlCrudExample.Models.QueryModels;
 using DapperMySqlCrudExample.Repositories;
 using MathNet.Numerics.Statistics;
 
@@ -22,6 +23,7 @@ namespace DapperMySqlCrudExample.Services
         private readonly DetectionMethodRepository _detectionMethodRepo;
 
         private const string SiteMeanMethodKey = "SITE_MEAN";
+        private const int SiteMeanLookbackMonths = 1;
 
         public DetectionSpecService(
             DbConnectionFactory factory,
@@ -38,12 +40,14 @@ namespace DapperMySqlCrudExample.Services
 
         /// <summary>
         /// 依歷史 site_test_statistics 資料計算 SITE_MEAN 規格並插入 detection_specs。
+        /// 取樣策略為優先使用最近 1 個月內的最新 30 筆資料，不足時回退為最新 30 筆。
         /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
         /// </summary>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,
-            string testItemName
+            string testItemName,
+            DateTime? referenceTime = null
         )
         {
             if (string.IsNullOrWhiteSpace(programName))
@@ -54,7 +58,15 @@ namespace DapperMySqlCrudExample.Services
             using (var conn = _factory.Create())
             using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
             {
-                var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+                var lookbackReferenceTime = referenceTime ?? DateTime.Now;
+                var sinceTime = lookbackReferenceTime.AddMonths(-SiteMeanLookbackMonths);
+                var rows = _siteTestStatRepo.QuerySiteMeanRows(
+                    programName,
+                    siteId,
+                    testItemName,
+                    sinceTime,
+                    tx
+                );
 
                 if (rows.Count == 0)
                     throw new InvalidOperationException(

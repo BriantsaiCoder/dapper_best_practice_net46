@@ -1,27 +1,26 @@
 using System;
 using System.Data;
-using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
 using DapperMySqlCrudExample.Services;
 using NLog;
 
-namespace DapperMySqlCrudExample.Demos
+namespace DapperMySqlCrudExample.Samples
 {
     /// <summary>
-    /// CRUD 示範工具類別。
+    /// CRUD sample 工具類別。
     /// 本類別僅供展示用途，展示如何使用 Repository 進行資料存取操作。
     /// 新工程師可參考這些示範方法了解交易與非交易模式的使用方式。
     /// </summary>
-    public static class CrudDemoRunner
+    public static class CrudSampleRunner
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
-        /// 執行所有 CRUD 示範。
+        /// 執行所有 sample。
         /// </summary>
-        public static void RunAllDemos(
+        public static void RunAllSamples(
             DbConnectionFactory connectionFactory,
             DetectionSpecRepository detectionSpecRepository,
             SiteTestStatisticRepository siteTestStatisticRepository,
@@ -80,15 +79,15 @@ namespace DapperMySqlCrudExample.Demos
             var afterUpdate = repo.GetById(newId);
             Console.WriteLine($"  [GetById] 更新後 MethodName={afterUpdate?.MethodName}");
 
-            // ── GetCount / GetPaged ──────────────────────────────────────────
+            // ── Exists / GetCount / GetByKey ────────────────────────────────
+            bool existsAfterUpdate = repo.Exists(newId);
+            Console.WriteLine($"  [Exists] 更新後資料存在={existsAfterUpdate}");
+
             int total = repo.GetCount();
             Console.WriteLine($"  [GetCount] 現有筆數={total}");
 
-            var page = repo.GetPaged(offset: 0, limit: 3);
-            Console.Write("  [GetPaged] 前三筆 MethodKey：");
-            foreach (var m in page)
-                Console.Write($"{m.MethodKey} ");
-            Console.WriteLine();
+            var builtInMethod = repo.GetByKey("YIELD");
+            Console.WriteLine($"  [GetByKey] 內建方法 YIELD 存在={builtInMethod != null}");
 
             // ── Delete ───────────────────────────────────────────────────────
             bool deleted = repo.Delete(newId);

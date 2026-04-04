@@ -1,6 +1,6 @@
 using System;
 
-namespace DapperMySqlCrudExample.Models
+namespace DapperMySqlCrudExample.Models.QueryModels
 {
     /// <summary>
     /// 用於 SITE_MEAN 規格計算的歷史統計資料列。

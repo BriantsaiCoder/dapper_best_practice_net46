@@ -1,4 +1,4 @@
-namespace DapperMySqlCrudExample.Models
+namespace DapperMySqlCrudExample.Models.QueryModels
 {
     /// <summary>
     /// SITE_MEAN 規格計算所需的三個引數。

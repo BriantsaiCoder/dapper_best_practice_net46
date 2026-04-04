@@ -30,12 +30,6 @@ namespace DapperMySqlCrudExample.Repositories
             has_unit_level AS HasUnitLevel,
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
-        public IEnumerable<DetectionMethod> GetAll()
-        {
-            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id";
-            using (var conn = _factory.Create())
-                return conn.Query<DetectionMethod>(sql);
-        }
         public DetectionMethod GetById(byte id)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE id = @Id";
@@ -119,17 +113,6 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "SELECT COUNT(1) FROM detection_methods";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
-        }
-        public IEnumerable<DetectionMethod> GetPaged(int offset, int limit)
-        {
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException(nameof(offset), offset, "offset 不可小於 0。");
-            if (limit <= 0)
-                throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit 必須大於 0。");
-
-            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id LIMIT @Offset, @Limit";
-            using (var conn = _factory.Create())
-                return conn.Query<DetectionMethod>(sql, new { Offset = offset, Limit = limit });
         }
     }
 }
