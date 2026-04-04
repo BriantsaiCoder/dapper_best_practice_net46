@@ -82,9 +82,22 @@ public sealed class FooRepository
         created_at  AS CreatedAt,
         updated_at  AS UpdatedAt";
 
-    // 此範本刻意不預設提供 GetAll()，避免被複製後造成大表全表掃描。
-    // 僅在低筆數主檔表（如 DetectionMethodRepository）才保留 GetAll()。
+    // 此範本刻意不預設提供 GetAll() 與 GetCount()，避免被複製後造成大表全表掃描。
+    // 僅在低筆數主檔表（如 DetectionMethodRepository）才保留 GetAll() 與 GetCount()。
 
+    /// <summary>
+    /// 依主鍵查詢單筆資料。
+    /// </summary>
+    public Foo GetById(long id)
+    {
+        const string sql = "SELECT " + SelectColumns + " FROM foos WHERE id = @Id";
+        using (var conn = _factory.Create())
+            return conn.QueryFirstOrDefault<Foo>(sql, new { Id = id });
+    }
+
+    /// <summary>
+    /// 新增一筆資料並回傳自動遞增主鍵。
+    /// </summary>
     public long Insert(Foo entity, IDbTransaction transaction = null)
     {
         if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -100,6 +113,9 @@ public sealed class FooRepository
             return conn.ExecuteScalar<long>(sql, entity);
     }
 
+    /// <summary>
+    /// 更新一筆資料。
+    /// </summary>
     public bool Update(Foo entity, IDbTransaction transaction = null)
     {
         if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -113,6 +129,9 @@ public sealed class FooRepository
             return conn.Execute(sql, entity) > 0;
     }
 
+    /// <summary>
+    /// 依主鍵刪除一筆資料。
+    /// </summary>
     public bool Delete(long id, IDbTransaction transaction = null)
     {
         const string sql = "DELETE FROM foos WHERE id = @Id";
@@ -124,6 +143,9 @@ public sealed class FooRepository
             return conn.Execute(sql, new { Id = id }) > 0;
     }
 
+    /// <summary>
+    /// 檢查指定主鍵的資料是否存在。
+    /// </summary>
     public bool Exists(long id)
     {
         const string sql = "SELECT 1 FROM foos WHERE id = @Id LIMIT 1";
@@ -206,6 +228,8 @@ public sealed class FooService
 | **Nullable 停用** | 專案不使用可空參考型別分析（`Nullable: disable`），`string` 可能為 null |
 | **Repository = 純 CRUD** | Repository 不含業務邏輯，計算與編排由 Service 層負責 |
 | **Service = 業務邏輯** | 跨 Repository 協調、交易邊界、統計計算皆放在 Service |
+| **讀取查詢用 `const string` 串接** | 使用 `SelectColumns` 的查詢必須用 `const string sql = "SELECT " + SelectColumns + " FROM ...";`，不可用 `var sql = $"SELECT {SelectColumns} ..."`（`$` 插值無法在編譯期常數折疊） |
+| **`GetCount()` 僅限低筆數 lookup table** | 僅 `DetectionMethodRepository` 保留 `GetCount()`，其他 Repository 不提供此方法，避免全表掃描被新工程師誤用 |
 | **`Exists()` 使用 `LIMIT 1`** | `SELECT 1 FROM table WHERE id = @Id LIMIT 1` + `QueryFirstOrDefault<int?>().HasValue`，不使用 `COUNT(1)` |
 | **時間過濾參數化** | 不使用 SQL 端 `DATE_SUB(NOW(), ...)`，改在 C# 端以 `var sinceTime = DateTime.Now.AddMonths(-1)` 計算後傳入 `@SinceTime` 參數 |
 
