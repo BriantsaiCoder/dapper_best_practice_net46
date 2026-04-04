@@ -41,7 +41,7 @@ namespace DapperMySqlCrudExample.Repositories
 
         public DetectionSpec GetById(long id)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_specs WHERE id = @Id";
+            const string sql = "SELECT " + SelectColumns + " FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
@@ -54,8 +54,10 @@ namespace DapperMySqlCrudExample.Repositories
             if (string.IsNullOrWhiteSpace(program))
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(program));
 
-            var sql =
-                $@"SELECT {SelectColumns}
+            const string sql =
+                "SELECT "
+                + SelectColumns
+                + @"
                    FROM   detection_specs
                    WHERE  program             = @Program
                      AND  detection_method_id = @DetectionMethodId";
@@ -134,17 +136,6 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "SELECT 1 FROM detection_specs WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
-        }
-
-        /// <remarks>
-        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
-        /// 僅適合資料量可控的場景或管理用途。
-        /// </remarks>
-        public int GetCount()
-        {
-            const string sql = "SELECT COUNT(1) FROM detection_specs";
-            using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql);
         }
     }
 }

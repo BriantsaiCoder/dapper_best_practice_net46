@@ -38,14 +38,14 @@ namespace DapperMySqlCrudExample.Repositories
         /// </summary>
         public IEnumerable<DetectionMethod> GetAll()
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id";
+            const string sql = "SELECT " + SelectColumns + " FROM detection_methods ORDER BY id";
             using (var conn = _factory.Create())
                 return conn.Query<DetectionMethod>(sql);
         }
 
         public DetectionMethod GetById(byte id)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE id = @Id";
+            const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
@@ -55,8 +55,8 @@ namespace DapperMySqlCrudExample.Repositories
             if (string.IsNullOrWhiteSpace(methodKey))
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(methodKey));
 
-            var sql =
-                $"SELECT {SelectColumns} FROM detection_methods WHERE method_key = @MethodKey";
+            const string sql =
+                "SELECT " + SelectColumns + " FROM detection_methods WHERE method_key = @MethodKey";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(
                     sql,

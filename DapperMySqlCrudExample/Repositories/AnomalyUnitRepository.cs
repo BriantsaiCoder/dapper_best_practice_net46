@@ -36,15 +36,17 @@ namespace DapperMySqlCrudExample.Repositories
 
         public AnomalyUnit GetById(long id)
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_units WHERE id = @Id";
+            const string sql = "SELECT " + SelectColumns + " FROM anomaly_units WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyUnit>(sql, new { Id = id });
         }
 
         public IEnumerable<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
         {
-            var sql =
-                $"SELECT {SelectColumns} FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
+            const string sql =
+                "SELECT "
+                + SelectColumns
+                + " FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId });
         }
@@ -113,17 +115,6 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "SELECT 1 FROM anomaly_units WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
-        }
-
-        /// <remarks>
-        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
-        /// 僅適合資料量可控的場景或管理用途。
-        /// </remarks>
-        public int GetCount()
-        {
-            const string sql = "SELECT COUNT(1) FROM anomaly_units";
-            using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql);
         }
     }
 }
