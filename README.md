@@ -97,7 +97,7 @@ dapper_best_practice_net46.sln
 
 ### 2. Sample 模式
 
-`--sample` 會執行 [CrudSampleRunner.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
+`--sample` 會執行 [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
 
 - 不使用交易的基本 CRUD
 - 同一交易中的 Commit / Rollback
@@ -111,7 +111,7 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 ### 1. 連線短生命週期
 
-[DbConnectionFactory.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的已開啟連線，呼叫端以 `using` 管理生命週期。
+[DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的已開啟連線，呼叫端以 `using` 管理生命週期。
 
 這個專案不引入額外的 connection wrapper 或 Unit of Work。
 
@@ -128,14 +128,13 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 - offset 分頁在資料量大時會變慢
 - 新工程師會複製模板，所以模板預設本身就要保守
 
-唯一保留的例外是 [DetectionMethodRepository.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Repositories/DetectionMethodRepository.cs)，因為 `detection_methods` 屬於低筆數、穩定的 lookup / master table，保留 `GetAll()` 能幫助新工程師快速理解最基本的 Dapper 查詢寫法。
+唯一保留的例外是 [DetectionMethodRepository.cs](DapperMySqlCrudExample/Repositories/DetectionMethodRepository.cs)，因為 `detection_methods` 屬於低筆數、穩定的 lookup / master table，保留 `GetAll()` 與 `GetCount()` 能幫助新工程師快速理解最基本的 Dapper 查詢寫法。
 
 目前 Repository 保留的查詢模式以這幾類為主：
 
-- 小型主檔表的 `GetAll()`，例如 `DetectionMethodRepository`
+- 小型主檔表的 `GetAll()` 與 `GetCount()`，僅限 `DetectionMethodRepository`
 - `GetById`
 - `Exists`
-- `GetCount`
 - 依外鍵或業務條件查詢，例如 `GetByLotsInfoId`、`GetByKey`
 
 ### 3. `method_key` 是程式用識別值
@@ -151,7 +150,7 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 ### 4. 跨 Repository 邏輯放在 Service
 
-[DetectionSpecService.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Services/DetectionSpecService.cs) 負責：
+[DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) 負責：
 
 - 讀取 `site_test_statistics`
 - 用 MathNet.Numerics 計算平均值與標準差
@@ -166,7 +165,7 @@ Repository 保持單一職責：
 
 ### 5. SITE_MEAN 取樣策略已做固定上限
 
-[SiteTestStatisticRepository.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 策略為取最新 30 筆有效資料（`mean_value IS NOT NULL` 且 `start_time IS NOT NULL`），以單一查詢完成。
+[SiteTestStatisticRepository.cs](DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 策略為取最新 30 筆有效資料（`mean_value IS NOT NULL` 且 `start_time IS NOT NULL`），以單一查詢完成。
 
 若近期資料充足，結果自然全為近期；若不足則涵蓋更早的歷史。
 
@@ -178,7 +177,7 @@ Repository 保持單一職責：
 
 ## Schema 重點
 
-[schema.sql](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Sql/schema.sql) 包含 9 張核心表；[schema-legacy.sql](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Sql/schema-legacy.sql) 提供 `lots_info` 相依表。
+[schema.sql](DapperMySqlCrudExample/Sql/schema.sql) 包含 9 張核心表；[schema-legacy.sql](DapperMySqlCrudExample/Sql/schema-legacy.sql) 提供 `lots_info` 相依表。
 
 ### 資料表關聯圖
 
@@ -219,7 +218,7 @@ ALTER TABLE detection_methods
 
 請照這個順序：
 
-1. 在 [schema.sql](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Sql/schema.sql) 補 DDL 與必要索引
+1. 在 [schema.sql](DapperMySqlCrudExample/Sql/schema.sql) 補 DDL 與必要索引
 2. 在 `Models/` 新增對應 Entity
 3. 若查詢只回傳部分欄位或聚合結果，放在 `Models/QueryModels/`
 4. 在 `Repositories/` 新增 Repository，只實作真正需要的查詢
@@ -246,7 +245,7 @@ ALTER TABLE detection_methods
 
 ## 日誌設定
 
-[NLog.config](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/NLog.config) 定義兩個輸出目標：
+[NLog.config](DapperMySqlCrudExample/NLog.config) 定義兩個輸出目標：
 
 | 目標 | 等級 | 說明 |
 |------|------|------|
