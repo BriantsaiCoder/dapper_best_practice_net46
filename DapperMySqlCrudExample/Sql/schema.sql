@@ -153,6 +153,8 @@ CREATE TABLE detection_specs (
     INDEX idx_program_method (program, detection_method_id),
     INDEX idx_program_item_method (program, test_item_name, detection_method_id),
     INDEX idx_site_id (site_id),
+    INDEX idx_calc_end_time (spec_calc_end_time),
+    INDEX idx_calc_time (spec_calc_start_time, spec_calc_end_time),
     CONSTRAINT fk_specs_detection_method
         FOREIGN KEY (detection_method_id)
         REFERENCES detection_methods(id)
