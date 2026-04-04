@@ -21,7 +21,7 @@ namespace DapperMySqlCrudExample.Services
         private readonly SiteTestStatisticRepository _siteTestStatRepo;
         private readonly DetectionMethodRepository _detectionMethodRepo;
 
-        private const string SiteMeanMethodCode = "SITE_MEAN";
+        private const string SiteMeanMethodKey = "SITE_MEAN";
 
         public DetectionSpecService(
             DbConnectionFactory factory,
@@ -133,10 +133,10 @@ namespace DapperMySqlCrudExample.Services
 
         private byte GetRequiredSiteMeanMethodId(IDbTransaction tx)
         {
-            var methodId = _detectionMethodRepo.GetIdByCode(SiteMeanMethodCode, tx);
+            var methodId = _detectionMethodRepo.GetIdByKey(SiteMeanMethodKey, tx);
             if (!methodId.HasValue)
                 throw new InvalidOperationException(
-                    "detection_methods 中找不到 method_code = 'SITE_MEAN' 的設定，無法建立 DetectionSpec。"
+                    "detection_methods 中找不到 method_key = 'SITE_MEAN' 的設定，無法建立 DetectionSpec。"
                 );
 
             return methodId.Value;

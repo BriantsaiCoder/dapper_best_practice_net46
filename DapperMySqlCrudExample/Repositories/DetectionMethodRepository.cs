@@ -24,7 +24,7 @@ namespace DapperMySqlCrudExample.Repositories
 
         private const string SelectColumns = @"
             id             AS Id,
-            method_code    AS MethodCode,
+            method_key     AS MethodKey,
             method_name    AS MethodName,
             has_test_item  AS HasTestItem,
             has_unit_level AS HasUnitLevel,
@@ -42,25 +42,25 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
-        public DetectionMethod GetByCode(string methodCode)
+        public DetectionMethod GetByKey(string methodKey)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE method_code = @MethodCode";
+            var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE method_key = @MethodKey";
             using (var conn = _factory.Create())
-                return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodCode = methodCode });
+                return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodKey = methodKey });
         }
 
         /// <summary>
-        /// 依 method_code 查詢主鍵 id。支援外部交易參與。
+        /// 依 method_key 查詢主鍵 id。支援外部交易參與。
         /// </summary>
-        public byte? GetIdByCode(string methodCode, IDbTransaction transaction = null)
+        public byte? GetIdByKey(string methodKey, IDbTransaction transaction = null)
         {
-            const string sql = "SELECT id FROM detection_methods WHERE method_code = @MethodCode";
+            const string sql = "SELECT id FROM detection_methods WHERE method_key = @MethodKey";
 
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<byte?>(sql, new { MethodCode = methodCode }, transaction);
+                return transaction.Connection.ExecuteScalar<byte?>(sql, new { MethodKey = methodKey }, transaction);
 
             using (var conn = _factory.Create())
-                return conn.ExecuteScalar<byte?>(sql, new { MethodCode = methodCode });
+                return conn.ExecuteScalar<byte?>(sql, new { MethodKey = methodKey });
         }
 
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
@@ -69,9 +69,9 @@ namespace DapperMySqlCrudExample.Repositories
 
             const string sql = @"
                 INSERT INTO detection_methods
-                    (method_code, method_name, has_test_item, has_unit_level)
+                    (method_key, method_name, has_test_item, has_unit_level)
                 VALUES
-                    (@MethodCode, @MethodName, @HasTestItem, @HasUnitLevel);
+                    (@MethodKey, @MethodName, @HasTestItem, @HasUnitLevel);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -86,7 +86,7 @@ namespace DapperMySqlCrudExample.Repositories
 
             const string sql = @"
                 UPDATE detection_methods
-                SET    method_code    = @MethodCode,
+                SET    method_key     = @MethodKey,
                        method_name    = @MethodName,
                        has_test_item  = @HasTestItem,
                        has_unit_level = @HasUnitLevel

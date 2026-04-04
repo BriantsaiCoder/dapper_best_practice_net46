@@ -20,7 +20,7 @@
 -- 1. 偵測方法主表
 CREATE TABLE detection_methods (
     id TINYINT PRIMARY KEY AUTO_INCREMENT,
-    method_code VARCHAR(20) UNIQUE NOT NULL,
+    method_key VARCHAR(20) UNIQUE NOT NULL,
     method_name VARCHAR(50) NOT NULL,
     has_test_item BOOLEAN DEFAULT FALSE,
     has_unit_level BOOLEAN DEFAULT FALSE,
@@ -28,7 +28,7 @@ CREATE TABLE detection_methods (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO detection_methods (method_code, method_name, has_test_item, has_unit_level) VALUES
+INSERT INTO detection_methods (method_key, method_name, has_test_item, has_unit_level) VALUES
 ('YIELD',     '良率偵測',       FALSE, FALSE),
 ('SITE_STD',  '標準差偵測',     TRUE,  FALSE),
 ('MEAN',      '平均值偵測',     FALSE, TRUE),
@@ -216,5 +216,9 @@ CREATE TABLE good_lots (
 -- =============================================================================
 -- 增量索引（若資料庫已建立，可單獨執行以下 ALTER TABLE 補上新索引）
 -- =============================================================================
+-- 若既有環境仍使用 detection_methods.method_code，可先執行：
+-- ALTER TABLE detection_methods
+--   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
+--
 -- ALTER TABLE site_test_statistics ADD INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time);
 -- ALTER TABLE detection_specs ADD INDEX idx_site_id (site_id);

@@ -49,14 +49,14 @@ namespace DapperMySqlCrudExample.Demos
 
             var repo = new DetectionMethodRepository(connectionFactory);
 
-            // 清理可能殘留的示範資料，確保 MethodCode 唯一性
-            var existing = repo.GetByCode("DEMO_NO_TX");
+            // 清理可能殘留的示範資料，確保 MethodKey 唯一性
+            var existing = repo.GetByKey("DEMO_NO_TX");
             if (existing != null) repo.Delete(existing.Id);
 
             // ── Insert ───────────────────────────────────────────────────────
             var newMethod = new DetectionMethod
             {
-                MethodCode = "DEMO_NO_TX",
+                MethodKey = "DEMO_NO_TX",
                 MethodName = "展示用檢測方法（無交易）",
                 HasTestItem = true,
                 HasUnitLevel = false
@@ -64,7 +64,7 @@ namespace DapperMySqlCrudExample.Demos
 
             byte newId = repo.Insert(newMethod);
             _logger.Info("RunNonTransactionExample: 新增 DetectionMethod，Id={Id}", newId);
-            Console.WriteLine($"  [Insert] 新增成功 → Id={newId}, MethodCode={newMethod.MethodCode}");
+            Console.WriteLine($"  [Insert] 新增成功 → Id={newId}, MethodKey={newMethod.MethodKey}");
 
             // ── GetById ──────────────────────────────────────────────────────
             var inserted = repo.GetById(newId);
@@ -85,9 +85,9 @@ namespace DapperMySqlCrudExample.Demos
             Console.WriteLine($"  [GetCount] 現有筆數={total}");
 
             var page = repo.GetPaged(offset: 0, limit: 3);
-            Console.Write("  [GetPaged] 前三筆 MethodCode：");
+            Console.Write("  [GetPaged] 前三筆 MethodKey：");
             foreach (var m in page)
-                Console.Write($"{m.MethodCode} ");
+                Console.Write($"{m.MethodKey} ");
             Console.WriteLine();
 
             // ── Delete ───────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ namespace DapperMySqlCrudExample.Demos
             // 清理可能殘留的示範資料
             foreach (var code in new[] { "TX_DEMO_A1", "TX_DEMO_A2", "TX_DEMO_B" })
             {
-                var e = repo.GetByCode(code);
+                var e = repo.GetByKey(code);
                 if (e != null) repo.Delete(e.Id);
             }
 
@@ -133,25 +133,25 @@ namespace DapperMySqlCrudExample.Demos
                 {
                     var methodA1 = new DetectionMethod
                     {
-                        MethodCode = "TX_DEMO_A1",
+                        MethodKey = "TX_DEMO_A1",
                         MethodName = "交易示範 A1",
                         HasTestItem = true,
                         HasUnitLevel = false
                     };
                     idA1 = repo.Insert(methodA1, tx);
                     _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
-                    Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodCode={methodA1.MethodCode}");
+                    Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}");
 
                     var methodA2 = new DetectionMethod
                     {
-                        MethodCode = "TX_DEMO_A2",
+                        MethodKey = "TX_DEMO_A2",
                         MethodName = "交易示範 A2",
                         HasTestItem = false,
                         HasUnitLevel = true
                     };
                     idA2 = repo.Insert(methodA2, tx);
                     _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
-                    Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodCode={methodA2.MethodCode}");
+                    Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}");
 
                     tx.Commit();
                     _logger.Info("RunTransactionExample(A): Commit 成功");
@@ -188,7 +188,7 @@ namespace DapperMySqlCrudExample.Demos
                 {
                     var methodB = new DetectionMethod
                     {
-                        MethodCode = "TX_DEMO_B",
+                        MethodKey = "TX_DEMO_B",
                         MethodName = "交易示範 B（應被 Rollback）",
                         HasTestItem = false,
                         HasUnitLevel = false

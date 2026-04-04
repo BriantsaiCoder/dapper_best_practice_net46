@@ -10,8 +10,8 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>主鍵（TINYINT，自動遞增）。</summary>
         public byte Id { get; set; }
 
-        /// <summary>方法代碼（唯一索引）。</summary>
-        public string MethodCode { get; set; }
+        /// <summary>方法識別鍵（唯一索引，供程式判斷使用）。</summary>
+        public string MethodKey { get; set; }
 
         /// <summary>方法名稱，供人類閱讀使用。</summary>
         public string MethodName { get; set; }

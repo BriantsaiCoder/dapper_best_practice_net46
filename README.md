@@ -171,7 +171,7 @@ public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
 ```csharp
 private const string SelectColumns = @"
     id              AS Id,
-    method_code     AS MethodCode,
+    method_key      AS MethodKey,
     method_name     AS MethodName,
     has_test_item   AS HasTestItem";
 ```
@@ -550,7 +550,7 @@ erDiagram
     %% ─── schema.sql（核心 9 張表） ───────────────────────────
     detection_methods {
         TINYINT id PK
-        VARCHAR method_code UK
+        VARCHAR method_key UK
         VARCHAR method_name
         BOOLEAN has_test_item
         BOOLEAN has_unit_level
