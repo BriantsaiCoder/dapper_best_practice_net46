@@ -152,6 +152,16 @@ public sealed class FooRepository
         using (var conn = _factory.Create())
             return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
     }
+
+    /// <summary>
+    /// 依外鍵查詢多筆資料。
+    /// </summary>
+    public IReadOnlyList<Foo> GetByBarId(long barId)
+    {
+        const string sql = "SELECT " + SelectColumns + " FROM foos WHERE bar_id = @BarId ORDER BY id";
+        using (var conn = _factory.Create())
+            return conn.Query<Foo>(sql, new { BarId = barId }).ToList();
+    }
 }
 ```
 
@@ -232,6 +242,8 @@ public sealed class FooService
 | **`GetCount()` 僅限低筆數 lookup table** | 僅 `DetectionMethodRepository` 保留 `GetCount()`，其他 Repository 不提供此方法，避免全表掃描被新工程師誤用 |
 | **`Exists()` 使用 `LIMIT 1`** | `SELECT 1 FROM table WHERE id = @Id LIMIT 1` + `QueryFirstOrDefault<int?>().HasValue`，不使用 `COUNT(1)` |
 | **時間過濾參數化** | 不使用 SQL 端 `DATE_SUB(NOW(), ...)`，改在 C# 端以 `var sinceTime = DateTime.Now.AddMonths(-1)` 計算後傳入 `@SinceTime` 參數 |
+| **多筆查詢加 `ORDER BY id`** | 所有回傳多筆結果的方法必須加 `ORDER BY id`，確保結果順序可預測，避免隱性依賴數據庫內部存儲順序 |
+| **多筆查詢回傳 `IReadOnlyList<T>`** | 用 `.ToList()` 立即具體化，回傳 `IReadOnlyList<T>`；避免 Dapper 的 `IEnumerable<T>` 延遲列舉在連線 `Dispose` 後才存取，需加 `using System.Linq` |
 
 ---
 

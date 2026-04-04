@@ -70,6 +70,15 @@ dapper_best_practice_net46.sln
     │       ├── SiteMeanCalcParams.cs
     │       └── SiteMeanRow.cs
     ├── Repositories/
+    │   ├── AnomalyLotProcessMappingRepository.cs
+    │   ├── AnomalyLotRepository.cs
+    │   ├── AnomalyTestItemRepository.cs
+    │   ├── AnomalyUnitProcessMappingRepository.cs
+    │   ├── AnomalyUnitRepository.cs
+    │   ├── DetectionMethodRepository.cs
+    │   ├── DetectionSpecRepository.cs
+    │   ├── GoodLotRepository.cs
+    │   └── SiteTestStatisticRepository.cs
     ├── Services/
     │   └── DetectionSpecService.cs
     ├── Samples/
@@ -169,6 +178,8 @@ Repository 保持單一職責：
 
 若近期資料充足，結果自然全為近期；若不足則涵蓋更早的歷史。
 
+`DetectionSpecService` 設定 `MinimumSampleCount = 2`：樣本不足兩筆時直接拋出例外，不嘗試計算。當只有一筆資料時標準差為 0，會導致 UCL = LCL = mean，過度敏感而產生誤報。
+
 這樣做的目的：
 
 - 避免一次把整個月的資料全部撈進記憶體
@@ -233,6 +244,8 @@ ALTER TABLE detection_methods
 - 有 transaction 時複用 `transaction.Connection`
 - 無 transaction 時自行建立短生命週期連線
 - 不預設提供全表掃描與 offset 分頁
+- 多筆查詢方法加 `ORDER BY id`，確保結果順序可預測
+- 多筆查詢回傳 `IReadOnlyList<T>`（搭配 `.ToList()`），避免 Dapper 延遲列舉在連線關閉後才存取
 
 ## 連線設定
 
