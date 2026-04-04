@@ -98,13 +98,18 @@ namespace DapperMySqlCrudExample.Repositories
                    JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                    WHERE  ds.program     = @Program
                      AND  dm.method_name = @DetectionMethodName
-                     AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                     AND  ds.spec_calc_end_time >= @SinceTime
                    ORDER BY ds.spec_calc_end_time DESC";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(
                     sql,
-                    new { Program = program, DetectionMethodName = detectionMethodName }
+                    new
+                    {
+                        Program = program,
+                        DetectionMethodName = detectionMethodName,
+                        SinceTime = DateTime.Now.AddMonths(-1)
+                    }
                 );
         }
 
@@ -119,14 +124,19 @@ namespace DapperMySqlCrudExample.Repositories
                    JOIN   detection_methods dm ON dm.id = ds.detection_method_id
                    WHERE  ds.program     = @Program
                      AND  dm.method_name = @DetectionMethodName
-                     AND  ds.spec_calc_end_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                     AND  ds.spec_calc_end_time >= @SinceTime
                    ORDER BY ds.spec_calc_end_time DESC
                    LIMIT 1";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionSpec>(
                     sql,
-                    new { Program = program, DetectionMethodName = detectionMethodName }
+                    new
+                    {
+                        Program = program,
+                        DetectionMethodName = detectionMethodName,
+                        SinceTime = DateTime.Now.AddMonths(-1)
+                    }
                 );
         }
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
@@ -188,9 +198,9 @@ namespace DapperMySqlCrudExample.Repositories
         }
         public bool Exists(long id)
         {
-            const string sql = "SELECT COUNT(1) FROM detection_specs WHERE id = @Id";
+            const string sql = "SELECT 1 FROM detection_specs WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+                return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
         public int GetCount()
         {

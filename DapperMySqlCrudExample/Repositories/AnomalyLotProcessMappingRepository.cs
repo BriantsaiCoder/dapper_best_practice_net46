@@ -95,9 +95,9 @@ namespace DapperMySqlCrudExample.Repositories
         }
         public bool Exists(long id)
         {
-            const string sql = "SELECT COUNT(1) FROM anomaly_lot_process_mapping WHERE id = @Id";
+            const string sql = "SELECT 1 FROM anomaly_lot_process_mapping WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+                return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
         public int GetCount()
         {

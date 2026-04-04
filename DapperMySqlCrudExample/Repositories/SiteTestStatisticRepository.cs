@@ -134,6 +134,7 @@ namespace DapperMySqlCrudExample.Repositories
                 ProgramName = programName,
                 SiteId = siteId,
                 TestItemName = testItemName,
+                SinceTime = DateTime.Now.AddMonths(-1),
             };
 
             const string sql1 =
@@ -142,7 +143,7 @@ namespace DapperMySqlCrudExample.Repositories
                   WHERE  program        = @ProgramName
                     AND  site_id        = @SiteId
                     AND  test_item_name = @TestItemName
-                    AND  start_time    >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                    AND  start_time    >= @SinceTime
                     AND  mean_value    IS NOT NULL
                   ORDER BY start_time DESC";
 
@@ -240,9 +241,9 @@ namespace DapperMySqlCrudExample.Repositories
 
         public bool Exists(long id)
         {
-            const string sql = "SELECT COUNT(1) FROM site_test_statistics WHERE id = @Id";
+            const string sql = "SELECT 1 FROM site_test_statistics WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
-                return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+                return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
 
         public int GetCount()

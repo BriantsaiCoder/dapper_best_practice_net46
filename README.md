@@ -448,7 +448,8 @@ public sealed class FooRepository
     private const string SelectColumns = @"
         id          AS Id,
         foo_name    AS FooName,
-        created_at  AS CreatedAt";
+        created_at  AS CreatedAt,
+        updated_at  AS UpdatedAt";
 
     public IEnumerable<Foo> GetAll()
     {
@@ -495,9 +496,9 @@ public sealed class FooRepository
 
     public bool Exists(long id)
     {
-        const string sql = "SELECT COUNT(1) FROM foos WHERE id = @Id";
+        const string sql = "SELECT 1 FROM foos WHERE id = @Id LIMIT 1";
         using (var conn = _factory.Create())
-            return conn.ExecuteScalar<int>(sql, new { Id = id }) > 0;
+            return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
     }
 }
 ```
