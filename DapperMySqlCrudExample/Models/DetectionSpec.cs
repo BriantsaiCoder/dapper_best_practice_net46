@@ -6,7 +6,7 @@ namespace DapperMySqlCrudExample.Models
     /// 偵測規格表，儲存依 Program / TestItem / Site / MethodId 計算出的
     /// UCL 上限、LCL 下限及統計輔助值。
     /// </summary>
-    public class DetectionSpec
+    public sealed class DetectionSpec
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }

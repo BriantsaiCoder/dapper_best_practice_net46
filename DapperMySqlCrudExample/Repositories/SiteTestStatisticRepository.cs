@@ -85,7 +85,8 @@ namespace DapperMySqlCrudExample.Repositories
                 FROM   site_test_statistics
                 WHERE  mean_value IS NOT NULL
                   AND  start_time IS NOT NULL
-                ORDER BY start_time DESC";
+                ORDER BY start_time DESC
+                LIMIT 1";
 
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<SiteTestStatistic>(sql);

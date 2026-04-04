@@ -5,7 +5,7 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// Site 測項統計值，儲存量測站點的平均值、Cp/Cpk 等製程能力指標。
     /// </summary>
-    public class SiteTestStatistic
+    public sealed class SiteTestStatistic
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }

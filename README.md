@@ -17,6 +17,7 @@
 - [連線設定](#連線設定)
 - [Repository 擴充規範](#repository-擴充規範)
 - [主要工程決策](#主要工程決策)
+- [資料庫 Schema 關聯圖](#資料庫-schema-關聯圖)
 - [驗證清單](#驗證清單)
 
 ---
@@ -29,8 +30,7 @@
 - 可被外部工作流程協調的交易式資料寫入
 - 短生命週期連線與安全的連線字串管理
 - 啟動檢查、結構化日誌與失敗可觀測性
-- 最小必要抽象層，維持可讀性與延伸性
-- 最少抽象層，直接使用 Dapper 原生 API，降低學習曲線
+- 最少抽象層，直接使用 Dapper 原生 API，維持可讀性與延伸性
 - Repository 負責純 CRUD，業務邏輯集中於 Service 層
 
 ---
@@ -47,6 +47,7 @@ dotnet build dapper_best_practice_net46.sln          # 建構
 export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;Pwd=your_password;"
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj            # 啟動檢查
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --demo  # CRUD 展示
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --help  # 顯示用法
 ```
 
 觀察 Console 輸出，理解完整 CRUD 流程。
@@ -100,12 +101,12 @@ dapper_best_practice_net46.sln
     └── DapperMySqlCrudExample/                  # 主專案（net461）
         ├── Infrastructure/
         │   └── DbConnectionFactory.cs           # 讀取環境變數 / App.config
-        ├── Models/                              # Dapper 對應 POCO（無 ORM Attribute）
+        ├── Models/                              # Dapper 對應 POCO（全部 sealed，無 ORM Attribute）
         │   ├── DetectionMethod.cs
         │   ├── DetectionSpec.cs
         │   ├── SiteTestStatistic.cs
-        │   ├── SiteMeanCalcParams.cs            # SITE_MEAN 計算引數（sealed）
-        │   ├── SiteMeanRow.cs                   # SITE_MEAN 歷史資料列（sealed）
+        │   ├── SiteMeanCalcParams.cs            # SITE_MEAN 計算引數 DTO
+        │   ├── SiteMeanRow.cs                   # SITE_MEAN 歷史資料列 DTO
         │   ├── AnomalyLot.cs
         │   ├── GoodLot.cs
         │   ├── AnomalyLotProcessMapping.cs
@@ -123,7 +124,7 @@ dapper_best_practice_net46.sln
         │   └── CrudDemoRunner.cs                # CRUD + 交易 + 規格計算示範
         ├── Sql/
         │   ├── schema.sql                       # 核心 9 張表 DDL
-        │   └── schema-legacy.sql                # 既有系統整合表格 DDL
+        │   └── schema-legacy.sql                # lots_info 外鍵依賴表 DDL
         ├── App.config                           # 連線字串後備設定
         ├── NLog.config                          # 日誌設定
         └── Program.cs                           # Composition Root / 啟動檢查
@@ -263,7 +264,7 @@ using (var tx = conn.BeginTransaction())
 using (var conn = _factory.Create())
 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    var rows = _siteTestStatRepo.QuerySiteMeanRows(conn, tx, ...);  // 1. 讀取
+    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);  // 1. 讀取
     var (mean, std) = CalculateMeanAndStd(rows);                    // 2. 計算
     _detectionSpecRepo.Insert(newSpec, tx);                         // 3. 寫入
     tx.Commit();
@@ -353,6 +354,14 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 
 帶入 `--demo` 後，才會依序執行 Repository CRUD、交易示範與 SITE_MEAN 規格計算範例。
 
+### 顯示用法
+
+```bash
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --help
+```
+
+支援 `--help` / `-h` 參數，顯示可用選項說明。
+
 ---
 
 ## 資料庫設定
@@ -361,7 +370,7 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --d
 # 建立資料庫
 mysql -u root -p -e "CREATE DATABASE dapper_demo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 若為全新環境，先建立既有系統整合資料表（含 lots_info 等外鍵依賴）
+# 若為全新環境，先建立 lots_info（核心資料表的外鍵依賴）
 mysql -u root -p dapper_demo < DapperMySqlCrudExample/Sql/schema-legacy.sql
 
 # 套用核心 9 張資料表 DDL
@@ -509,6 +518,177 @@ public sealed class FooRepository
 | DI 方式 | Manual DI | 基底專案啟動邏輯薄，不需引入 DI 容器複雜度 |
 | 不使用 DapperExtensions | 直接呼叫 Dapper | 新工程師可直接看到 Dapper 原生 API，降低學習曲線 |
 | 無 Repository 介面 | 直接注入 sealed concrete class | 降低不必要的抽象層，此基底專案不需 mock 測試 |
+| Model 全部 sealed | `public sealed class Foo` | 與 Repository / Service / Infrastructure 一致，防止非預期繼承 |
+| Read 方法不帶交易參數 | `GetAll()` / `GetById()` 無 `IDbTransaction` | 唯讀方法不修改資料，不需參與交易；減少簽名複雜度 |
+
+---
+
+## 資料庫 Schema 關聯圖
+
+以下以 Mermaid ER Diagram 呈現 `schema-legacy.sql`（1 張表）與 `schema.sql`（9 張核心表）的完整外鍵關聯。
+
+- **實線**（`||--o{`）：明確定義的 `FOREIGN KEY` 約束
+- 所有外鍵皆設定 `ON DELETE CASCADE ON UPDATE CASCADE`
+
+```mermaid
+erDiagram
+    %% ─── schema-legacy.sql（外鍵依賴表） ─────────────────────
+    lots_info {
+        INT id PK
+        VARCHAR file_name UK
+        VARCHAR program
+        VARCHAR customer
+        VARCHAR device
+        DOUBLE yield
+        INT total
+        INT pass
+        DATETIME start
+        DATETIME stop
+    }
+
+    %% ─── schema.sql（核心 9 張表） ───────────────────────────
+    detection_methods {
+        TINYINT id PK
+        VARCHAR method_code UK
+        VARCHAR method_name
+        BOOLEAN has_test_item
+        BOOLEAN has_unit_level
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    anomaly_lots {
+        BIGINT id PK
+        INT lots_info_id FK
+        TINYINT detection_method_id FK
+        DECIMAL spec_upper_limit
+        DECIMAL spec_lower_limit
+        DATETIME spec_calc_start_time
+        DATETIME spec_calc_end_time
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    anomaly_test_items {
+        BIGINT id PK
+        BIGINT anomaly_lot_id FK
+        VARCHAR test_item_name
+        DECIMAL detection_value
+        DECIMAL spec_upper_limit
+        DECIMAL spec_lower_limit
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    anomaly_units {
+        BIGINT id PK
+        BIGINT anomaly_test_item_id FK
+        VARCHAR unit_id
+        DECIMAL detection_value
+        DECIMAL spec_upper_limit
+        DECIMAL spec_lower_limit
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    anomaly_lot_process_mapping {
+        BIGINT id PK
+        BIGINT anomaly_lot_id FK
+        VARCHAR station_name
+        VARCHAR equipment_id
+        DATETIME process_time
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    anomaly_unit_process_mapping {
+        BIGINT id PK
+        BIGINT anomaly_unit_id FK
+        VARCHAR boat_id
+        SMALLINT position_x
+        SMALLINT position_y
+        DATETIME process_time
+        VARCHAR station_name
+        VARCHAR equipment_id
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    detection_specs {
+        BIGINT id PK
+        VARCHAR program
+        VARCHAR test_item_name
+        INT site_id
+        TINYINT detection_method_id FK
+        DECIMAL spec_upper_limit
+        DECIMAL spec_lower_limit
+        DATETIME spec_calc_start_time
+        DATETIME spec_calc_end_time
+        DECIMAL spec_calc_mean
+        DECIMAL spec_calc_std
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    site_test_statistics {
+        BIGINT id PK
+        INT lots_info_id FK
+        VARCHAR program
+        INT site_id
+        VARCHAR test_item_name
+        DECIMAL mean_value
+        DECIMAL max_value
+        DECIMAL min_value
+        DECIMAL std_value
+        DECIMAL cp_value
+        DECIMAL cpk_value
+        VARCHAR tester_id
+        DATETIME start_time
+        DATETIME end_time
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    good_lots {
+        BIGINT id PK
+        INT lots_info_id FK
+        TINYINT detection_method_id FK
+        DECIMAL spec_upper_limit
+        DECIMAL spec_lower_limit
+        DATETIME spec_calc_start_time
+        DATETIME spec_calc_end_time
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    %% ─── 外鍵關聯 ────────────────────────────────────────────
+    lots_info ||--o{ anomaly_lots : "lots_info_id"
+    lots_info ||--o{ site_test_statistics : "lots_info_id"
+    lots_info ||--o{ good_lots : "lots_info_id"
+
+    detection_methods ||--o{ anomaly_lots : "detection_method_id"
+    detection_methods ||--o{ detection_specs : "detection_method_id"
+    detection_methods ||--o{ good_lots : "detection_method_id"
+
+    anomaly_lots ||--o{ anomaly_test_items : "anomaly_lot_id"
+    anomaly_lots ||--o{ anomaly_lot_process_mapping : "anomaly_lot_id"
+
+    anomaly_test_items ||--o{ anomaly_units : "anomaly_test_item_id"
+
+    anomaly_units ||--o{ anomaly_unit_process_mapping : "anomaly_unit_id"
+```
+
+### 表格分類摘要
+
+| 分類 | 表格 | 說明 |
+|------|------|------|
+| 外鍵依賴（schema-legacy.sql） | `lots_info` | 既有系統批號主表，為 `anomaly_lots`、`site_test_statistics`、`good_lots` 的 FK 依賴 |
+| 偵測方法 | `detection_methods` | 偵測方法主表（4 筆種子資料），被 `anomaly_lots`、`detection_specs`、`good_lots` 參照 |
+| 異常偵測鏈 | `anomaly_lots` → `anomaly_test_items` → `anomaly_units` | 三層父子結構：批號 → 測項 → Unit |
+| Process Mapping | `anomaly_lot_process_mapping`、`anomaly_unit_process_mapping` | 分別掛載於 `anomaly_lots` 與 `anomaly_units`，記錄站點/機台/座標 |
+| 規格計算 | `detection_specs` | SITE_MEAN 等規格計算結果，參照 `detection_methods` |
+| 統計資料 | `site_test_statistics` | 每批 Site 測項統計值，為 SITE_MEAN 計算的資料來源 |
+| 好批記錄 | `good_lots` | 數值偏差偵測模組的好批批號，同時參照 `lots_info` 與 `detection_methods` |
 
 ---
 
