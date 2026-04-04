@@ -30,6 +30,17 @@ namespace DapperMySqlCrudExample.Repositories
             has_unit_level AS HasUnitLevel,
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
+        /// <summary>
+        /// 取得全部偵測方法。
+        /// detection_methods 為低筆數主檔表，保留此方法作為 lookup 與教學用途。
+        /// </summary>
+        public IEnumerable<DetectionMethod> GetAll()
+        {
+            var sql = $"SELECT {SelectColumns} FROM detection_methods ORDER BY id";
+            using (var conn = _factory.Create())
+                return conn.Query<DetectionMethod>(sql);
+        }
+
         public DetectionMethod GetById(byte id)
         {
             var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE id = @Id";

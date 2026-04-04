@@ -115,7 +115,7 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 ### 2. Repository 只保留有意義的查詢
 
-此範本刻意不把下列方法當成預設介面：
+此範本刻意不把下列方法當成所有 Repository 的預設介面：
 
 - `GetAll()`
 - offset 分頁的 `GetPaged(offset, limit)`
@@ -126,8 +126,11 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 - offset 分頁在資料量大時會變慢
 - 新工程師會複製模板，所以模板預設本身就要保守
 
+唯一保留的例外是 [DetectionMethodRepository.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Repositories/DetectionMethodRepository.cs)，因為 `detection_methods` 屬於低筆數、穩定的 lookup / master table，保留 `GetAll()` 能幫助新工程師快速理解最基本的 Dapper 查詢寫法。
+
 目前 Repository 保留的查詢模式以這幾類為主：
 
+- 小型主檔表的 `GetAll()`，例如 `DetectionMethodRepository`
 - `GetById`
 - `Exists`
 - `GetCount`
