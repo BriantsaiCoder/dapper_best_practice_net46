@@ -24,6 +24,9 @@ namespace DapperMySqlCrudExample.Services
 
         private const string SiteMeanMethodKey = "SITE_MEAN";
 
+        /// <summary>SITE_MEAN 計算所需的最小樣本數。僅 1 筆時 std=0，UCL=LCL=mean 會造成誤判。</summary>
+        private const int MinimumSampleCount = 2;
+
         public DetectionSpecService(
             DbConnectionFactory factory,
             DetectionSpecRepository detectionSpecRepo,
@@ -69,10 +72,10 @@ namespace DapperMySqlCrudExample.Services
                     tx
                 );
 
-                if (rows.Count == 0)
+                if (rows.Count < MinimumSampleCount)
                     throw new InvalidOperationException(
-                        $"site_test_statistics 中找不到符合條件的資料（program={programName}, "
-                            + $"siteId={siteId}, testItem={testItemName}）。"
+                        $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
+                            + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
                     );
 
                 var (mean, std) = CalculateMeanAndStd(rows);
@@ -104,18 +107,14 @@ namespace DapperMySqlCrudExample.Services
 
         /// <summary>
         /// 計算樣本平均值與標準差。
+        /// 呼叫前須確保 rows.Count &gt;= <see cref="MinimumSampleCount"/>。
         /// </summary>
         private static (double mean, double std) CalculateMeanAndStd(
             IReadOnlyList<SiteMeanRow> rows
         )
         {
-            if (rows.Count >= 2)
-            {
-                var values = rows.Select(r => (double)r.MeanValue).ToList();
-                return (Statistics.Mean(values), Statistics.StandardDeviation(values));
-            }
-
-            return ((double)rows[0].MeanValue, 0.0);
+            var values = rows.Select(r => (double)r.MeanValue).ToList();
+            return (Statistics.Mean(values), Statistics.StandardDeviation(values));
         }
 
         /// <summary>
