@@ -21,7 +21,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id                   AS Id,
             lots_info_id         AS LotsInfoId,
             detection_method_id  AS DetectionMethodId,
@@ -31,23 +32,28 @@ namespace DapperMySqlCrudExample.Repositories
             spec_calc_end_time   AS SpecCalcEndTime,
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
+
         public AnomalyLot GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_lots WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyLot>(sql, new { Id = id });
         }
+
         public IEnumerable<AnomalyLot> GetByLotsInfoId(int lotsInfoId)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_lots WHERE lots_info_id = @LotsInfoId";
             using (var conn = _factory.Create())
                 return conn.Query<AnomalyLot>(sql, new { LotsInfoId = lotsInfoId });
         }
+
         public long Insert(AnomalyLot entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO anomaly_lots
                     (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
                      spec_calc_start_time, spec_calc_end_time)
@@ -62,11 +68,14 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(AnomalyLot entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE anomaly_lots
                 SET    lots_info_id         = @LotsInfoId,
                        detection_method_id  = @DetectionMethodId,
@@ -82,6 +91,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_lots WHERE id = @Id";
@@ -92,12 +102,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT 1 FROM anomaly_lots WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
+
+        /// <remarks>
+        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
+        /// 僅適合資料量可控的場景或管理用途。
+        /// </remarks>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_lots";

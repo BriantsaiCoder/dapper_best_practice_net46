@@ -66,7 +66,8 @@ namespace DapperMySqlCrudExample.Repositories
 
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
             const string sql =
                 @"INSERT INTO detection_specs
@@ -87,9 +88,11 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(DetectionSpec entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
             const string sql =
                 @"UPDATE detection_specs
@@ -111,6 +114,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_specs WHERE id = @Id";
@@ -121,12 +125,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT 1 FROM detection_specs WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
+
+        /// <remarks>
+        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
+        /// 僅適合資料量可控的場景或管理用途。
+        /// </remarks>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_specs";

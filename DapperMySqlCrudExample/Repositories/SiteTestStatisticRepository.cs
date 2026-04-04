@@ -25,7 +25,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id             AS Id,
             lots_info_id   AS LotsInfoId,
             program        AS Program,
@@ -52,30 +53,20 @@ namespace DapperMySqlCrudExample.Repositories
 
         public IEnumerable<SiteTestStatistic> GetByLotsInfoId(int lotsInfoId)
         {
-            var sql = $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
+            var sql =
+                $"SELECT {SelectColumns} FROM site_test_statistics WHERE lots_info_id = @LotsInfoId";
             using (var conn = _factory.Create())
                 return conn.Query<SiteTestStatistic>(sql, new { LotsInfoId = lotsInfoId });
-        }
-
-        public IEnumerable<SiteTestStatistic> GetBySiteAndItem(uint siteId, string testItemName)
-        {
-            if (string.IsNullOrWhiteSpace(testItemName))
-                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
-
-            var sql = $@"
-                SELECT {SelectColumns}
-                FROM   site_test_statistics
-                WHERE  site_id = @SiteId
-                  AND  test_item_name = @TestItemName";
-
-            using (var conn = _factory.Create())
-                return conn.Query<SiteTestStatistic>(sql, new { SiteId = siteId, TestItemName = testItemName });
         }
 
         /// <summary>
         /// 從最新有效樣本中取得 SITE_MEAN 規格計算所需的三個引數。
         /// 僅 SELECT 必要欄位，減少資料傳輸量。
         /// </summary>
+        /// <remarks>
+        /// 索引命中策略：ORDER BY start_time DESC 可利用 idx_start_time 索引排序，
+        /// 搭配 LIMIT 1 快速定位最新一筆。
+        /// </remarks>
         public SiteMeanCalcParams GetCalcParamsFromLatestSample()
         {
             const string sql =
@@ -108,7 +99,10 @@ namespace DapperMySqlCrudExample.Repositories
             if (string.IsNullOrWhiteSpace(programName))
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(programName));
             if (string.IsNullOrWhiteSpace(testItemName))
-                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
+                throw new ArgumentException(
+                    "參數不可為 null、空字串或空白。",
+                    nameof(testItemName)
+                );
 
             var p = new
             {
@@ -116,9 +110,10 @@ namespace DapperMySqlCrudExample.Repositories
                 SiteId = siteId,
                 TestItemName = testItemName,
                 SinceTime = sinceTime,
-                Limit = PreferredHistoryCount
+                Limit = PreferredHistoryCount,
             };
 
+            // Strategy: Recent N — 優先取最近 @SinceTime 內的最新 @Limit 筆
             const string sqlRecent =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics
@@ -131,6 +126,7 @@ namespace DapperMySqlCrudExample.Repositories
                   ORDER BY start_time DESC
                   LIMIT @Limit";
 
+            // Fallback: Latest N all-time — 不限日期區間，取最新 @Limit 筆
             const string sqlFallback =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics
@@ -144,11 +140,15 @@ namespace DapperMySqlCrudExample.Repositories
 
             if (transaction != null)
             {
-                var rows = transaction.Connection.Query<SiteMeanRow>(sqlRecent, p, transaction).ToList();
+                var rows = transaction
+                    .Connection.Query<SiteMeanRow>(sqlRecent, p, transaction)
+                    .ToList();
                 if (rows.Count == PreferredHistoryCount)
                     return rows;
 
-                return transaction.Connection.Query<SiteMeanRow>(sqlFallback, p, transaction).ToList();
+                return transaction
+                    .Connection.Query<SiteMeanRow>(sqlFallback, p, transaction)
+                    .ToList();
             }
 
             using (var conn = _factory.Create())
@@ -163,9 +163,11 @@ namespace DapperMySqlCrudExample.Repositories
 
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO site_test_statistics
                     (lots_info_id, program, site_id, test_item_name,
                      mean_value, max_value, min_value, std_value,
@@ -187,9 +189,11 @@ namespace DapperMySqlCrudExample.Repositories
 
         public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE site_test_statistics
                 SET    lots_info_id   = @LotsInfoId,
                        program        = @Program,
@@ -231,12 +235,15 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
 
+        /// <remarks>
+        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
+        /// 僅適合資料量可控的場景或管理用途。
+        /// </remarks>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM site_test_statistics";
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<int>(sql);
         }
-
     }
 }

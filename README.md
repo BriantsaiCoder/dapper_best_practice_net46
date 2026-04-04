@@ -103,6 +103,8 @@ dapper_best_practice_net46.sln
 - 同一交易中的 Commit / Rollback
 - `DetectionSpecService` 的 SITE_MEAN 計算範例
 
+> ⚠️ **注意**：`--sample` 會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。
+
 Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 ## 核心設計原則
@@ -178,6 +180,25 @@ Repository 保持單一職責：
 ## Schema 重點
 
 [schema.sql](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Sql/schema.sql) 包含 9 張核心表；[schema-legacy.sql](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Sql/schema-legacy.sql) 提供 `lots_info` 相依表。
+
+### 資料表關聯圖
+
+```mermaid
+erDiagram
+    lots_info ||--o{ anomaly_lots : ""
+    lots_info ||--o{ site_test_statistics : ""
+    lots_info ||--o{ good_lots : ""
+    detection_methods ||--o{ anomaly_lots : ""
+    detection_methods ||--o{ detection_specs : ""
+    detection_methods ||--o{ good_lots : ""
+    anomaly_lots ||--o{ anomaly_test_items : ""
+    anomaly_lots ||--o{ anomaly_lot_process_mapping : ""
+    anomaly_test_items ||--o{ anomaly_units : ""
+    anomaly_units ||--o{ anomaly_unit_process_mapping : ""
+```
+
+> `lots_info` 來自 schema-legacy.sql（既有系統），其餘 9 張表由 schema.sql 定義。
+> 所有 FK 均設定 `ON DELETE CASCADE ON UPDATE CASCADE`。
 
 ### 重要索引
 

@@ -22,7 +22,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id             AS Id,
             method_key     AS MethodKey,
             method_name    AS MethodName,
@@ -30,6 +31,7 @@ namespace DapperMySqlCrudExample.Repositories
             has_unit_level AS HasUnitLevel,
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
+
         /// <summary>
         /// 取得全部偵測方法。
         /// detection_methods 為低筆數主檔表，保留此方法作為 lookup 與教學用途。
@@ -47,11 +49,16 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
+
         public DetectionMethod GetByKey(string methodKey)
         {
-            var sql = $"SELECT {SelectColumns} FROM detection_methods WHERE method_key = @MethodKey";
+            var sql =
+                $"SELECT {SelectColumns} FROM detection_methods WHERE method_key = @MethodKey";
             using (var conn = _factory.Create())
-                return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { MethodKey = methodKey });
+                return conn.QueryFirstOrDefault<DetectionMethod>(
+                    sql,
+                    new { MethodKey = methodKey }
+                );
         }
 
         /// <summary>
@@ -62,7 +69,11 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "SELECT id FROM detection_methods WHERE method_key = @MethodKey";
 
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<byte?>(sql, new { MethodKey = methodKey }, transaction);
+                return transaction.Connection.ExecuteScalar<byte?>(
+                    sql,
+                    new { MethodKey = methodKey },
+                    transaction
+                );
 
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<byte?>(sql, new { MethodKey = methodKey });
@@ -70,9 +81,11 @@ namespace DapperMySqlCrudExample.Repositories
 
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO detection_methods
                     (method_key, method_name, has_test_item, has_unit_level)
                 VALUES
@@ -85,11 +98,14 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<byte>(sql, entity);
         }
+
         public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE detection_methods
                 SET    method_key     = @MethodKey,
                        method_name    = @MethodName,
@@ -103,6 +119,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(byte id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_methods WHERE id = @Id";
@@ -113,12 +130,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(byte id)
         {
             const string sql = "SELECT 1 FROM detection_methods WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
+
+        /// <remarks>
+        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
+        /// 僅適合資料量可控的場景或管理用途。
+        /// </remarks>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods";

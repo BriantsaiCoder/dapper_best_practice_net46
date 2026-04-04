@@ -22,7 +22,8 @@ namespace DapperMySqlCrudExample.Repositories
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
-        private const string SelectColumns = @"
+        private const string SelectColumns =
+            @"
             id               AS Id,
             anomaly_lot_id   AS AnomalyLotId,
             station_name     AS StationName,
@@ -30,23 +31,32 @@ namespace DapperMySqlCrudExample.Repositories
             process_time     AS ProcessTime,
             created_at       AS CreatedAt,
             updated_at       AS UpdatedAt";
+
         public AnomalyLotProcessMapping GetById(long id)
         {
             var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE id = @Id";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<AnomalyLotProcessMapping>(sql, new { Id = id });
         }
+
         public IEnumerable<AnomalyLotProcessMapping> GetByAnomalyLotId(long anomalyLotId)
         {
-            var sql = $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE anomaly_lot_id = @AnomalyLotId";
+            var sql =
+                $"SELECT {SelectColumns} FROM anomaly_lot_process_mapping WHERE anomaly_lot_id = @AnomalyLotId";
             using (var conn = _factory.Create())
-                return conn.Query<AnomalyLotProcessMapping>(sql, new { AnomalyLotId = anomalyLotId });
+                return conn.Query<AnomalyLotProcessMapping>(
+                    sql,
+                    new { AnomalyLotId = anomalyLotId }
+                );
         }
+
         public long Insert(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 INSERT INTO anomaly_lot_process_mapping
                     (anomaly_lot_id, station_name, equipment_id, process_time)
                 VALUES
@@ -59,11 +69,14 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.ExecuteScalar<long>(sql, entity);
         }
+
         public bool Update(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
-            const string sql = @"
+            const string sql =
+                @"
                 UPDATE anomaly_lot_process_mapping
                 SET    anomaly_lot_id = @AnomalyLotId,
                        station_name   = @StationName,
@@ -77,6 +90,7 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, entity) > 0;
         }
+
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_lot_process_mapping WHERE id = @Id";
@@ -87,12 +101,18 @@ namespace DapperMySqlCrudExample.Repositories
             using (var conn = _factory.Create())
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
+
         public bool Exists(long id)
         {
             const string sql = "SELECT 1 FROM anomaly_lot_process_mapping WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
         }
+
+        /// <remarks>
+        /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
+        /// 僅適合資料量可控的場景或管理用途。
+        /// </remarks>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM anomaly_lot_process_mapping";

@@ -14,8 +14,8 @@ dotnet build dapper_best_practice_net46.sln
 # 執行啟動檢查（確認 App.config 或環境變數已設定連線字串）
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 
-# 執行 CRUD 展示（需帶 --demo 旗標）
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --demo
+# 執行 CRUD 展示（需帶 --sample 旗標）
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --sample
 
 # 亦可用 MSBuild
 msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
@@ -39,7 +39,7 @@ Program.cs
    └─ 啟動檢查 / composition root
        ├─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
        │   └─ Dapper 驗證連線 → MySQL DB
-       └─ CrudDemoRunner（--demo 旗標時執行）
+       └─ CrudSampleRunner（--sample 旗標時執行）
            ├─ XxxRepository（sealed 具體類別，接收 DbConnectionFactory）
            │   └─ Dapper 查詢 / 寫入 → MySQL DB
            └─ XxxService（sealed 具體類別，接收 DbConnectionFactory + Repository）
@@ -53,7 +53,7 @@ Program.cs
 | 模型     | `Models/`         | Dapper 對應 POCO（無 ORM Attribute）+ sealed DTO          |
 | 資料存取 | `Repositories/`   | sealed 具體類別，共 9 個，純 CRUD                         |
 | 業務邏輯 | `Services/`       | sealed 具體類別，跨 Repository 業務編排（交易、計算）      |
-| 展示     | `Demos/`          | `CrudDemoRunner`，3 個 Demo 方法（非必要）                |
+| 展示     | `Samples/`        | `CrudSampleRunner`，3 個 Sample 方法（非必要）            |
 | 資料庫   | `Sql/`            | 核心 9 張表 DDL + 既有系統整合表 DDL                      |
 
 ---
