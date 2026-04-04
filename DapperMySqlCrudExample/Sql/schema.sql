@@ -37,7 +37,7 @@ INSERT INTO detection_methods (method_key, method_name, has_test_item, has_unit_
 -- 2. 異常批號主表
 CREATE TABLE anomaly_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    lots_info_id INT(11) NOT NULL,
+    lots_info_id INT NOT NULL,
     detection_method_id TINYINT NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
@@ -140,7 +140,7 @@ CREATE TABLE detection_specs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     program VARCHAR(100) NOT NULL,
     test_item_name VARCHAR(100),
-    site_id INT(11) UNSIGNED NOT NULL,
+    site_id INT UNSIGNED NOT NULL,
     detection_method_id TINYINT NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
@@ -166,7 +166,7 @@ CREATE TABLE site_test_statistics (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
     program VARCHAR(100) NOT NULL,
-    site_id INT(11) UNSIGNED NOT NULL,
+    site_id INT UNSIGNED NOT NULL,
     test_item_name VARCHAR(100) NOT NULL,
     mean_value DECIMAL(18,9),
     max_value DECIMAL(18,9),
