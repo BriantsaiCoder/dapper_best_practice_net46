@@ -84,15 +84,15 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>
-        /// 雙策略查詢：優先取最近 1 個月內的最新 30 筆資料；
-        /// 若不足 30 筆則回退為不限時間範圍的最新 30 筆。
+        /// 取最新 <see cref="PreferredHistoryCount"/> 筆有效資料用於 SITE_MEAN 規格計算。
+        /// 若近期資料充足，結果自然已全為近期；不足時則涵蓋更早的歷史，
+        /// 與分兩次查詢結果相同但只需一次 DB round-trip。
         /// 支援外部交易參與，遵循標準 Repository 模式。
         /// </summary>
         public IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
             string programName,
             uint siteId,
             string testItemName,
-            DateTime sinceTime,
             IDbTransaction transaction = null
         )
         {
@@ -109,25 +109,10 @@ namespace DapperMySqlCrudExample.Repositories
                 ProgramName = programName,
                 SiteId = siteId,
                 TestItemName = testItemName,
-                SinceTime = sinceTime,
                 Limit = PreferredHistoryCount,
             };
 
-            // Strategy: Recent N — 優先取最近 @SinceTime 內的最新 @Limit 筆
-            const string sqlRecent =
-                @"SELECT mean_value AS MeanValue, start_time AS StartTime
-                  FROM   site_test_statistics
-                  WHERE  program        = @ProgramName
-                    AND  site_id        = @SiteId
-                    AND  test_item_name = @TestItemName
-                    AND  start_time    >= @SinceTime
-                    AND  start_time    IS NOT NULL
-                    AND  mean_value    IS NOT NULL
-                  ORDER BY start_time DESC
-                  LIMIT @Limit";
-
-            // Fallback: Latest N all-time — 不限日期區間，取最新 @Limit 筆
-            const string sqlFallback =
+            const string sql =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics
                   WHERE  program        = @ProgramName
@@ -139,26 +124,10 @@ namespace DapperMySqlCrudExample.Repositories
                   LIMIT @Limit";
 
             if (transaction != null)
-            {
-                var rows = transaction
-                    .Connection.Query<SiteMeanRow>(sqlRecent, p, transaction)
-                    .ToList();
-                if (rows.Count == PreferredHistoryCount)
-                    return rows;
-
-                return transaction
-                    .Connection.Query<SiteMeanRow>(sqlFallback, p, transaction)
-                    .ToList();
-            }
+                return transaction.Connection.Query<SiteMeanRow>(sql, p, transaction).ToList();
 
             using (var conn = _factory.Create())
-            {
-                var rows = conn.Query<SiteMeanRow>(sqlRecent, p).ToList();
-                if (rows.Count == PreferredHistoryCount)
-                    return rows;
-
-                return conn.Query<SiteMeanRow>(sqlFallback, p).ToList();
-            }
+                return conn.Query<SiteMeanRow>(sql, p).ToList();
         }
 
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)

@@ -23,7 +23,6 @@ namespace DapperMySqlCrudExample.Services
         private readonly DetectionMethodRepository _detectionMethodRepo;
 
         private const string SiteMeanMethodKey = "SITE_MEAN";
-        private const int SiteMeanLookbackMonths = 1;
 
         public DetectionSpecService(
             DbConnectionFactory factory,
@@ -33,38 +32,40 @@ namespace DapperMySqlCrudExample.Services
         )
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _detectionSpecRepo = detectionSpecRepo ?? throw new ArgumentNullException(nameof(detectionSpecRepo));
-            _siteTestStatRepo = siteTestStatRepo ?? throw new ArgumentNullException(nameof(siteTestStatRepo));
-            _detectionMethodRepo = detectionMethodRepo ?? throw new ArgumentNullException(nameof(detectionMethodRepo));
+            _detectionSpecRepo =
+                detectionSpecRepo ?? throw new ArgumentNullException(nameof(detectionSpecRepo));
+            _siteTestStatRepo =
+                siteTestStatRepo ?? throw new ArgumentNullException(nameof(siteTestStatRepo));
+            _detectionMethodRepo =
+                detectionMethodRepo ?? throw new ArgumentNullException(nameof(detectionMethodRepo));
         }
 
         /// <summary>
         /// 依歷史 site_test_statistics 資料計算 SITE_MEAN 規格並插入 detection_specs。
-        /// 取樣策略為優先使用最近 1 個月內的最新 30 筆資料，不足時回退為最新 30 筆。
+        /// 取樣策略為取最新 30 筆有效資料進行統計。
         /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
         /// </summary>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,
-            string testItemName,
-            DateTime? referenceTime = null
+            string testItemName
         )
         {
             if (string.IsNullOrWhiteSpace(programName))
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(programName));
             if (string.IsNullOrWhiteSpace(testItemName))
-                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
+                throw new ArgumentException(
+                    "參數不可為 null、空字串或空白。",
+                    nameof(testItemName)
+                );
 
             using (var conn = _factory.Create())
             using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
             {
-                var lookbackReferenceTime = referenceTime ?? DateTime.Now;
-                var sinceTime = lookbackReferenceTime.AddMonths(-SiteMeanLookbackMonths);
                 var rows = _siteTestStatRepo.QuerySiteMeanRows(
                     programName,
                     siteId,
                     testItemName,
-                    sinceTime,
                     tx
                 );
 
@@ -104,7 +105,9 @@ namespace DapperMySqlCrudExample.Services
         /// <summary>
         /// 計算樣本平均值與標準差。
         /// </summary>
-        private static (double mean, double std) CalculateMeanAndStd(IReadOnlyList<SiteMeanRow> rows)
+        private static (double mean, double std) CalculateMeanAndStd(
+            IReadOnlyList<SiteMeanRow> rows
+        )
         {
             if (rows.Count >= 2)
             {
@@ -128,7 +131,9 @@ namespace DapperMySqlCrudExample.Services
         /// <summary>
         /// 從歷史資料中提取時間範圍（計算起迄時間）。
         /// </summary>
-        private static (DateTime start, DateTime end) ExtractTimeRange(IReadOnlyList<SiteMeanRow> rows)
+        private static (DateTime start, DateTime end) ExtractTimeRange(
+            IReadOnlyList<SiteMeanRow> rows
+        )
         {
             var timesWithValue = rows.Where(r => r.StartTime.HasValue)
                 .Select(r => r.StartTime.Value)

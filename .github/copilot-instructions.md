@@ -82,12 +82,8 @@ public sealed class FooRepository
         created_at  AS CreatedAt,
         updated_at  AS UpdatedAt";
 
-    public IEnumerable<Foo> GetAll()
-    {
-        var sql = $"SELECT {SelectColumns} FROM foos ORDER BY id";
-        using (var conn = _factory.Create())
-            return conn.Query<Foo>(sql);
-    }
+    // 此範本刻意不預設提供 GetAll()，避免被複製後造成大表全表掃描。
+    // 僅在低筆數主檔表（如 DetectionMethodRepository）才保留 GetAll()。
 
     public long Insert(Foo entity, IDbTransaction transaction = null)
     {
@@ -180,11 +176,12 @@ public sealed class FooService
         using (var conn = _factory.Create())
         using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
         {
-            var data = _fooRepo.GetSomeData(conn, tx, param);
-            // 業務計算...
-            var id = _barRepo.Insert(result, tx);
+            var foo = _fooRepo.GetByKey(param);
+            // 業務計算…
+            var bar = new Bar { FooId = foo.Id };
+            var barId = _barRepo.Insert(bar, tx);
             tx.Commit();
-            return id;
+            return barId;
         }
     }
 }

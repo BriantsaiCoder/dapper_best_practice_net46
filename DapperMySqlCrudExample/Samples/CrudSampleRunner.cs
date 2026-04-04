@@ -13,7 +13,7 @@ namespace DapperMySqlCrudExample.Samples
     /// 本類別僅供展示用途，展示如何使用 Repository 進行資料存取操作。
     /// 新工程師可參考這些示範方法了解交易與非交易模式的使用方式。
     /// </summary>
-    public static class CrudSampleRunner
+    internal static class CrudSampleRunner
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
@@ -29,7 +29,11 @@ namespace DapperMySqlCrudExample.Samples
         {
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
-            RunComputeSiteMeanSpecExample(detectionSpecService, siteTestStatisticRepository, detectionSpecRepository);
+            RunComputeSiteMeanSpecExample(
+                detectionSpecService,
+                siteTestStatisticRepository,
+                detectionSpecRepository
+            );
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -50,7 +54,8 @@ namespace DapperMySqlCrudExample.Samples
 
             // 清理可能殘留的示範資料，確保 MethodKey 唯一性
             var existing = repo.GetByKey("DEMO_NO_TX");
-            if (existing != null) repo.Delete(existing.Id);
+            if (existing != null)
+                repo.Delete(existing.Id);
 
             // ── Insert ───────────────────────────────────────────────────────
             var newMethod = new DetectionMethod
@@ -58,7 +63,7 @@ namespace DapperMySqlCrudExample.Samples
                 MethodKey = "DEMO_NO_TX",
                 MethodName = "展示用檢測方法（無交易）",
                 HasTestItem = true,
-                HasUnitLevel = false
+                HasUnitLevel = false,
             };
 
             byte newId = repo.Insert(newMethod);
@@ -67,12 +72,18 @@ namespace DapperMySqlCrudExample.Samples
 
             // ── GetById ──────────────────────────────────────────────────────
             var inserted = repo.GetById(newId);
-            Console.WriteLine($"  [GetById] 查詢結果 → MethodName={inserted?.MethodName}, HasTestItem={inserted?.HasTestItem}");
+            Console.WriteLine(
+                $"  [GetById] 查詢結果 → MethodName={inserted?.MethodName}, HasTestItem={inserted?.HasTestItem}"
+            );
 
             // ── Update ───────────────────────────────────────────────────────
             inserted.MethodName = "展示用檢測方法（無交易）— 已更新";
             bool updated = repo.Update(inserted);
-            _logger.Info("RunNonTransactionExample: 更新 DetectionMethod，Id={Id}, 結果={Result}", newId, updated);
+            _logger.Info(
+                "RunNonTransactionExample: 更新 DetectionMethod，Id={Id}, 結果={Result}",
+                newId,
+                updated
+            );
             Console.WriteLine($"  [Update] 更新成功={updated}");
 
             // ── GetById after update ─────────────────────────────────────────
@@ -91,7 +102,11 @@ namespace DapperMySqlCrudExample.Samples
 
             // ── Delete ───────────────────────────────────────────────────────
             bool deleted = repo.Delete(newId);
-            _logger.Info("RunNonTransactionExample: 刪除 DetectionMethod，Id={Id}, 結果={Result}", newId, deleted);
+            _logger.Info(
+                "RunNonTransactionExample: 刪除 DetectionMethod，Id={Id}, 結果={Result}",
+                newId,
+                deleted
+            );
             Console.WriteLine($"  [Delete] 刪除成功={deleted}");
 
             Console.WriteLine("  範例一完成。");
@@ -117,14 +132,16 @@ namespace DapperMySqlCrudExample.Samples
             foreach (var code in new[] { "TX_DEMO_A1", "TX_DEMO_A2", "TX_DEMO_B" })
             {
                 var e = repo.GetByKey(code);
-                if (e != null) repo.Delete(e.Id);
+                if (e != null)
+                    repo.Delete(e.Id);
             }
 
             // ── (A) Commit 場景 ───────────────────────────────────────────────
             Console.WriteLine();
             Console.WriteLine("  ── (A) Commit 場景：同一交易內新增兩筆，全部成功後提交 ──");
 
-            byte idA1 = 0, idA2 = 0;
+            byte idA1 = 0,
+                idA2 = 0;
             using (var conn = connectionFactory.Create())
             using (var tx = conn.BeginTransaction())
             {
@@ -135,22 +152,26 @@ namespace DapperMySqlCrudExample.Samples
                         MethodKey = "TX_DEMO_A1",
                         MethodName = "交易示範 A1",
                         HasTestItem = true,
-                        HasUnitLevel = false
+                        HasUnitLevel = false,
                     };
                     idA1 = repo.Insert(methodA1, tx);
                     _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
-                    Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}");
+                    Console.WriteLine(
+                        $"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}"
+                    );
 
                     var methodA2 = new DetectionMethod
                     {
                         MethodKey = "TX_DEMO_A2",
                         MethodName = "交易示範 A2",
                         HasTestItem = false,
-                        HasUnitLevel = true
+                        HasUnitLevel = true,
                     };
                     idA2 = repo.Insert(methodA2, tx);
                     _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
-                    Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}");
+                    Console.WriteLine(
+                        $"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}"
+                    );
 
                     tx.Commit();
                     _logger.Info("RunTransactionExample(A): Commit 成功");
@@ -168,7 +189,9 @@ namespace DapperMySqlCrudExample.Samples
             // 驗證：交易提交後可用一般連線查詢
             var verifyA1 = repo.GetById(idA1);
             var verifyA2 = repo.GetById(idA2);
-            Console.WriteLine($"  [TX-A Verify] A1={verifyA1?.MethodName}, A2={verifyA2?.MethodName}");
+            Console.WriteLine(
+                $"  [TX-A Verify] A1={verifyA1?.MethodName}, A2={verifyA2?.MethodName}"
+            );
 
             // 清理測試資料
             repo.Delete(idA1);
@@ -177,7 +200,9 @@ namespace DapperMySqlCrudExample.Samples
 
             // ── (B) Rollback 場景 ────────────────────────────────────────────
             Console.WriteLine();
-            Console.WriteLine("  ── (B) Rollback 場景：交易內新增一筆後模擬異常，驗證資料未寫入 ──");
+            Console.WriteLine(
+                "  ── (B) Rollback 場景：交易內新增一筆後模擬異常，驗證資料未寫入 ──"
+            );
 
             byte idB = 0;
             using (var conn = connectionFactory.Create())
@@ -190,7 +215,7 @@ namespace DapperMySqlCrudExample.Samples
                         MethodKey = "TX_DEMO_B",
                         MethodName = "交易示範 B（應被 Rollback）",
                         HasTestItem = false,
-                        HasUnitLevel = false
+                        HasUnitLevel = false,
                     };
                     idB = repo.Insert(methodB, tx);
                     _logger.Info("RunTransactionExample(B): Insert B Id={Id}（尚未 Commit）", idB);
@@ -210,7 +235,10 @@ namespace DapperMySqlCrudExample.Samples
             // 驗證：Rollback 後應查不到該筆資料
             var verifyB = repo.GetById(idB);
             bool wasRolledBack = verifyB == null;
-            _logger.Info("RunTransactionExample(B): Rollback 驗證，資料不存在={Result}", wasRolledBack);
+            _logger.Info(
+                "RunTransactionExample(B): Rollback 驗證，資料不存在={Result}",
+                wasRolledBack
+            );
             Console.WriteLine($"  [TX-B Verify] Rollback 驗證：資料確實不存在={wasRolledBack}");
 
             Console.WriteLine();
@@ -285,7 +313,11 @@ namespace DapperMySqlCrudExample.Samples
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn(ex, "RunComputeSiteMeanSpecExample: 清理示範資料失敗，Id={Id}", newSpecId);
+                        _logger.Warn(
+                            ex,
+                            "RunComputeSiteMeanSpecExample: 清理示範資料失敗，Id={Id}",
+                            newSpecId
+                        );
                         Console.WriteLine($"  [Cleanup] 清理失敗（非致命錯誤）");
                     }
                 }

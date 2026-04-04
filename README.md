@@ -166,15 +166,14 @@ Repository 保持單一職責：
 
 ### 5. SITE_MEAN 取樣策略已做固定上限
 
-[SiteTestStatisticRepository.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 現在策略是：
+[SiteTestStatisticRepository.cs](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 策略為取最新 30 筆有效資料（`mean_value IS NOT NULL` 且 `start_time IS NOT NULL`），以單一查詢完成。
 
-1. 先取最近 1 個月內的最新 30 筆
-2. 若不足 30 筆，回退為不限時間範圍的最新 30 筆
+若近期資料充足，結果自然全為近期；若不足則涵蓋更早的歷史。
 
 這樣做的目的：
 
 - 避免一次把整個月的資料全部撈進記憶體
-- 讓查詢筆數上限固定
+- 讓查詢筆數上限固定，只需一次 DB round-trip
 - 搭配 `(program, site_id, test_item_name, start_time)` 索引更容易吃到效能優勢
 
 ## Schema 重點
@@ -226,6 +225,8 @@ ALTER TABLE detection_methods
 4. 在 `Repositories/` 新增 Repository，只實作真正需要的查詢
 5. 若流程跨多個 Repository，再新增 `Services/` 類別協調
 
+> 📄 完整的程式碼範本與慯例規則請參閱 [`.github/copilot-instructions.md`](.github/copilot-instructions.md)。
+
 ### Repository 實作原則
 
 - 使用參數化查詢
@@ -242,6 +243,17 @@ ALTER TABLE detection_methods
 2. `App.config` 的 `DefaultConnection`
 
 正式環境建議用環境變數或祕密管理工具，不要把帳密寫死在設定檔。
+
+## 日誌設定
+
+[NLog.config](/Users/pochientsai/Downloads/dapper_best_practice_net46/DapperMySqlCrudExample/NLog.config) 定義兩個輸出目標：
+
+| 目標 | 等級 | 說明 |
+|------|------|------|
+| Console | Info 以上 | 開發時即時檢視 |
+| File | Warn 以上 | `logs/` 目錄下每日輪替，保留 30 天 |
+
+程式碼中使用 `NLog.LogManager.GetCurrentClassLogger()` 取得 logger，不引入額外抽象。
 
 ## 目前 solution 現況
 
