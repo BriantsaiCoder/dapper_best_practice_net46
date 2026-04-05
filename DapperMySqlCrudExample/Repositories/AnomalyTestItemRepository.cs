@@ -35,6 +35,7 @@ namespace DapperMySqlCrudExample.Repositories
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
 
+        /// <summary>依主鍵查詢單筆資料。</summary>
         public AnomalyTestItem GetById(long id)
         {
             const string sql =
@@ -43,6 +44,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<AnomalyTestItem>(sql, new { Id = id });
         }
 
+        /// <summary>依 anomaly_lot_id 查詢多筆資料。</summary>
         public IReadOnlyList<AnomalyTestItem> GetByAnomalyLotId(long anomalyLotId)
         {
             const string sql =
@@ -54,6 +56,7 @@ namespace DapperMySqlCrudExample.Repositories
                     .ToList();
         }
 
+        /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
         public long Insert(AnomalyTestItem entity, IDbTransaction transaction = null)
         {
             if (entity == null)
@@ -78,6 +81,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
+        /// <summary>更新一筆資料。</summary>
         public bool Update(AnomalyTestItem entity, IDbTransaction transaction = null)
         {
             if (entity == null)
@@ -102,6 +106,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, entity) > 0;
         }
 
+        /// <summary>依主鍵刪除一筆資料。</summary>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM anomaly_test_items WHERE id = @Id";
@@ -113,6 +118,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
 
+        /// <summary>檢查指定主鍵的資料是否存在。</summary>
         public bool Exists(long id)
         {
             const string sql = "SELECT 1 FROM anomaly_test_items WHERE id = @Id LIMIT 1";

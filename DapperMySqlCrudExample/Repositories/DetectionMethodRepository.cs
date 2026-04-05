@@ -44,6 +44,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Query<DetectionMethod>(sql).ToList();
         }
 
+        /// <summary>依主鍵查詢單筆資料。</summary>
         public DetectionMethod GetById(byte id)
         {
             const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE id = @Id";
@@ -51,6 +52,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
         }
 
+        /// <summary>依 method_key 查詢單筆偵測方法。</summary>
         public DetectionMethod GetByKey(string methodKey)
         {
             if (string.IsNullOrWhiteSpace(methodKey))
@@ -86,6 +88,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<byte?>(sql, new { MethodKey = methodKey });
         }
 
+        /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null)
@@ -106,6 +109,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<byte>(sql, entity);
         }
 
+        /// <summary>更新一筆資料。</summary>
         public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null)
@@ -127,6 +131,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, entity) > 0;
         }
 
+        /// <summary>依主鍵刪除一筆資料。</summary>
         public bool Delete(byte id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_methods WHERE id = @Id";
@@ -138,6 +143,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
 
+        /// <summary>檢查指定主鍵的資料是否存在。</summary>
         public bool Exists(byte id)
         {
             const string sql = "SELECT 1 FROM detection_methods WHERE id = @Id LIMIT 1";
@@ -149,6 +155,7 @@ namespace DapperMySqlCrudExample.Repositories
         /// ⚠ 注意：COUNT(1) 在大量資料表上可能導致全表掃描，
         /// 僅適合資料量可控的場景或管理用途。
         /// </remarks>
+        /// <summary>取得資料總筆數。僅適用低筆數 lookup table。</summary>
         public int GetCount()
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods";

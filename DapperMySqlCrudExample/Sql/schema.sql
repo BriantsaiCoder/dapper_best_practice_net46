@@ -139,6 +139,7 @@ CREATE TABLE anomaly_unit_process_mapping (
 CREATE TABLE detection_specs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     program VARCHAR(100) NOT NULL,
+    -- NULL when detection method does not use test items (e.g. YIELD)
     test_item_name VARCHAR(100),
     site_id INT UNSIGNED NOT NULL,
     detection_method_id TINYINT NOT NULL,

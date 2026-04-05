@@ -113,12 +113,16 @@ namespace DapperMySqlCrudExample.Services
             IReadOnlyList<SiteMeanRow> rows
         )
         {
+            // MathNet.Numerics Statistics API 接受 double；
+            // DECIMAL(18,9) 最多 18 位有效數字，double 可精確表達 15-16 位，
+            // 在本專案的量測數值範圍內不會造成精度遺失。
             var values = rows.Select(r => (double)r.MeanValue).ToList();
             return (Statistics.Mean(values), Statistics.StandardDeviation(values));
         }
 
         /// <summary>
         /// 計算管制上下限（UCL/LCL）。使用 ±6σ 規則。
+        /// double → decimal 轉換同 <see cref="CalculateMeanAndStd"/> 的精度說明。
         /// </summary>
         private static (decimal ucl, decimal lcl) CalculateControlLimits(double mean, double std)
         {

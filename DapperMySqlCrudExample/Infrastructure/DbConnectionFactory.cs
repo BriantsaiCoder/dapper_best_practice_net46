@@ -25,6 +25,7 @@ namespace DapperMySqlCrudExample.Infrastructure
             if (!string.IsNullOrWhiteSpace(envConnStr))
             {
                 _connectionString = envConnStr;
+                _logger.Info("連線字串來源：環境變數 {EnvVar}", EnvVarName);
                 return;
             }
 
@@ -35,6 +36,7 @@ namespace DapperMySqlCrudExample.Infrastructure
                 );
 
             _connectionString = entry.ConnectionString;
+            _logger.Info("連線字串來源：App.config DefaultConnection");
         }
 
         public DbConnectionFactory(string connectionString)

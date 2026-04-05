@@ -40,6 +40,7 @@ namespace DapperMySqlCrudExample.Repositories
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
 
+        /// <summary>依主鍵查詢單筆資料。</summary>
         public DetectionSpec GetById(long id)
         {
             const string sql = "SELECT " + SelectColumns + " FROM detection_specs WHERE id = @Id";
@@ -47,6 +48,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
         }
 
+        /// <summary>依 program 與 detection_method_id 查詢多筆資料。</summary>
+        // 業務上同一 program + detection_method_id 組合的 spec 筆數有限，
+        // 因此不加 LIMIT。若未來筆數可能大幅增長，請改為分頁查詢。
         public IReadOnlyList<DetectionSpec> GetByProgramAndMethodId(
             string program,
             byte detectionMethodId
@@ -72,6 +76,7 @@ namespace DapperMySqlCrudExample.Repositories
                     .ToList();
         }
 
+        /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null)
@@ -97,6 +102,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.ExecuteScalar<long>(sql, entity);
         }
 
+        /// <summary>更新一筆資料。</summary>
         public bool Update(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null)
@@ -123,6 +129,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, entity) > 0;
         }
 
+        /// <summary>依主鍵刪除一筆資料。</summary>
         public bool Delete(long id, IDbTransaction transaction = null)
         {
             const string sql = "DELETE FROM detection_specs WHERE id = @Id";
@@ -134,6 +141,7 @@ namespace DapperMySqlCrudExample.Repositories
                 return conn.Execute(sql, new { Id = id }) > 0;
         }
 
+        /// <summary>檢查指定主鍵的資料是否存在。</summary>
         public bool Exists(long id)
         {
             const string sql = "SELECT 1 FROM detection_specs WHERE id = @Id LIMIT 1";
