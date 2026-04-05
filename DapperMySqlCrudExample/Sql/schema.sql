@@ -105,7 +105,6 @@ CREATE TABLE anomaly_lot_process_mapping (
     process_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_lot (anomaly_lot_id),
     INDEX idx_equipment (equipment_id),
     INDEX idx_station_equipment (station_name, equipment_id),
     CONSTRAINT fk_lot_process_anomaly_lot
@@ -126,7 +125,6 @@ CREATE TABLE anomaly_unit_process_mapping (
     equipment_id VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_unit (anomaly_unit_id),
     INDEX idx_boat_position (boat_id, position_x, position_y),
     INDEX idx_station_equipment (station_name, equipment_id),
     CONSTRAINT fk_unit_process_anomaly_unit
@@ -153,10 +151,6 @@ CREATE TABLE detection_specs (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_program_method (program, detection_method_id),
     INDEX idx_program_item_method (program, test_item_name, detection_method_id),
-    INDEX idx_site_id (site_id),
-    -- idx_calc_end_time 已移除：當前無查詢使用 spec_calc_end_time 做 WHERE/ORDER BY，
-    -- 保留 idx_calc_time 供未來時間範圍查詢使用。
-    INDEX idx_calc_time (spec_calc_start_time, spec_calc_end_time),
     CONSTRAINT fk_specs_detection_method
         FOREIGN KEY (detection_method_id)
         REFERENCES detection_methods(id)
@@ -181,11 +175,6 @@ CREATE TABLE site_test_statistics (
     end_time   DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    -- idx_site：雖然目前 Repository 查詢皆帶 program，但保留供未來僅以 site_id 查詢的場景。
-    INDEX idx_site (site_id),
-    -- idx_program_item：保留供未來不帶 site_id 的 program + test_item_name 查詢。
-    -- 若確認不需要，可移除以降低寫入開銷。
-    INDEX idx_program_item (program, test_item_name),
     INDEX idx_start_time (start_time),
     INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time),
     UNIQUE INDEX unq_lot_site_item (lots_info_id, site_id, test_item_name),
@@ -226,4 +215,3 @@ CREATE TABLE good_lots (
 --   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
 --
 -- ALTER TABLE site_test_statistics ADD INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time);
--- ALTER TABLE detection_specs ADD INDEX idx_site_id (site_id);

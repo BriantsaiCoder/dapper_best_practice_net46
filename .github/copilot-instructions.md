@@ -39,10 +39,10 @@ Program.cs
    └─ 啟動檢查 / composition root
        ├─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
        │   └─ Dapper 驗證連線 → MySQL DB
-       └─ CrudSampleRunner（--sample 旗標時執行）
-           ├─ XxxRepository（sealed 具體類別，接收 DbConnectionFactory）
+       └─ CrudSampleRunner（--sample 旗標時執行，僅接收 DbConnectionFactory）
+           ├─ XxxRepository（內部自行建構，sealed 具體類別）
            │   └─ Dapper 查詢 / 寫入 → MySQL DB
-           └─ XxxService（sealed 具體類別，接收 DbConnectionFactory + Repository）
+           └─ XxxService（內部自行建構，sealed 具體類別）
                └─ 業務邏輯編排（交易、計算、跨 Repository 協調）
 ```
 
@@ -253,7 +253,7 @@ public sealed class FooService
 2. **`Models/Foo.cs`** — 建立 POCO，屬性對應 Schema 欄位（可空欄位用 `?`）
 3. **`Repositories/FooRepository.cs`** — sealed 實作，含 `SelectColumns` 常數，CUD 支援可選 `IDbTransaction`
 4. **`Services/FooService.cs`**（選擇性） — 若涉及跨 Repository 業務邏輯或交易編排，新增 Service 層
-5. **應用工作流程** — 在 `Program.cs` 的 composition root 進行手動 DI 組裝
+5. **應用工作流程** — 在 `Program.cs` 的 composition root 進行手動 DI 組裝（`CrudSampleRunner` 為展示用途，內部自行建構相依，不經由 `Program.cs` 注入）
 
 ---
 

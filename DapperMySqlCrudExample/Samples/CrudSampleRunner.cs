@@ -20,15 +20,21 @@ namespace DapperMySqlCrudExample.Samples
         /// <summary>
         /// 執行所有 sample。
         /// </summary>
-        public static void RunAllSamples(
-            DbConnectionFactory connectionFactory,
-            DetectionSpecRepository detectionSpecRepository,
-            SiteTestStatisticRepository siteTestStatisticRepository,
-            DetectionSpecService detectionSpecService
-        )
+        public static void RunAllSamples(DbConnectionFactory connectionFactory)
         {
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
+
+            var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
+            var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
+            var detectionMethodRepository = new DetectionMethodRepository(connectionFactory);
+            var detectionSpecService = new DetectionSpecService(
+                connectionFactory,
+                detectionSpecRepository,
+                siteTestStatisticRepository,
+                detectionMethodRepository
+            );
+
             RunComputeSiteMeanSpecExample(
                 detectionSpecService,
                 siteTestStatisticRepository,
@@ -137,6 +143,8 @@ namespace DapperMySqlCrudExample.Samples
             }
 
             // ── (A) Commit 場景 ───────────────────────────────────────────────
+            // using 區塊結束時，若 Commit() 未被呼叫，MySqlTransaction.Dispose()
+            // 會自動 Rollback。因此正常路徑只需呼叫 Commit()，無需顯式 try/catch。
             Console.WriteLine();
             Console.WriteLine("  ── (A) Commit 場景：同一交易內新增兩筆，全部成功後提交 ──");
 
@@ -145,45 +153,31 @@ namespace DapperMySqlCrudExample.Samples
             using (var conn = connectionFactory.Create())
             using (var tx = conn.BeginTransaction())
             {
-                try
+                var methodA1 = new DetectionMethod
                 {
-                    var methodA1 = new DetectionMethod
-                    {
-                        MethodKey = "TX_DEMO_A1",
-                        MethodName = "交易示範 A1",
-                        HasTestItem = true,
-                        HasUnitLevel = false,
-                    };
-                    idA1 = repo.Insert(methodA1, tx);
-                    _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
-                    Console.WriteLine(
-                        $"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}"
-                    );
+                    MethodKey = "TX_DEMO_A1",
+                    MethodName = "交易示範 A1",
+                    HasTestItem = true,
+                    HasUnitLevel = false,
+                };
+                idA1 = repo.Insert(methodA1, tx);
+                _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
+                Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}");
 
-                    var methodA2 = new DetectionMethod
-                    {
-                        MethodKey = "TX_DEMO_A2",
-                        MethodName = "交易示範 A2",
-                        HasTestItem = false,
-                        HasUnitLevel = true,
-                    };
-                    idA2 = repo.Insert(methodA2, tx);
-                    _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
-                    Console.WriteLine(
-                        $"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}"
-                    );
-
-                    tx.Commit();
-                    _logger.Info("RunTransactionExample(A): Commit 成功");
-                    Console.WriteLine("  [TX-A Commit] 交易提交成功。");
-                }
-                catch (Exception ex)
+                var methodA2 = new DetectionMethod
                 {
-                    tx.Rollback();
-                    _logger.Warn(ex, "RunTransactionExample(A): Rollback");
-                    Console.Error.WriteLine($"  [TX-A Rollback] 例外：{ex.Message}");
-                    throw;
-                }
+                    MethodKey = "TX_DEMO_A2",
+                    MethodName = "交易示範 A2",
+                    HasTestItem = false,
+                    HasUnitLevel = true,
+                };
+                idA2 = repo.Insert(methodA2, tx);
+                _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
+                Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}");
+
+                tx.Commit();
+                _logger.Info("RunTransactionExample(A): Commit 成功");
+                Console.WriteLine("  [TX-A Commit] 交易提交成功。");
             }
 
             // 驗證：交易提交後可用一般連線查詢

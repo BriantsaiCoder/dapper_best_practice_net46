@@ -1,9 +1,7 @@
 using System;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
-using DapperMySqlCrudExample.Repositories;
 using DapperMySqlCrudExample.Samples;
-using DapperMySqlCrudExample.Services;
 using NLog;
 
 namespace DapperMySqlCrudExample
@@ -40,28 +38,7 @@ namespace DapperMySqlCrudExample
                 if (shouldRunSample)
                 {
                     Console.WriteLine("已啟用 sample 模式，開始執行資料存取示範。");
-
-                    var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
-                    var siteTestStatisticRepository = new SiteTestStatisticRepository(
-                        connectionFactory
-                    );
-                    var detectionMethodRepository = new DetectionMethodRepository(
-                        connectionFactory
-                    );
-
-                    var detectionSpecService = new DetectionSpecService(
-                        connectionFactory,
-                        detectionSpecRepository,
-                        siteTestStatisticRepository,
-                        detectionMethodRepository
-                    );
-
-                    CrudSampleRunner.RunAllSamples(
-                        connectionFactory,
-                        detectionSpecRepository,
-                        siteTestStatisticRepository,
-                        detectionSpecService
-                    );
+                    CrudSampleRunner.RunAllSamples(connectionFactory);
                 }
                 else
                 {
