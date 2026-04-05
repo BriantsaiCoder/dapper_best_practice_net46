@@ -25,7 +25,7 @@ namespace DapperMySqlCrudExample
                 return 0;
             }
 
-            var shouldRunSample = HasArgument(args, "--sample", "--demo");
+            var shouldRunSample = HasArgument(args, "--sample");
 
             try
             {
@@ -96,7 +96,7 @@ namespace DapperMySqlCrudExample
             Console.WriteLine();
             Console.WriteLine("選項：");
             Console.WriteLine("  （無參數）   啟動檢查模式，僅驗證資料庫連線");
-            Console.WriteLine("  --sample     執行 CRUD sample（--demo 仍可作為相容別名）");
+            Console.WriteLine("  --sample     執行 CRUD sample");
             Console.WriteLine("  --help, -h   顯示此說明");
         }
     }

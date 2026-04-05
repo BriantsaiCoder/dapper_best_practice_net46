@@ -39,7 +39,7 @@ export MYSQL_CONNECTION_STRING="Server=localhost;Database=app_db;Uid=root;Pwd=yo
 # 僅驗證資料庫連線
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 
-# 執行 sample（--demo 仍保留為相容別名）
+# 執行 sample
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --sample
 
 # 顯示說明

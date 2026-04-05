@@ -49,8 +49,10 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>依 program 與 detection_method_id 查詢多筆資料。</summary>
-        // 業務上同一 program + detection_method_id 組合的 spec 筆數有限，
-        // 因此不加 LIMIT。若未來筆數可能大幅增長，請改為分頁查詢。
+        /// <remarks>
+        /// 業務上同一組合的 spec 筆數有限，LIMIT 1000 為防禦性上限。
+        /// 若未來筆數可能大幅增長，請改為分頁查詢。
+        /// </remarks>
         public IReadOnlyList<DetectionSpec> GetByProgramAndMethodId(
             string program,
             byte detectionMethodId
@@ -66,7 +68,8 @@ namespace DapperMySqlCrudExample.Repositories
                    FROM   detection_specs
                    WHERE  program             = @Program
                      AND  detection_method_id = @DetectionMethodId
-                   ORDER BY id";
+                   ORDER BY id
+                   LIMIT 1000";
 
             using (var conn = _factory.Create())
                 return conn.Query<DetectionSpec>(

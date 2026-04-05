@@ -20,7 +20,7 @@ namespace DapperMySqlCrudExample.Samples
         /// <summary>
         /// 執行所有 sample。
         /// </summary>
-        public static void RunAllSamples(DbConnectionFactory connectionFactory)
+        internal static void RunAllSamples(DbConnectionFactory connectionFactory)
         {
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
