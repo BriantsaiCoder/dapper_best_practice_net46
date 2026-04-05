@@ -94,6 +94,11 @@ namespace DapperMySqlCrudExample.Repositories
         /// 與分兩次查詢結果相同但只需一次 DB round-trip。
         /// 支援外部交易參與，遵循標準 Repository 模式。
         /// </summary>
+        /// <remarks>
+        /// LIMIT 使用參數化（@Limit）而非內嵌常數：
+        /// MySQL 對參數化 LIMIT 不做常數折疊，但此查詢已有複合索引 idx_program_site_item_time
+        /// 支援 WHERE + ORDER BY，LIMIT 30 的差異可忽略。保留參數化以便未來可依情境動態調整筆數。
+        /// </remarks>
         public IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
             string programName,
             uint siteId,

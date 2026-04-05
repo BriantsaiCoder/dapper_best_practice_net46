@@ -70,6 +70,11 @@ namespace DapperMySqlCrudExample.Repositories
         /// <summary>
         /// 依 method_key 查詢主鍵 id。支援外部交易參與。
         /// </summary>
+        /// <remarks>
+        /// 通常讀取方法不接受 IDbTransaction，但本方法需在 RepeatableRead 交易中
+        /// 使用（如 DetectionSpecService.ComputeAndInsertSiteMeanSpec），
+        /// 以確保 SITE_MEAN 計算流程的讀取一致性。
+        /// </remarks>
         public byte? GetIdByKey(string methodKey, IDbTransaction transaction = null)
         {
             if (string.IsNullOrWhiteSpace(methodKey))

@@ -154,7 +154,8 @@ CREATE TABLE detection_specs (
     INDEX idx_program_method (program, detection_method_id),
     INDEX idx_program_item_method (program, test_item_name, detection_method_id),
     INDEX idx_site_id (site_id),
-    INDEX idx_calc_end_time (spec_calc_end_time),
+    -- idx_calc_end_time 已移除：當前無查詢使用 spec_calc_end_time 做 WHERE/ORDER BY，
+    -- 保留 idx_calc_time 供未來時間範圍查詢使用。
     INDEX idx_calc_time (spec_calc_start_time, spec_calc_end_time),
     CONSTRAINT fk_specs_detection_method
         FOREIGN KEY (detection_method_id)
@@ -180,7 +181,10 @@ CREATE TABLE site_test_statistics (
     end_time   DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    -- idx_site：雖然目前 Repository 查詢皆帶 program，但保留供未來僅以 site_id 查詢的場景。
     INDEX idx_site (site_id),
+    -- idx_program_item：保留供未來不帶 site_id 的 program + test_item_name 查詢。
+    -- 若確認不需要，可移除以降低寫入開銷。
     INDEX idx_program_item (program, test_item_name),
     INDEX idx_start_time (start_time),
     INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time),
