@@ -34,7 +34,7 @@
 dotnet build dapper_best_practice_net46.sln
 
 # 擇一設定連線字串
-export MYSQL_CONNECTION_STRING="Server=localhost;Database=dapper_demo;Uid=root;Pwd=your_password;"
+export MYSQL_CONNECTION_STRING="Server=localhost;Database=app_db;Uid=root;Pwd=your_password;"
 
 # 僅驗證資料庫連線
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
@@ -172,6 +172,8 @@ Repository 保持單一職責：
 - 不做統計運算
 - 不封裝跨表工作流程
 
+Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式 try/catch。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作。
+
 ### 5. SITE_MEAN 取樣策略已做固定上限
 
 [SiteTestStatisticRepository.cs](DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 策略為取最新 30 筆有效資料（`mean_value IS NOT NULL` 且 `start_time IS NOT NULL`），以單一查詢完成。
@@ -283,3 +285,14 @@ ALTER TABLE detection_methods
 - [ ] `detection_methods` 種子資料已存在：`YIELD`、`SITE_STD`、`MEAN`、`SITE_MEAN`
 - [ ] `dotnet build dapper_best_practice_net46.sln` 成功
 - [ ] `dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj` 可成功連線
+
+## 設計決策備忘
+
+### 為什麼全部使用同步 API
+
+本專案刻意不使用 `async/await`：
+
+- 目標是 .NET Framework 4.6.1 Console 應用程式，所有操作為循序執行
+- `MySql.Data` 8.x 的非同步方法在 .NET Framework 上仍為同步包裝，使用 async 無實質效能增益
+- 移除 async 後程式碼更短、堆疊追蹤更清楚、新工程師更容易理解
+- 若未來需要遷移至 ASP.NET Core 或 .NET 8+，屆時再將 Repository / Service 方法改為 async 即可
