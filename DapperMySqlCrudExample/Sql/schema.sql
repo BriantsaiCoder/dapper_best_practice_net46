@@ -19,7 +19,7 @@
 
 -- 1. 偵測方法主表
 CREATE TABLE detection_methods (
-    id TINYINT PRIMARY KEY AUTO_INCREMENT,
+    id TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     method_key VARCHAR(20) UNIQUE NOT NULL,
     method_name VARCHAR(50) NOT NULL,
     has_test_item BOOLEAN DEFAULT FALSE,
@@ -38,14 +38,13 @@ INSERT INTO detection_methods (method_key, method_name, has_test_item, has_unit_
 CREATE TABLE anomaly_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
-    detection_method_id TINYINT NOT NULL,
+    detection_method_id TINYINT UNSIGNED NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NULL,
     spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_created_at (created_at),
     UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
     CONSTRAINT fk_anomaly_lots_info
         FOREIGN KEY (lots_info_id) REFERENCES lots_info(id)
@@ -68,7 +67,6 @@ CREATE TABLE anomaly_test_items (
     spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_test_item_name (test_item_name),
     UNIQUE INDEX unq_lot_item (anomaly_lot_id, test_item_name),
     CONSTRAINT fk_test_items_anomaly_lot
         FOREIGN KEY (anomaly_lot_id)
@@ -88,7 +86,6 @@ CREATE TABLE anomaly_units (
     spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_unit (unit_id),
     UNIQUE INDEX unq_item_unit (anomaly_test_item_id, unit_id),
     CONSTRAINT fk_units_test_item
         FOREIGN KEY (anomaly_test_item_id)
@@ -105,8 +102,6 @@ CREATE TABLE anomaly_lot_process_mapping (
     process_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_equipment (equipment_id),
-    INDEX idx_station_equipment (station_name, equipment_id),
     CONSTRAINT fk_lot_process_anomaly_lot
         FOREIGN KEY (anomaly_lot_id)
         REFERENCES anomaly_lots(id)
@@ -125,8 +120,6 @@ CREATE TABLE anomaly_unit_process_mapping (
     equipment_id VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_boat_position (boat_id, position_x, position_y),
-    INDEX idx_station_equipment (station_name, equipment_id),
     CONSTRAINT fk_unit_process_anomaly_unit
         FOREIGN KEY (anomaly_unit_id)
         REFERENCES anomaly_units(id)
@@ -140,7 +133,7 @@ CREATE TABLE detection_specs (
     -- NULL when detection method does not use test items (e.g. YIELD)
     test_item_name VARCHAR(100),
     site_id INT UNSIGNED NOT NULL,
-    detection_method_id TINYINT NOT NULL,
+    detection_method_id TINYINT UNSIGNED NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NOT NULL,
@@ -188,14 +181,13 @@ CREATE TABLE site_test_statistics (
 CREATE TABLE good_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
-    detection_method_id TINYINT NOT NULL,
+    detection_method_id TINYINT UNSIGNED NOT NULL,
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NULL,
     spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_method (detection_method_id),
     UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
     CONSTRAINT fk_good_lots_info
         FOREIGN KEY (lots_info_id)
@@ -208,10 +200,27 @@ CREATE TABLE good_lots (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================================================
--- 增量索引（若資料庫已建立，可單獨執行以下 ALTER TABLE 補上新索引）
+-- 常見擴充索引（新增對應 Repository 查詢方法時再加入）
 -- =============================================================================
--- 若既有環境仍使用 detection_methods.method_code，可先執行：
+-- anomaly_lots:
+--   ALTER TABLE anomaly_lots ADD INDEX idx_created_at (created_at);
+--
+-- anomaly_test_items:
+--   ALTER TABLE anomaly_test_items ADD INDEX idx_test_item_name (test_item_name);
+--
+-- anomaly_units:
+--   ALTER TABLE anomaly_units ADD INDEX idx_unit (unit_id);
+--
+-- anomaly_lot_process_mapping:
+--   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_equipment (equipment_id);
+--   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_station_equipment (station_name, equipment_id);
+--
+-- anomaly_unit_process_mapping:
+--   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_boat_position (boat_id, position_x, position_y);
+--   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_station_equipment (station_name, equipment_id);
+--
+-- =============================================================================
+-- 欄位遷移（若既有環境仍使用舊欄位名稱）
+-- =============================================================================
 -- ALTER TABLE detection_methods
 --   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
---
--- ALTER TABLE site_test_statistics ADD INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time);

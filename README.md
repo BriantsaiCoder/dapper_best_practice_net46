@@ -219,7 +219,7 @@ erDiagram
 - `detection_specs(program, test_item_name, detection_method_id)` — 含測項的規格查詢
 - `detection_methods.method_key` 的唯一約束
 
-> **索引精簡原則**：僅保留目前 Repository 查詢實際命中的索引。`anomaly_lot_process_mapping` 和 `anomaly_unit_process_mapping` 的外鍵欄位由 InnoDB 自動建立隱式索引，不另外手動建立。若未來新增查詢需要新索引，在對應的 Repository 方法旁加註即可。
+> **索引精簡原則**：僅保留目前 Repository 查詢實際命中的索引。各表的外鍵欄位由 InnoDB 自動建立隱式索引，不另外手動建立。若未來新增查詢需要新索引，請參考 `schema.sql` 底部的「常見擴充索引」註解區塊，在對應的 Repository 方法旁加註。
 
 ### 若既有資料庫仍是 `method_code`
 
