@@ -15,6 +15,13 @@ namespace DapperMySqlCrudExample.Services
     /// 負責 SITE_MEAN 規格的統計計算與寫入編排，
     /// Repository 僅負責 SQL CRUD，計算邏輯集中於此。
     /// </summary>
+    /// <remarks>
+    /// 【新手導讀】Repository vs Service 的職責分工：
+    /// - Repository：純粹的資料存取層，只負責單一資料表的 CRUD，不包含業務邏輯。
+    /// - Service：業務邏輯層，負責編排（orchestrate）多個 Repository 的操作、管理交易、執行計算。
+    /// 例如本類別需要同時操作 SiteTestStatisticRepo、DetectionMethodRepo、DetectionSpecRepo，
+    /// 並在同一交易中完成「查詢→計算→寫入」的完整流程，這種跨 Repository 的協作就是 Service 的職責。
+    /// </remarks>
     public sealed class DetectionSpecService
     {
         private readonly DbConnectionFactory _factory;
@@ -62,7 +69,12 @@ namespace DapperMySqlCrudExample.Services
                     nameof(testItemName)
                 );
 
+            // 【新手導讀】雙層 using 管理連線與交易的生命週期：
+            // 外層 using 管理連線（conn），內層 using 管理交易（tx）。
+            // 離開區塊時會依反序 Dispose：先 tx（自動 Rollback 未 Commit 的交易），再 conn（歸還連線池）。
             using (var conn = _factory.Create())
+            // 【新手導讀】IsolationLevel.RepeatableRead 確保在交易期間，已讀取的資料不會被其他交易修改。
+            // 這對統計計算很重要：避免「查詢歷史資料」與「寫入計算結果」之間資料被外部異動導致不一致。
             using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
             {
                 var rows = _siteTestStatRepo.QuerySiteMeanRows(
@@ -98,6 +110,9 @@ namespace DapperMySqlCrudExample.Services
                 );
 
                 long newId = _detectionSpecRepo.Insert(spec, tx);
+                // 【新手導讀】必須明確呼叫 Commit() 才會真正寫入資料庫。
+                // 若在 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 會自動 Rollback，
+                // 所有在此交易中的操作都會被撤銷，確保資料一致性（全成功或全失敗）。
                 tx.Commit();
                 return newId;
             }

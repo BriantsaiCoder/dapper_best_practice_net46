@@ -114,6 +114,10 @@ namespace DapperMySqlCrudExample.Repositories
                     nameof(testItemName)
                 );
 
+            // 【新手導讀】多參數查詢時，將所有參數包進同一個匿名物件，
+            // Dapper 會自動將每個屬性對應到 SQL 的 @參數（同 DetectionMethodRepository.GetById 說明）。
+            // @Limit 也是參數化的，雖然 MySQL 對參數化 LIMIT 不做常數折疊（效能微差），
+            // 但保留參數化可避免 SQL Injection 且未來可動態調整筆數。
             var p = new
             {
                 ProgramName = programName,
@@ -122,6 +126,9 @@ namespace DapperMySqlCrudExample.Repositories
                 Limit = PreferredHistoryCount,
             };
 
+            // 【新手導讀】Query<SiteMeanRow> 使用專用 DTO（QueryModel）而非完整的 SiteTestStatistic Model，
+            // 只映射 mean_value 與 start_time 兩個欄位，減少記憶體配置與網路傳輸量。
+            // 這是 Dapper 的優勢之一：不需要對應完整 Model，可以靈活映射到任意 DTO。
             const string sql =
                 @"SELECT mean_value AS MeanValue, start_time AS StartTime
                   FROM   site_test_statistics

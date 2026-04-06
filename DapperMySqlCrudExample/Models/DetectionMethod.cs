@@ -5,6 +5,13 @@ namespace DapperMySqlCrudExample.Models
     /// <summary>
     /// 偵測方法主表，定義異常偵測的方法代碼與適用層級。
     /// </summary>
+    /// <remarks>
+    /// 【新手導讀】Dapper 的 Model 設計原則：
+    /// 1. 不需要任何 ORM Attribute（如 EF 的 [Table]、[Column]），映射完全靠 Repository 中 SQL 的 AS 別名。
+    /// 2. 所有屬性必須有 public setter（{ get; set; }），因為 Dapper 透過 setter 將查詢結果寫入物件。
+    /// 3. 屬性名稱與 SQL AS 別名一致即可（大小寫不敏感），不需與資料庫欄位名稱相同。
+    /// 本專案所有 Model 皆遵循此模式（sealed POCO class + public auto-properties）。
+    /// </remarks>
     public sealed class DetectionMethod
     {
         /// <summary>主鍵（TINYINT，自動遞增）。</summary>

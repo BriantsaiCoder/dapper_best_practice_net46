@@ -25,6 +25,9 @@ namespace DapperMySqlCrudExample.Samples
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
 
+            // 【新手導讀】手動建構依賴注入（Manual DI）：
+            // 生產環境通常使用 IoC 容器（如 Autofac、Microsoft.Extensions.DependencyInjection）自動解析依賴，
+            // 這裡為了簡化示範而手動建構。流程為：先建立 Repository，再將它們注入 Service。
             var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
             var siteTestStatisticRepository = new SiteTestStatisticRepository(connectionFactory);
             var detectionMethodRepository = new DetectionMethodRepository(connectionFactory);
@@ -143,8 +146,12 @@ namespace DapperMySqlCrudExample.Samples
             }
 
             // ── (A) Commit 場景 ───────────────────────────────────────────────
-            // using 區塊結束時，若 Commit() 未被呼叫，MySqlTransaction.Dispose()
-            // 會自動 Rollback。因此正常路徑只需呼叫 Commit()，無需顯式 try/catch。
+            // 【新手導讀】交易的基本生命週期：
+            //   1. BeginTransaction() — 開始交易
+            //   2. 執行多個 Repository 操作（全部共用同一 connection + transaction）
+            //   3. Commit() — 全部成功時提交，資料正式寫入資料庫
+            //   4. 若未呼叫 Commit()，using 區塊結束時 Dispose() 會自動 Rollback
+            // 因此正常路徑只需呼叫 Commit()，無需顯式 try/catch。
             Console.WriteLine();
             Console.WriteLine("  ── (A) Commit 場景：同一交易內新增兩筆，全部成功後提交 ──");
 
@@ -193,6 +200,10 @@ namespace DapperMySqlCrudExample.Samples
             Console.WriteLine("  [TX-A Cleanup] 測試資料已清除。");
 
             // ── (B) Rollback 場景 ────────────────────────────────────────────
+            // 【新手導讀】顯式 Rollback vs 隱式 Rollback：
+            //   - 顯式：在 catch 中呼叫 tx.Rollback()，適合需要在 Rollback 後執行額外邏輯的情境。
+            //   - 隱式：不呼叫 Commit() 就離開 using 區塊，Dispose() 自動 Rollback，程式碼更簡潔。
+            //   兩者效果相同，本範例示範顯式 Rollback 以便清楚展示流程。
             Console.WriteLine();
             Console.WriteLine(
                 "  ── (B) Rollback 場景：交易內新增一筆後模擬異常，驗證資料未寫入 ──"

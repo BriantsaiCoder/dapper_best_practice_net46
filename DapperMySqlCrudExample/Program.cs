@@ -15,6 +15,8 @@ namespace DapperMySqlCrudExample
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
+        // 【新手導讀】Main() 回傳 int 作為 exit code：0 表示成功，非 0 表示失敗。
+        // 這是 CLI 程式的慣例，讓 CI/CD pipeline 或呼叫端腳本可據此判斷執行結果。
         private static int Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -59,10 +61,17 @@ namespace DapperMySqlCrudExample
             }
             finally
             {
+                // 【新手導讀】NLog 使用非同步 buffer 寫入日誌檔，
+                // 必須在程式結束前呼叫 Shutdown() 將 buffer 中的日誌全部 flush 到磁碟，
+                // 否則最後幾筆日誌可能遺失。放在 finally 確保即使發生例外也會執行。
                 LogManager.Shutdown();
             }
         }
 
+        /// <remarks>
+        /// 【新手導讀】SELECT 1 是最輕量的連線驗證方式，不存取任何資料表，
+        /// 僅確認「能成功建立連線並執行 SQL」。若連線字串錯誤或資料庫不可用，會在此拋出例外。
+        /// </remarks>
         private static void VerifyDatabaseConnectivity(DbConnectionFactory connectionFactory)
         {
             using (var connection = connectionFactory.Create())
