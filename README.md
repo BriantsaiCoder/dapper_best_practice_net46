@@ -28,6 +28,13 @@
 | Logging | NLog 5.3.4 |
 | Statistics | MathNet.Numerics 5.0.0 |
 
+## 前置需求
+
+- **.NET Core SDK 2.1 以上**（`global.json` 已設定最低版本 2.1，並允許自動升級至最新主版本）
+- Visual Studio 2017 使用者請確認已更新至 **15.3 以上**（內建 SDK 2.0），或另行安裝 [.NET Core SDK](https://dotnet.microsoft.com/download)；否則會出現 `NETSDK1050` 錯誤
+- 目標框架：`net461`（.NET Framework 4.6.1）
+- MySQL 執行個體（連線字串設定見[連線設定](#連線設定)）
+
 ## 快速開始
 
 ```bash
