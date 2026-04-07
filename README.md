@@ -30,10 +30,31 @@
 
 ## 前置需求
 
-- **.NET Core SDK 2.1 以上**（`global.json` 已設定最低版本 2.1，並允許自動升級至最新主版本）
-- Visual Studio 2017 使用者請確認已更新至 **15.3 以上**（內建 SDK 2.0），或另行安裝 [.NET Core SDK](https://dotnet.microsoft.com/download)；否則會出現 `NETSDK1050` 錯誤
+- **.NET Core SDK 2.0 以上**（本專案使用 SDK-style `.csproj`，需安裝 .NET Core SDK 才能建置）
 - 目標框架：`net461`（.NET Framework 4.6.1）
 - MySQL 執行個體（連線字串設定見[連線設定](#連線設定)）
+
+### Visual Studio 2017 使用者注意事項
+
+若在 VS2017（含 15.9.x）開啟本專案時出現 **`NETSDK1050`** 錯誤：
+
+> *此專案使用的 Microsoft.NET.Sdk 版本，無法支援以 .NET Standard 1.5 或更高版本為目標的程式庫參考。請安裝 .NET Core SDK 2.0 或更高版本。*
+
+請依下列步驟修復：
+
+1. **確認已安裝「.NET Core 跨平台開發」工作負載**
+   - 開啟 **Visual Studio Installer** → 選擇 VS2017 → **修改**
+   - 在「工作負載」頁籤勾選 **「.NET Core 跨平台開發」**（.NET Core cross-platform development）
+   - 點選「修改」並等待安裝完成
+2. **或者，獨立安裝 .NET Core SDK**
+   - 從 [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download/dotnet) 下載並安裝 .NET Core SDK 2.1（或更高版本）
+   - 安裝後重新啟動 VS2017
+3. **驗證安裝**：開啟命令提示字元，執行 `dotnet --list-sdks`，確認有 `2.x.xxx` 以上版本
+4. **重新開啟方案**：關閉並重新開啟 `.sln` 檔案
+
+> **說明**：VS2017 更新至 15.9.x 僅更新 IDE 本身，不保證安裝 .NET Core SDK。
+> SDK-style 專案格式（`<Project Sdk="Microsoft.NET.Sdk">`）必須依賴 .NET Core SDK 提供的 MSBuild 目標檔，
+> 若系統上無 SDK 或版本過低（< 2.0），就會觸發 `NETSDK1050` 錯誤。
 
 ## 快速開始
 
