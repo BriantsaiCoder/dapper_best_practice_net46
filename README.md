@@ -191,6 +191,198 @@ Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而
 - 讓查詢筆數上限固定，只需一次 DB round-trip
 - 搭配 `(program, site_id, test_item_name, start_time)` 索引更容易吃到效能優勢
 
+## 交易（Transaction）使用指南
+
+### 判斷原則：什麼時候該用交易？
+
+| 情境 | 是否需要交易 | 原因 |
+|------|:----------:|------|
+| 單一 SELECT 查詢 | 否 | 單一 SQL 語句本身就是原子操作 |
+| 單一 INSERT / UPDATE / DELETE | 否 | 單一寫入不涉及多步驟一致性 |
+| 多筆寫入必須全成功或全失敗 | **是** | 避免部分寫入成功、部分失敗的髒資料 |
+| 先讀取再根據結果寫入 | **是** | 避免讀取與寫入之間資料被其他連線異動 |
+| 跨多個 Repository 的業務流程 | **是** | 確保跨表操作的資料一致性 |
+
+簡單判斷法：**如果操作拆成兩半，前半成功後半失敗會造成資料不一致，就該用交易。**
+
+### 情境一：不需要交易 — 單一操作
+
+大多數 Repository 的讀取與獨立寫入方法都不需要交易，每次操作自行開關連線即可。
+
+```csharp
+// Repository 內部：無交易時自行建立短生命週期連線
+public DetectionMethod GetById(byte id)
+{
+    const string sql = "SELECT ... FROM detection_methods WHERE id = @Id";
+    using (var conn = _factory.Create())
+        return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
+}
+```
+
+**本專案所有 Repository 的 `GetById`、`GetByXxx`、`Exists` 方法都走這個模式。**
+
+設計原因：
+
+- 單一 SELECT 不需要跨語句一致性保證
+- 短連線用完即歸還連線池，減少資源佔用
+- 程式碼最簡潔，不需額外管理交易物件
+
+同理，單筆 Insert 若不需要與其他操作綁定，也不用交易：
+
+```csharp
+// 不傳 transaction 參數 → Repository 內部自建連線
+repo.Insert(newMethod);
+```
+
+> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例一
+
+### 情境二：需要交易 — 多筆寫入的原子性
+
+當多個寫入操作必須全部成功或全部撤銷時，需要交易。
+
+```csharp
+using (var conn = connectionFactory.Create())
+using (var tx = conn.BeginTransaction())
+{
+    // 兩筆 Insert 共用同一條連線與交易
+    byte idA1 = repo.Insert(methodA1, tx);
+    byte idA2 = repo.Insert(methodA2, tx);
+
+    tx.Commit(); // 全部成功才寫入
+}
+// 若 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 自動 Rollback
+```
+
+> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例二 (A) Commit 場景
+
+設計原因：
+
+- 兩筆 Insert 代表一個業務單元（例如同時建立偵測方法與其關聯設定）
+- 若第二筆失敗但第一筆已寫入，資料庫會出現孤立記錄
+- 交易確保「全有或全無」（all-or-nothing）
+
+### 情境三：需要交易 — 顯式 Rollback
+
+當需要在 catch 區塊中執行額外清理邏輯時，使用顯式 Rollback：
+
+```csharp
+using (var conn = connectionFactory.Create())
+using (var tx = conn.BeginTransaction())
+{
+    try
+    {
+        byte idB = repo.Insert(methodB, tx);
+
+        // 模擬業務邏輯錯誤
+        throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
+    }
+    catch (InvalidOperationException ex)
+    {
+        tx.Rollback(); // 顯式撤銷
+        _logger.Warn(ex, "Rollback 完成");
+    }
+}
+```
+
+> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例二 (B) Rollback 場景
+
+**兩種 Rollback 方式的差異：**
+
+| 方式 | 做法 | 適用場景 |
+|------|------|---------|
+| 隱式 Rollback | 不呼叫 `Commit()`，讓 `using` 結束時 `Dispose()` 自動 Rollback | 例外直接往上拋，不需額外處理 |
+| 顯式 Rollback | 在 `catch` 中呼叫 `tx.Rollback()` | 需要在 Rollback 後記錄日誌、通知或執行補償邏輯 |
+
+兩者效果相同，選擇取決於是否需要在 Rollback 後做額外事情。
+
+### 情境四：需要交易 — 讀取→計算→寫入的一致性
+
+這是本專案最複雜的交易場景，出現在 [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) 的 SITE_MEAN 規格計算：
+
+```csharp
+using (var conn = _factory.Create())
+using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+{
+    // 步驟 1：在交易中讀取 30 筆歷史統計資料
+    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+
+    // 步驟 2：記憶體內計算平均值、標準差、管制上下限
+    var (mean, std) = CalculateMeanAndStd(rows);
+    var (ucl, lcl) = CalculateControlLimits(mean, std);
+
+    // 步驟 3：查詢 SITE_MEAN 的 detection_method_id（同一交易內）
+    byte methodId = GetRequiredSiteMeanMethodId(tx);
+
+    // 步驟 4：將計算結果寫入 detection_specs
+    long newId = _detectionSpecRepo.Insert(spec, tx);
+
+    tx.Commit();
+    return newId;
+}
+```
+
+**為什麼這裡必須使用 `RepeatableRead` 隔離層級？**
+
+```
+時間軸         交易 A（本計算）           交易 B（外部寫入）
+  t1     讀取 30 筆歷史資料
+  t2                                   修改了其中 5 筆資料 ← 問題！
+  t3     根據 t1 的資料計算 UCL/LCL
+  t4     寫入計算結果
+```
+
+若不使用 `RepeatableRead`：交易 B 在 t2 修改的資料會導致 t3 的計算基礎與實際資料不一致，寫入的規格值可能是錯的。
+
+`RepeatableRead` 保證：**t1 讀取的 30 筆資料在整個交易期間不會被其他交易修改**，確保「讀取→計算→寫入」三步驟基於一致的資料快照。
+
+### Repository 的交易參數設計模式
+
+所有 Repository 的寫入方法都遵循相同的 optional transaction 模式：
+
+```csharp
+public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
+{
+    const string sql = "INSERT INTO ... SELECT LAST_INSERT_ID();";
+
+    // 有交易：複用交易綁定的連線（由外部 Service 管理生命週期）
+    if (transaction != null)
+        return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
+
+    // 無交易：自行建立短生命週期連線
+    using (var conn = _factory.Create())
+        return conn.ExecuteScalar<byte>(sql, entity);
+}
+```
+
+**為什麼用 `IDbTransaction transaction = null` 而不是多載？**
+
+- 同一個方法可彈性用於有交易與無交易兩種場景
+- 呼叫端不傳 `transaction` 時走獨立連線，傳入時共用交易連線
+- 避免維護兩份幾乎相同的多載方法
+
+### 讀取方法是否要接受交易參數？
+
+**預設不需要。** 大多數讀取方法（`GetById`、`GetByXxx`、`Exists`）都不接受交易參數。
+
+**例外情況：** 當讀取操作必須參與交易以確保一致性時才加上：
+
+| 方法 | 為什麼需要交易參數 |
+|------|-------------------|
+| [`DetectionMethodRepository.GetIdByKey()`](DapperMySqlCrudExample/Repositories/DetectionMethodRepository.cs) | 在 RepeatableRead 交易中查詢 `SITE_MEAN` 的 method_id，確保與同一交易中的寫入一致 |
+| [`SiteTestStatisticRepository.QuerySiteMeanRows()`](DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) | 在 RepeatableRead 交易中讀取歷史統計資料，確保計算基礎不被外部異動 |
+
+判斷標準：**這個讀取結果會不會直接影響同一交易中的後續寫入？** 會 → 加交易參數；不會 → 不加。
+
+### 交易使用的注意事項
+
+1. **交易由 Service 層管理，Repository 層不建立交易。** Repository 只負責接受或不接受交易參數，不決定何時開始或結束交易。
+
+2. **連線與交易的 `using` 順序很重要。** 先 `using conn`，再 `using tx`。離開時反序 Dispose：先 Rollback 未 Commit 的交易，再歸還連線。
+
+3. **交易內的所有操作必須使用 `transaction.Connection`。** 不可在交易進行中另開新連線，否則新連線不屬於該交易。
+
+4. **隔離層級根據業務需求選擇。** 預設 `ReadCommitted` 足以應付多數場景；需要讀取一致性（如統計計算）時才升級為 `RepeatableRead`。
+
 ## Schema 重點
 
 [schema.sql](DapperMySqlCrudExample/Sql/schema.sql) 包含 9 張核心表；[schema-legacy.sql](DapperMySqlCrudExample/Sql/schema-legacy.sql) 提供 `lots_info` 相依表。
