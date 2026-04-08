@@ -58,6 +58,7 @@ CREATE TABLE anomaly_test_items (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     anomaly_lot_id BIGINT NOT NULL,
     test_item_name VARCHAR(100) NOT NULL,
+    site_id INT UNSIGNED NOT NULL,
     detection_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),

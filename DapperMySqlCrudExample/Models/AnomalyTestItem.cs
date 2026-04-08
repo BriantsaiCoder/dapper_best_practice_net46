@@ -16,6 +16,9 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>測試項目名稱。</summary>
         public string TestItemName { get; set; }
 
+        /// <summary>測試 Site 編號（INT UNSIGNED）。</summary>
+        public uint SiteId { get; set; }
+
         /// <summary>實際偵測值；允許 Null。</summary>
         public decimal? DetectionValue { get; set; }
 

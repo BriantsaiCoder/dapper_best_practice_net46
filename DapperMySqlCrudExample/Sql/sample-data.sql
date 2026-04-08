@@ -99,19 +99,19 @@ VALUES
 --   FREQ_OSC    : 內部振盪器頻率（MHz）
 
 INSERT INTO anomaly_test_items
-    (anomaly_lot_id, test_item_name, detection_value,
+    (anomaly_lot_id, test_item_name, site_id, detection_value,
      spec_upper_limit, spec_lower_limit, spec_calc_start_time, spec_calc_end_time)
 VALUES
--- anomaly_lot=1 (BGA256/YIELD)：IDD_STANDBY 待機電流異常偏高
-(1, 'IDD_STANDBY', 5.230000000,
+-- anomaly_lot=1 (BGA256/YIELD)：IDD_STANDBY 待機電流異常偏高（Site 1）
+(1, 'IDD_STANDBY', 1, 5.230000000,
  5.000000000, 0.100000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
--- anomaly_lot=2 (BGA256/SITE_MEAN)：VOH_PIN12 輸出電壓 Site 間偏差
-(2, 'VOH_PIN12', 3.380000000,
+-- anomaly_lot=2 (BGA256/SITE_MEAN)：VOH_PIN12 輸出電壓 Site 2 偏差
+(2, 'VOH_PIN12', 2, 3.380000000,
  3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
--- anomaly_lot=3 (QFN48/MEAN)：FREQ_OSC 振盪頻率偏移
-(3, 'FREQ_OSC', 2.508500000,
+-- anomaly_lot=3 (QFN48/MEAN)：FREQ_OSC 振盪頻率偏移（Site 2）
+(3, 'FREQ_OSC', 2, 2.508500000,
  2.510000000, 2.490000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59');
 
 -- =============================================================================
