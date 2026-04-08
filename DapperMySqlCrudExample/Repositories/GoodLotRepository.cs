@@ -27,10 +27,6 @@ namespace DapperMySqlCrudExample.Repositories
             id                   AS Id,
             lots_info_id         AS LotsInfoId,
             detection_method_id  AS DetectionMethodId,
-            spec_upper_limit     AS SpecUpperLimit,
-            spec_lower_limit     AS SpecLowerLimit,
-            spec_calc_start_time AS SpecCalcStartTime,
-            spec_calc_end_time   AS SpecCalcEndTime,
             created_at           AS CreatedAt,
             updated_at           AS UpdatedAt";
 
@@ -62,11 +58,9 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO good_lots
-                    (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
-                     spec_calc_start_time, spec_calc_end_time)
+                    (lots_info_id, detection_method_id)
                 VALUES
-                    (@LotsInfoId, @DetectionMethodId, @SpecUpperLimit, @SpecLowerLimit,
-                     @SpecCalcStartTime, @SpecCalcEndTime);
+                    (@LotsInfoId, @DetectionMethodId);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -86,11 +80,7 @@ namespace DapperMySqlCrudExample.Repositories
                 @"
                 UPDATE good_lots
                 SET    lots_info_id         = @LotsInfoId,
-                       detection_method_id  = @DetectionMethodId,
-                       spec_upper_limit     = @SpecUpperLimit,
-                       spec_lower_limit     = @SpecLowerLimit,
-                       spec_calc_start_time = @SpecCalcStartTime,
-                       spec_calc_end_time   = @SpecCalcEndTime
+                       detection_method_id  = @DetectionMethodId
                 WHERE  id = @Id";
 
             if (transaction != null)

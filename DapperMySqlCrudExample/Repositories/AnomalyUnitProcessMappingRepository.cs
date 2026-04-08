@@ -28,8 +28,14 @@ namespace DapperMySqlCrudExample.Repositories
             id                AS Id,
             anomaly_unit_id   AS AnomalyUnitId,
             boat_id           AS BoatId,
-            position_x        AS PositionX,
-            position_y        AS PositionY,
+            boat_position_x   AS BoatPositionX,
+            boat_position_y   AS BoatPositionY,
+            wafer_id          AS WaferId,
+            wafer_position_x  AS WaferPositionX,
+            wafer_position_y  AS WaferPositionY,
+            sbs_id            AS SbsId,
+            sbs_position_x    AS SbsPositionX,
+            sbs_position_y    AS SbsPositionY,
             process_time      AS ProcessTime,
             station_name      AS StationName,
             equipment_id      AS EquipmentId,
@@ -69,10 +75,14 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO anomaly_unit_process_mapping
-                    (anomaly_unit_id, boat_id, position_x, position_y,
+                    (anomaly_unit_id, boat_id, boat_position_x, boat_position_y,
+                     wafer_id, wafer_position_x, wafer_position_y,
+                     sbs_id, sbs_position_x, sbs_position_y,
                      process_time, station_name, equipment_id)
                 VALUES
-                    (@AnomalyUnitId, @BoatId, @PositionX, @PositionY,
+                    (@AnomalyUnitId, @BoatId, @BoatPositionX, @BoatPositionY,
+                     @WaferId, @WaferPositionX, @WaferPositionY,
+                     @SbsId, @SbsPositionX, @SbsPositionY,
                      @ProcessTime, @StationName, @EquipmentId);
                 SELECT LAST_INSERT_ID();";
 
@@ -92,13 +102,19 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 UPDATE anomaly_unit_process_mapping
-                SET    anomaly_unit_id = @AnomalyUnitId,
-                       boat_id         = @BoatId,
-                       position_x      = @PositionX,
-                       position_y      = @PositionY,
-                       process_time    = @ProcessTime,
-                       station_name    = @StationName,
-                       equipment_id    = @EquipmentId
+                SET    anomaly_unit_id   = @AnomalyUnitId,
+                       boat_id           = @BoatId,
+                       boat_position_x   = @BoatPositionX,
+                       boat_position_y   = @BoatPositionY,
+                       wafer_id          = @WaferId,
+                       wafer_position_x  = @WaferPositionX,
+                       wafer_position_y  = @WaferPositionY,
+                       sbs_id            = @SbsId,
+                       sbs_position_x    = @SbsPositionX,
+                       sbs_position_y    = @SbsPositionY,
+                       process_time      = @ProcessTime,
+                       station_name      = @StationName,
+                       equipment_id      = @EquipmentId
                 WHERE  id = @Id";
 
             if (transaction != null)

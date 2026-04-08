@@ -22,6 +22,12 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>批號在此站點的處理時間；允許 Null。</summary>
         public DateTime? ProcessTime { get; set; }
 
+        /// <summary>操作員 ID；允許 Null。</summary>
+        public string OpId { get; set; }
+
+        /// <summary>製程 Recipe 名稱；允許 Null。</summary>
+        public string Recipe { get; set; }
+
         /// <summary>記錄建立時間（由資料庫自動填入）。</summary>
         public DateTime CreatedAt { get; set; }
 

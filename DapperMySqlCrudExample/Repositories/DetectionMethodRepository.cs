@@ -34,8 +34,6 @@ namespace DapperMySqlCrudExample.Repositories
             id             AS Id,
             method_key     AS MethodKey,
             method_name    AS MethodName,
-            has_test_item  AS HasTestItem,
-            has_unit_level AS HasUnitLevel,
             created_at     AS CreatedAt,
             updated_at     AS UpdatedAt";
 
@@ -124,9 +122,9 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO detection_methods
-                    (method_key, method_name, has_test_item, has_unit_level)
+                    (method_key, method_name)
                 VALUES
-                    (@MethodKey, @MethodName, @HasTestItem, @HasUnitLevel);
+                    (@MethodKey, @MethodName);
                 SELECT LAST_INSERT_ID();";
 
             // 【新手導讀】直接傳入 entity 物件作為參數時，Dapper 會自動將物件的所有公開屬性
@@ -148,9 +146,7 @@ namespace DapperMySqlCrudExample.Repositories
                 @"
                 UPDATE detection_methods
                 SET    method_key     = @MethodKey,
-                       method_name    = @MethodName,
-                       has_test_item  = @HasTestItem,
-                       has_unit_level = @HasUnitLevel
+                       method_name    = @MethodName
                 WHERE  id = @Id";
 
             // 【新手導讀】Execute() 回傳受影響的行數（affected rows）。

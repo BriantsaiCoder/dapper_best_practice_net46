@@ -23,12 +23,6 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>方法名稱，供人類閱讀使用。</summary>
         public string MethodName { get; set; }
 
-        /// <summary>是否需要測項明細層級（anomaly_test_items）。</summary>
-        public bool HasTestItem { get; set; }
-
-        /// <summary>是否需要 Unit 層級明細（anomaly_units）。</summary>
-        public bool HasUnitLevel { get; set; }
-
         /// <summary>記錄建立時間（由資料庫自動填入）。</summary>
         public DateTime CreatedAt { get; set; }
 

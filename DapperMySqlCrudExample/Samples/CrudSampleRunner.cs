@@ -71,8 +71,6 @@ namespace DapperMySqlCrudExample.Samples
             {
                 MethodKey = "DEMO_NO_TX",
                 MethodName = "展示用檢測方法（無交易）",
-                HasTestItem = true,
-                HasUnitLevel = false,
             };
 
             byte newId = repo.Insert(newMethod);
@@ -82,7 +80,7 @@ namespace DapperMySqlCrudExample.Samples
             // ── GetById ──────────────────────────────────────────────────────
             var inserted = repo.GetById(newId);
             Console.WriteLine(
-                $"  [GetById] 查詢結果 → MethodName={inserted?.MethodName}, HasTestItem={inserted?.HasTestItem}"
+                $"  [GetById] 查詢結果 → MethodName={inserted?.MethodName}"
             );
 
             // ── Update ───────────────────────────────────────────────────────
@@ -164,8 +162,6 @@ namespace DapperMySqlCrudExample.Samples
                 {
                     MethodKey = "TX_DEMO_A1",
                     MethodName = "交易示範 A1",
-                    HasTestItem = true,
-                    HasUnitLevel = false,
                 };
                 idA1 = repo.Insert(methodA1, tx);
                 _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
@@ -175,8 +171,6 @@ namespace DapperMySqlCrudExample.Samples
                 {
                     MethodKey = "TX_DEMO_A2",
                     MethodName = "交易示範 A2",
-                    HasTestItem = false,
-                    HasUnitLevel = true,
                 };
                 idA2 = repo.Insert(methodA2, tx);
                 _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
@@ -219,8 +213,6 @@ namespace DapperMySqlCrudExample.Samples
                     {
                         MethodKey = "TX_DEMO_B",
                         MethodName = "交易示範 B（應被 Rollback）",
-                        HasTestItem = false,
-                        HasUnitLevel = false,
                     };
                     idB = repo.Insert(methodB, tx);
                     _logger.Info("RunTransactionExample(B): Insert B Id={Id}（尚未 Commit）", idB);

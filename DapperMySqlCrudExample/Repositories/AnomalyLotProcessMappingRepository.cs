@@ -30,6 +30,8 @@ namespace DapperMySqlCrudExample.Repositories
             station_name     AS StationName,
             equipment_id     AS EquipmentId,
             process_time     AS ProcessTime,
+            op_id            AS OpId,
+            recipe           AS Recipe,
             created_at       AS CreatedAt,
             updated_at       AS UpdatedAt";
 
@@ -66,9 +68,11 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO anomaly_lot_process_mapping
-                    (anomaly_lot_id, station_name, equipment_id, process_time)
+                    (anomaly_lot_id, station_name, equipment_id, process_time,
+                     op_id, recipe)
                 VALUES
-                    (@AnomalyLotId, @StationName, @EquipmentId, @ProcessTime);
+                    (@AnomalyLotId, @StationName, @EquipmentId, @ProcessTime,
+                     @OpId, @Recipe);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -90,7 +94,9 @@ namespace DapperMySqlCrudExample.Repositories
                 SET    anomaly_lot_id = @AnomalyLotId,
                        station_name   = @StationName,
                        equipment_id   = @EquipmentId,
-                       process_time   = @ProcessTime
+                       process_time   = @ProcessTime,
+                       op_id          = @OpId,
+                       recipe         = @Recipe
                 WHERE  id = @Id";
 
             if (transaction != null)

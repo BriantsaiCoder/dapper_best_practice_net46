@@ -17,10 +17,28 @@ namespace DapperMySqlCrudExample.Models
         public string BoatId { get; set; }
 
         /// <summary>Unit 在 Boat 上的 X 座標位置。</summary>
-        public short PositionX { get; set; }
+        public short BoatPositionX { get; set; }
 
         /// <summary>Unit 在 Boat 上的 Y 座標位置。</summary>
-        public short PositionY { get; set; }
+        public short BoatPositionY { get; set; }
+
+        /// <summary>Wafer 識別碼；允許 Null。</summary>
+        public string WaferId { get; set; }
+
+        /// <summary>Unit 在 Wafer 上的 X 座標位置；允許 Null。</summary>
+        public short? WaferPositionX { get; set; }
+
+        /// <summary>Unit 在 Wafer 上的 Y 座標位置；允許 Null。</summary>
+        public short? WaferPositionY { get; set; }
+
+        /// <summary>SBS 識別碼；允許 Null。</summary>
+        public string SbsId { get; set; }
+
+        /// <summary>Unit 在 SBS 上的 X 座標位置；允許 Null。</summary>
+        public short? SbsPositionX { get; set; }
+
+        /// <summary>Unit 在 SBS 上的 Y 座標位置；允許 Null。</summary>
+        public short? SbsPositionY { get; set; }
 
         /// <summary>Unit 在此站點的處理時間；允許 Null。</summary>
         public DateTime? ProcessTime { get; set; }
