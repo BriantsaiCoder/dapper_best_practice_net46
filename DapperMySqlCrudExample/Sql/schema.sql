@@ -22,17 +22,15 @@ CREATE TABLE detection_methods (
     id TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     method_key VARCHAR(20) UNIQUE NOT NULL,
     method_name VARCHAR(50) NOT NULL,
-    has_test_item BOOLEAN DEFAULT FALSE,
-    has_unit_level BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO detection_methods (method_key, method_name, has_test_item, has_unit_level) VALUES
-('YIELD',     '良率偵測',       FALSE, FALSE),
-('SITE_STD',  '標準差偵測',     TRUE,  FALSE),
-('MEAN',      '平均值偵測',     FALSE, TRUE),
-('SITE_MEAN', 'Site平均值偵測', TRUE,  FALSE);
+INSERT INTO detection_methods (method_key, method_name) VALUES
+('YIELD',     '良率偵測'),
+('SITE_STD',  '標準差偵測'),
+('MEAN',      '平均值偵測'),
+('SITE_MEAN', 'Site平均值偵測');
 
 -- 2. 異常批號主表
 CREATE TABLE anomaly_lots (
@@ -100,6 +98,8 @@ CREATE TABLE anomaly_lot_process_mapping (
     station_name VARCHAR(100) NOT NULL,
     equipment_id VARCHAR(50) NOT NULL,
     process_time DATETIME NULL,
+    op_id VARCHAR(50),
+    recipe VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_lot_process_anomaly_lot
@@ -113,8 +113,14 @@ CREATE TABLE anomaly_unit_process_mapping (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     anomaly_unit_id BIGINT NOT NULL,
     boat_id VARCHAR(50) NOT NULL,
-    position_x SMALLINT NOT NULL,
-    position_y SMALLINT NOT NULL,
+    boat_position_x SMALLINT NOT NULL,
+    boat_position_y SMALLINT NOT NULL,
+    wafer_id VARCHAR(50),
+    wafer_position_x SMALLINT,
+    wafer_position_y SMALLINT,
+    sbs_id VARCHAR(50),
+    sbs_position_x SMALLINT,
+    sbs_position_y SMALLINT,
     process_time DATETIME NULL,
     station_name VARCHAR(100),
     equipment_id VARCHAR(50),
@@ -182,10 +188,6 @@ CREATE TABLE good_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
     detection_method_id TINYINT UNSIGNED NOT NULL,
-    spec_upper_limit DECIMAL(18,9),
-    spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time DATETIME NULL,
-    spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),

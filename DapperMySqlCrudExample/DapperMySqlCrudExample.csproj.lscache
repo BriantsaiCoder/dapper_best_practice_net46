@@ -1,0 +1,125 @@
+version=1
+
+# This file caches language service data to improve the performance of C# Dev Kit.
+# It is not intended for manual editing. It can safely be deleted and will be
+# regenerated automatically.
+#
+# To exclude from version control, add *.lscache to your .gitignore file.
+#
+# To disable caching, add the following to your VS Code settings:
+#   "dotnet.projectsystem.enableLanguageServiceCache": false
+
+[project]
+language=C#
+primary
+lastDtbSucceeded
+
+[properties]
+AssemblyName=DapperMySqlCrudExample
+CommandLineArgsForDesignTimeEvaluation=-langversion:7.3 -define:TRACE
+CompilerGeneratedFilesOutputPath=
+MaxSupportedLangVersion=7.3
+ProjectAssetsFile=<PATH>obj/project.assets.json
+RootNamespace=DapperMySqlCrudExample
+RunAnalyzers=
+RunAnalyzersDuringLiveAnalysis=
+SolutionPath=<PATH>../dapper_best_practice_net46.sln
+TargetFrameworkIdentifier=.NETFramework
+TargetPath=<PATH>bin/Debug/net461/DapperMySqlCrudExample.exe
+TargetRefPath=
+TemporaryDependencyNodeTargetIdentifier=net461
+
+[commandLineArguments]
+/noconfig
+/unsafe-
+/checked-
+/nowarn:1701,1702,1701,1702
+/fullpaths
+/nostdlib+
+/errorreport:prompt
+/warn:4
+/define:TRACE;DEBUG;NETFRAMEWORK;NET461;NET20_OR_GREATER;NET30_OR_GREATER;NET35_OR_GREATER;NET40_OR_GREATER;NET45_OR_GREATER;NET451_OR_GREATER;NET452_OR_GREATER;NET46_OR_GREATER;NET461_OR_GREATER
+/highentropyva+
+/debug+
+/debug:portable
+/filealign:512
+/optimize-
+/out:obj/Debug/net461/DapperMySqlCrudExample.exe
+/subsystemversion:6.00
+/target:exe
+/warnaserror-
+/utf8output
+/deterministic+
+/langversion:7.3
+/warnaserror+:NU1605
+
+[sourceFiles]
+Infrastructure/DbConnectionFactory.cs
+Models/
+ AnomalyLot.cs
+ AnomalyLotProcessMapping.cs
+ AnomalyTestItem.cs
+ AnomalyUnit.cs
+ AnomalyUnitProcessMapping.cs
+ DetectionMethod.cs
+ DetectionSpec.cs
+ GoodLot.cs
+ QueryModels/
+  SiteMeanCalcParams.cs
+  SiteMeanRow.cs
+ SiteTestStatistic.cs
+obj/Debug/net461/
+ .NETFramework,Version=v4.6.1.AssemblyAttributes.cs
+ DapperMySqlCrudExample.AssemblyInfo.cs
+Program.cs
+Repositories/
+ AnomalyLotProcessMappingRepository.cs
+ AnomalyLotRepository.cs
+ AnomalyTestItemRepository.cs
+ AnomalyUnitProcessMappingRepository.cs
+ AnomalyUnitRepository.cs
+ DetectionMethodRepository.cs
+ DetectionSpecRepository.cs
+ GoodLotRepository.cs
+ SiteTestStatisticRepository.cs
+Samples/CrudSampleRunner.cs
+Services/DetectionSpecService.cs
+
+[metadataReferences]
+<NUGET>/
+ dapper/2.1.35/lib/net461/Dapper.dll
+ google.protobuf/3.21.9/lib/net45/Google.Protobuf.dll
+ k4os.compression.lz4.streams/1.2.6/lib/net46/K4os.Compression.LZ4.Streams.dll
+ k4os.compression.lz4/1.2.6/lib/net46/K4os.Compression.LZ4.dll
+ k4os.hash.xxhash/1.0.6/lib/net46/K4os.Hash.xxHash.dll
+ mathnet.numerics/5.0.0/lib/net461/MathNet.Numerics.dll
+ microsoft.netframework.referenceassemblies.net461/1.0.3/build/.NETFramework/v4.6.1/
+  mscorlib.dll
+  System.Configuration.dll
+  System.Configuration.Install.dll
+  System.Core.dll
+  System.Data.dll
+  System.dll
+  System.Drawing.dll
+  System.IO.Compression.dll
+  System.IO.Compression.FileSystem.dll
+  System.Management.dll
+  System.Numerics.dll
+  System.Runtime.Serialization.dll
+  System.Transactions.dll
+  System.Xml.dll
+  System.Xml.Linq.dll
+ mysql.data/8.0.32/lib/net452/
+  MySql.Data.dll
+  ZstdNet.dll
+ nlog/5.3.4/lib/net46/NLog.dll
+ portable.bouncycastle/1.9.0/lib/net40/BouncyCastle.Crypto.dll
+ system.buffers/4.5.1/ref/net45/System.Buffers.dll
+ system.memory/4.5.4/lib/net461/System.Memory.dll
+ system.numerics.vectors/4.5.0/ref/net46/System.Numerics.Vectors.dll
+ system.runtime.compilerservices.unsafe/5.0.0/ref/net461/System.Runtime.CompilerServices.Unsafe.dll
+ system.valuetuple/4.4.0/ref/net461/System.ValueTuple.dll
+
+[analyzerConfigFiles]
+../.editorconfig
+obj/Debug/net461/DapperMySqlCrudExample.GeneratedMSBuildEditorConfig.editorconfig
