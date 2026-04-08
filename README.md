@@ -24,7 +24,7 @@
 |------|------|
 | Runtime | .NET Framework 4.6.1 |
 | ORM | Dapper 2.1.35 |
-| MySQL Driver | MySql.Data 8.0.33 |
+| MySQL Driver | MySql.Data 8.0.32 |
 | Logging | NLog 5.3.4 |
 | Statistics | MathNet.Numerics 5.0.0 |
 
@@ -45,6 +45,9 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --s
 # 顯示說明
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --help
 ```
+
+> 若使用 Visual Studio 2017，請直接以 VS 內建 MSBuild 建置本方案即可。  
+> 本專案固定 `MySql.Data` 為 `8.0.32`，原因是 `8.0.33+` 在 `net461` 下不再提供 `net452` 資產，舊版 VS2017 SDK 容易因此出現 `NETSDK1050`。
 
 ## 目前結構
 
