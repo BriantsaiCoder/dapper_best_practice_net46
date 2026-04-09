@@ -21,12 +21,6 @@ namespace DapperMySqlCrudExample
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            if (HasArgument(args, "--help", "-h"))
-            {
-                ShowUsage();
-                return 0;
-            }
-
             var shouldRunSample = HasArgument(args, "--sample");
 
             try
@@ -95,18 +89,6 @@ namespace DapperMySqlCrudExample
             }
 
             return false;
-        }
-
-        private static void ShowUsage()
-        {
-            Console.WriteLine("DapperMySqlCrudExample — Dapper + MySQL 最佳實踐示範");
-            Console.WriteLine();
-            Console.WriteLine("用法：DapperMySqlCrudExample [選項]");
-            Console.WriteLine();
-            Console.WriteLine("選項：");
-            Console.WriteLine("  （無參數）   啟動檢查模式，僅驗證資料庫連線");
-            Console.WriteLine("  --sample     執行 CRUD sample");
-            Console.WriteLine("  --help, -h   顯示此說明");
         }
     }
 }
