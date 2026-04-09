@@ -28,15 +28,20 @@ namespace DapperMySqlCrudExample.Repositories
             id                AS Id,
             anomaly_unit_id   AS AnomalyUnitId,
             boat_id           AS BoatId,
-            boat_position_x   AS BoatPositionX,
-            boat_position_y   AS BoatPositionY,
+            boat_x            AS BoatX,
+            boat_y            AS BoatY,
+            wafer_barcode     AS WaferBarcode,
             wafer_id          AS WaferId,
-            wafer_position_x  AS WaferPositionX,
-            wafer_position_y  AS WaferPositionY,
-            sbs_id            AS SbsId,
-            sbs_position_x    AS SbsPositionX,
-            sbs_position_y    AS SbsPositionY,
-            process_time      AS ProcessTime,
+            wafer_x           AS WaferX,
+            wafer_y           AS WaferY,
+            substrate_id      AS SubstrateId,
+            substrate_x       AS SubstrateX,
+            substrate_y       AS SubstrateY,
+            wafer_max_x       AS WaferMaxX,
+            wafer_max_y       AS WaferMaxY,
+            boat_max_x        AS BoatMaxX,
+            boat_max_y        AS BoatMaxY,
+            txn_time          AS TxnTime,
             station_name      AS StationName,
             equipment_id      AS EquipmentId,
             created_at        AS CreatedAt,
@@ -75,15 +80,17 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO anomaly_unit_process_mapping
-                    (anomaly_unit_id, boat_id, boat_position_x, boat_position_y,
-                     wafer_id, wafer_position_x, wafer_position_y,
-                     sbs_id, sbs_position_x, sbs_position_y,
-                     process_time, station_name, equipment_id)
+                    (anomaly_unit_id, boat_id, boat_x, boat_y,
+                     wafer_barcode, wafer_id, wafer_x, wafer_y,
+                     substrate_id, substrate_x, substrate_y,
+                     wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
+                     txn_time, station_name, equipment_id)
                 VALUES
-                    (@AnomalyUnitId, @BoatId, @BoatPositionX, @BoatPositionY,
-                     @WaferId, @WaferPositionX, @WaferPositionY,
-                     @SbsId, @SbsPositionX, @SbsPositionY,
-                     @ProcessTime, @StationName, @EquipmentId);
+                    (@AnomalyUnitId, @BoatId, @BoatX, @BoatY,
+                     @WaferBarcode, @WaferId, @WaferX, @WaferY,
+                     @SubstrateId, @SubstrateX, @SubstrateY,
+                     @WaferMaxX, @WaferMaxY, @BoatMaxX, @BoatMaxY,
+                     @TxnTime, @StationName, @EquipmentId);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -104,15 +111,20 @@ namespace DapperMySqlCrudExample.Repositories
                 UPDATE anomaly_unit_process_mapping
                 SET    anomaly_unit_id   = @AnomalyUnitId,
                        boat_id           = @BoatId,
-                       boat_position_x   = @BoatPositionX,
-                       boat_position_y   = @BoatPositionY,
+                       boat_x            = @BoatX,
+                       boat_y            = @BoatY,
+                       wafer_barcode     = @WaferBarcode,
                        wafer_id          = @WaferId,
-                       wafer_position_x  = @WaferPositionX,
-                       wafer_position_y  = @WaferPositionY,
-                       sbs_id            = @SbsId,
-                       sbs_position_x    = @SbsPositionX,
-                       sbs_position_y    = @SbsPositionY,
-                       process_time      = @ProcessTime,
+                       wafer_x           = @WaferX,
+                       wafer_y           = @WaferY,
+                       substrate_id      = @SubstrateId,
+                       substrate_x       = @SubstrateX,
+                       substrate_y       = @SubstrateY,
+                       wafer_max_x       = @WaferMaxX,
+                       wafer_max_y       = @WaferMaxY,
+                       boat_max_x        = @BoatMaxX,
+                       boat_max_y        = @BoatMaxY,
+                       txn_time          = @TxnTime,
                        station_name      = @StationName,
                        equipment_id      = @EquipmentId
                 WHERE  id = @Id";

@@ -160,33 +160,37 @@ VALUES
 -- =============================================================================
 -- 層級 4：anomaly_unit_process_mapping（Unit 製程追溯）
 -- =============================================================================
--- 記錄異常 Unit 在各站的 Boat 位置、Wafer 來源、SBS 載具追溯。
--- Boat: 測試載具（boat_id + XY 座標）
--- Wafer: 晶圓來源追溯（wafer_id + die 座標）
--- SBS: Substrate Boat System 載具（sbs_id + 料格座標）
+-- 記錄異常 Unit 在各站的 Boat / Wafer / Substrate 座標追溯。
+-- Boat: 測試載具（boat_id + XY 座標 + 最大 XY）
+-- Wafer: 晶圓來源追溯（wafer_barcode + wafer_id + die 座標 + 最大 XY）
+-- Substrate: 基板載具（substrate_id + 料格座標）
 
 INSERT INTO anomaly_unit_process_mapping
-    (anomaly_unit_id, boat_id, boat_position_x, boat_position_y,
-     wafer_id, wafer_position_x, wafer_position_y,
-     sbs_id, sbs_position_x, sbs_position_y,
-     process_time, station_name, equipment_id)
+    (anomaly_unit_id, boat_id, boat_x, boat_y,
+     wafer_barcode, wafer_id, wafer_x, wafer_y,
+     substrate_id, substrate_x, substrate_y,
+     wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
+     txn_time, station_name, equipment_id)
 VALUES
 -- unit=1 (U-BGA256-00142) 在 Final Test 站
 (1, 'BOAT-FT-001', 3, 7,
- 'WF-SM8650-LOT02-W03', 15, 22,
- 'SBS-BGA256-A01', 2, 4,
+ 'WF-SM8650-LOT02-W03-BC', 'WF-SM8650-LOT02-W03', 15, 22,
+ 'SUB-BGA256-A01', 2, 4,
+ 30, 40, 8, 16,
  '2026-04-02 15:20:00', 'FINAL_TEST', 'FT-J750-01'),
 
 -- unit=2 (U-BGA256-00587) 在 Final Test 站
 (2, 'BOAT-FT-001', 5, 12,
- 'WF-SM8650-LOT02-W05', 8, 31,
- 'SBS-BGA256-A01', 3, 6,
+ 'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
+ 'SUB-BGA256-A01', 3, 6,
+ 30, 40, 8, 16,
  '2026-04-02 15:45:00', 'FINAL_TEST', 'FT-J750-01'),
 
 -- unit=3 (U-QFN48-03201) 在 Marking 站
 (3, 'BOAT-MK-003', 1, 2,
- 'WF-MT6985-LOT01-W01', 20, 18,
- NULL, NULL, NULL,
+ 'WF-MT6985-LOT01-W01-BC', 'WF-MT6985-LOT01-W01', 20, 18,
+ 'SUB-QFN48-B01', 1, 1,
+ 25, 35, 6, 12,
  '2026-04-01 13:10:00', 'MARKING', 'MK-DOM-02');
 
 -- =============================================================================
