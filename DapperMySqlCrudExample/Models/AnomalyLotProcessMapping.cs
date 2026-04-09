@@ -3,7 +3,7 @@ using System;
 namespace DapperMySqlCrudExample.Models
 {
     /// <summary>
-    /// 異常批號 Process Mapping，記錄批號流經的站點與機台資訊。
+    /// 異常批號 Process Mapping，記錄批號流經的廠區、站點、機台與人員資訊。
     /// </summary>
     public sealed class AnomalyLotProcessMapping
     {
@@ -13,17 +13,20 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>關聯的異常批號 ID（外鍵 anomaly_lots.id）。</summary>
         public long AnomalyLotId { get; set; }
 
-        /// <summary>站點名稱。</summary>
+        /// <summary>廠區名稱；允許 Null。</summary>
+        public string PlantName { get; set; }
+
+        /// <summary>站點名稱；允許 Null。</summary>
         public string StationName { get; set; }
 
-        /// <summary>機台 ID。</summary>
-        public string EquipmentId { get; set; }
+        /// <summary>機台 ID；允許 Null。</summary>
+        public string MachineId { get; set; }
 
-        /// <summary>批號在此站點的處理時間；允許 Null。</summary>
-        public DateTime? ProcessTime { get; set; }
+        /// <summary>Track-In 操作員；允許 Null。</summary>
+        public string TrackinUser { get; set; }
 
-        /// <summary>操作員 ID；允許 Null。</summary>
-        public string OpId { get; set; }
+        /// <summary>Track-Out 操作員；允許 Null。</summary>
+        public string TrackoutUser { get; set; }
 
         /// <summary>製程 Recipe 名稱；允許 Null。</summary>
         public string Recipe { get; set; }

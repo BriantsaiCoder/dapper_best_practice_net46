@@ -88,7 +88,8 @@ dapper_best_practice_net46.sln
     │   └── CrudSampleRunner.cs
     └── Sql/
         ├── schema.sql
-        └── schema-legacy.sql
+        ├── schema-legacy.sql
+        └── sample-data.sql
 ```
 
 ## 執行模式

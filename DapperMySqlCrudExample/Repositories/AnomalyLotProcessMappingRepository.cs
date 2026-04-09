@@ -27,10 +27,11 @@ namespace DapperMySqlCrudExample.Repositories
             @"
             id               AS Id,
             anomaly_lot_id   AS AnomalyLotId,
+            plant_name       AS PlantName,
             station_name     AS StationName,
-            equipment_id     AS EquipmentId,
-            process_time     AS ProcessTime,
-            op_id            AS OpId,
+            machine_id       AS MachineId,
+            trackin_user     AS TrackinUser,
+            trackout_user    AS TrackoutUser,
             recipe           AS Recipe,
             created_at       AS CreatedAt,
             updated_at       AS UpdatedAt";
@@ -68,11 +69,11 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO anomaly_lot_process_mapping
-                    (anomaly_lot_id, station_name, equipment_id, process_time,
-                     op_id, recipe)
+                    (anomaly_lot_id, plant_name, station_name, machine_id,
+                     trackin_user, trackout_user, recipe)
                 VALUES
-                    (@AnomalyLotId, @StationName, @EquipmentId, @ProcessTime,
-                     @OpId, @Recipe);
+                    (@AnomalyLotId, @PlantName, @StationName, @MachineId,
+                     @TrackinUser, @TrackoutUser, @Recipe);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -92,10 +93,11 @@ namespace DapperMySqlCrudExample.Repositories
                 @"
                 UPDATE anomaly_lot_process_mapping
                 SET    anomaly_lot_id = @AnomalyLotId,
+                       plant_name     = @PlantName,
                        station_name   = @StationName,
-                       equipment_id   = @EquipmentId,
-                       process_time   = @ProcessTime,
-                       op_id          = @OpId,
+                       machine_id     = @MachineId,
+                       trackin_user   = @TrackinUser,
+                       trackout_user  = @TrackoutUser,
                        recipe         = @Recipe
                 WHERE  id = @Id";
 

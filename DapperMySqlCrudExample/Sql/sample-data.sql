@@ -139,23 +139,23 @@ VALUES
 -- =============================================================================
 -- 層級 2：anomaly_lot_process_mapping（批號製程追溯）
 -- =============================================================================
--- 記錄異常批號流經的製程站點與機台，用於異常根因分析。
+-- 記錄異常批號流經的廠區、站點、機台與人員，用於異常根因分析。
 -- 站點名稱使用封測業典型後段製程：
 --   DIE_ATTACH : 晶粒黏著（DA）
 --   WIRE_BOND  : 打線（WB）
 --   MOLDING    : 封膠（MD）
 
 INSERT INTO anomaly_lot_process_mapping
-    (anomaly_lot_id, station_name, equipment_id, process_time, op_id, recipe)
+    (anomaly_lot_id, plant_name, station_name, machine_id, trackin_user, trackout_user, recipe)
 VALUES
 -- anomaly_lot=1 (BGA256/YIELD) 流經 Die Attach 站
-(1, 'DIE_ATTACH', 'DA-ASM-03', '2026-04-02 10:15:00', 'OP-KH-008', 'DA-BGA256-STD-V2'),
+(1, 'KH-FAB1', 'DIE_ATTACH', 'DA-ASM-03', 'OP-KH-008', 'OP-KH-009', 'DA-BGA256-STD-V2'),
 
 -- anomaly_lot=1 (BGA256/YIELD) 流經 Wire Bond 站
-(1, 'WIRE_BOND', 'WB-KNS-07', '2026-04-02 11:30:00', 'OP-KH-022', 'WB-BGA256-AU-V1'),
+(1, 'KH-FAB1', 'WIRE_BOND', 'WB-KNS-07', 'OP-KH-022', 'OP-KH-023', 'WB-BGA256-AU-V1'),
 
 -- anomaly_lot=2 (BGA256/SITE_MEAN) 流經 Molding 站
-(2, 'MOLDING', 'MD-TOWA-02', '2026-04-02 13:00:00', 'OP-KH-005', 'MD-BGA256-EMC-V3');
+(2, 'KH-FAB2', 'MOLDING', 'MD-TOWA-02', 'OP-KH-005', 'OP-KH-006', 'MD-BGA256-EMC-V3');
 
 -- =============================================================================
 -- 層級 4：anomaly_unit_process_mapping（Unit 製程追溯）

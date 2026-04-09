@@ -92,14 +92,15 @@ CREATE TABLE anomaly_units (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. 批號 Process Mapping（站點 & 機台）
+-- 5. 批號 Process Mapping（廠區、站點、機台、人員）
 CREATE TABLE anomaly_lot_process_mapping (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     anomaly_lot_id BIGINT NOT NULL,
-    station_name VARCHAR(100) NOT NULL,
-    equipment_id VARCHAR(50) NOT NULL,
-    process_time DATETIME NULL,
-    op_id VARCHAR(50),
+    plant_name VARCHAR(100),
+    station_name VARCHAR(100),
+    machine_id VARCHAR(50),
+    trackin_user VARCHAR(50),
+    trackout_user VARCHAR(50),
     recipe VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -215,8 +216,8 @@ CREATE TABLE good_lots (
 --   ALTER TABLE anomaly_units ADD INDEX idx_unit (unit_id);
 --
 -- anomaly_lot_process_mapping:
---   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_equipment (equipment_id);
---   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_station_equipment (station_name, equipment_id);
+--   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_machine (machine_id);
+--   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_plant_station (plant_name, station_name);
 --
 -- anomaly_unit_process_mapping:
 --   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_boat_position (boat_id, position_x, position_y);
