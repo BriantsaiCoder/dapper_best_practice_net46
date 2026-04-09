@@ -223,6 +223,10 @@ CREATE TABLE good_lots (
 -- anomaly_units:
 --   ALTER TABLE anomaly_units ADD INDEX idx_unit (unit_id);
 --
+-- anomaly_lot_process_mapping:
+--   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_machine (machine_id);
+--   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_plant_station (plant_name, station_name);
+--
 -- anomaly_unit_process_mapping:
 --   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_boat_position (boat_id, boat_x, boat_y);
 --   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_plant_station (plant_name, station_name);

@@ -426,6 +426,8 @@ erDiagram
 | `anomaly_lots` | `idx_created_at (created_at)` | 依時間區間查詢近期異常批次（日報 / 週報） |
 | `anomaly_test_items` | `idx_test_item_name (test_item_name)` | 跨批號搜尋特定測項（如 IDD_STANDBY）的異常記錄 |
 | `anomaly_units` | `idx_unit (unit_id)` | 依 Unit ID 反查追溯（顆粒級不良分析） |
+| `anomaly_lot_process_mapping` | `idx_machine (machine_id)` | 依機台 ID 篩選，用於特定機台的異常批次關聯分析 |
+| `anomaly_lot_process_mapping` | `idx_plant_station (plant_name, station_name)` | 依廠區 + 站點篩選異常批號（製程站點根因分析） |
 | `anomaly_unit_process_mapping` | `idx_wafer_barcode (wafer_barcode)` | 依晶圓條碼追溯所有 Unit（Wafer Map 分析） |
 | `anomaly_unit_process_mapping` | `idx_boat_position (boat_id, boat_x, boat_y)` | Boat Map 分析：查詢特定載具位置的 Unit |
 | `anomaly_unit_process_mapping` | `idx_plant_station (plant_name, station_name)` | 依廠區 + 站點篩選，用於製程異常根因分析 |
