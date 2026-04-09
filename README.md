@@ -24,7 +24,7 @@
 |------|------|
 | Runtime | .NET Framework 4.6.1 |
 | ORM | Dapper 2.1.35 |
-| MySQL Driver | MySql.Data 8.0.32 |
+| MySQL Driver | MySql.Data 6.10.9 |
 | Logging | NLog 5.3.4 |
 | Statistics | MathNet.Numerics 5.0.0 |
 
@@ -42,12 +42,12 @@ dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 # 執行 sample
 dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --sample
 
-# 顯示說明
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --help
+# 僅驗證連線（不帶參數）
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
 ```
 
-> 若使用 Visual Studio 2017，請直接以 VS 內建 MSBuild 建置本方案即可。  
-> 本專案固定 `MySql.Data` 為 `8.0.32`，原因是 `8.0.33+` 在 `net461` 下不再提供 `net452` 資產，舊版 VS2017 SDK 容易因此出現 `NETSDK1050`。
+> 若使用 Visual Studio 2017，需 **15.3 以上**版本（支援 SDK-style 專案格式）。請直接以 VS 內建 MSBuild 建置本方案即可。  
+> 本專案使用 `MySql.Data 6.10.9`，為純 managed assembly、無間接依賴，在 net461 + VS2017 下可直接編譯，不需額外的警告抑制設定。
 
 ## 目前結構
 
@@ -514,6 +514,6 @@ ALTER TABLE detection_methods
 本專案刻意不使用 `async/await`：
 
 - 目標是 .NET Framework 4.6.1 Console 應用程式，所有操作為循序執行
-- `MySql.Data` 8.x 的非同步方法在 .NET Framework 上仍為同步包裝，使用 async 無實質效能增益
+- `MySql.Data` 6.x 的非同步方法為同步包裝，使用 async 無實質效能增益
 - 移除 async 後程式碼更短、堆疊追蹤更清楚、新工程師更容易理解
 - 若未來需要遷移至 ASP.NET Core 或 .NET 8+，屆時再將 Repository / Service 方法改為 async 即可

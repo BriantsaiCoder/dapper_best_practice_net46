@@ -16,7 +16,7 @@ lastDtbSucceeded
 
 [properties]
 AssemblyName=DapperMySqlCrudExample
-CommandLineArgsForDesignTimeEvaluation=-langversion:7.3 -define:TRACE
+CommandLineArgsForDesignTimeEvaluation=-langversion:7.0 -define:TRACE
 CompilerGeneratedFilesOutputPath=
 MaxSupportedLangVersion=7.3
 ProjectAssetsFile=<PATH>obj/project.assets.json
@@ -50,7 +50,7 @@ TemporaryDependencyNodeTargetIdentifier=net461
 /warnaserror-
 /utf8output
 /deterministic+
-/langversion:7.3
+/langversion:7.0
 /warnaserror+:NU1605
 
 [sourceFiles]
@@ -88,18 +88,18 @@ Services/DetectionSpecService.cs
 [metadataReferences]
 <NUGET>/
  dapper/2.1.35/lib/net461/Dapper.dll
- google.protobuf/3.21.9/lib/net45/Google.Protobuf.dll
- k4os.compression.lz4.streams/1.2.6/lib/net46/K4os.Compression.LZ4.Streams.dll
- k4os.compression.lz4/1.2.6/lib/net46/K4os.Compression.LZ4.dll
- k4os.hash.xxhash/1.0.6/lib/net46/K4os.Hash.xxHash.dll
  mathnet.numerics/5.0.0/lib/net461/MathNet.Numerics.dll
  microsoft.netframework.referenceassemblies.net461/1.0.3/build/.NETFramework/v4.6.1/
+  Facades/System.ComponentModel.dll
+  Microsoft.CSharp.dll
   mscorlib.dll
+  System.ComponentModel.DataAnnotations.dll
   System.Configuration.dll
   System.Configuration.Install.dll
   System.Core.dll
   System.Data.dll
   System.dll
+  System.Drawing.Design.dll
   System.Drawing.dll
   System.IO.Compression.dll
   System.IO.Compression.FileSystem.dll
@@ -109,15 +109,8 @@ Services/DetectionSpecService.cs
   System.Transactions.dll
   System.Xml.dll
   System.Xml.Linq.dll
- mysql.data/8.0.32/lib/net452/
-  MySql.Data.dll
-  ZstdNet.dll
+ mysql.data/6.10.9/lib/net452/MySql.Data.dll
  nlog/5.3.4/lib/net46/NLog.dll
- portable.bouncycastle/1.9.0/lib/net40/BouncyCastle.Crypto.dll
- system.buffers/4.5.1/ref/net45/System.Buffers.dll
- system.memory/4.5.4/lib/net461/System.Memory.dll
- system.numerics.vectors/4.5.0/ref/net46/System.Numerics.Vectors.dll
- system.runtime.compilerservices.unsafe/5.0.0/ref/net461/System.Runtime.CompilerServices.Unsafe.dll
  system.valuetuple/4.4.0/ref/net461/System.ValueTuple.dll
 
 [analyzerConfigFiles]
