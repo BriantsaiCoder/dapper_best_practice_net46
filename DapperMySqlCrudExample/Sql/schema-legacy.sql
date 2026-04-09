@@ -55,5 +55,5 @@ CREATE TABLE `lots_info` (
   UNIQUE KEY `file_name` (`file_name`),
   KEY `IDX_LOTS_INFO_DB_KEY` (`db_key`),
   KEY `idx_program` (`program`),
-  KEY `idx_customer ` (`customer`)
+  KEY `idx_customer` (`customer`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
