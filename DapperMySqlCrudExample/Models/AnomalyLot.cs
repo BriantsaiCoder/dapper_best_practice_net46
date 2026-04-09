@@ -16,6 +16,12 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>偵測方法 ID（外鍵 detection_methods.id）。</summary>
         public byte DetectionMethodId { get; set; }
 
+        /// <summary>實際偵測值；允許 Null。</summary>
+        public decimal? DetectionValue { get; set; }
+
+        /// <summary>偵測值與規格的偏移量；允許 Null。</summary>
+        public decimal? OffsetValue { get; set; }
+
         /// <summary>規格上限；允許 Null 表示尚未計算。</summary>
         public decimal? SpecUpperLimit { get; set; }
 

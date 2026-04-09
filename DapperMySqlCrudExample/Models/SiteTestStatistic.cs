@@ -3,7 +3,7 @@ using System;
 namespace DapperMySqlCrudExample.Models
 {
     /// <summary>
-    /// Site 測項統計值，儲存量測站點的平均值、Cp/Cpk 等製程能力指標。
+    /// Site 測項統計值，儲存量測站點的平均值、標準差等統計指標。
     /// </summary>
     public sealed class SiteTestStatistic
     {
@@ -33,12 +33,6 @@ namespace DapperMySqlCrudExample.Models
 
         /// <summary>本批 Site 量測值的標準差；允許 Null。</summary>
         public decimal? StdValue { get; set; }
-
-        /// <summary>製程能力指數 Cp；允許 Null。</summary>
-        public decimal? CpValue { get; set; }
-
-        /// <summary>製程能力指數 Cpk（含偏移修正）；允許 Null。</summary>
-        public decimal? CpkValue { get; set; }
 
         /// <summary>測試機台 ID。</summary>
         public string TesterId { get; set; }

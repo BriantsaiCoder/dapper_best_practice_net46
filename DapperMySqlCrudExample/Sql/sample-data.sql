@@ -74,19 +74,19 @@ VALUES
 -- anomaly_lots 記錄哪些批號在哪種偵測方法中被判定為異常。
 
 INSERT INTO anomaly_lots
-    (lots_info_id, detection_method_id,
+    (lots_info_id, detection_method_id, detection_value, offset_value,
      spec_upper_limit, spec_lower_limit, spec_calc_start_time, spec_calc_end_time)
 VALUES
 -- BGA256 低良率批 → YIELD 偵測異常（良率 95.2% 低於規格下限 97.0%）
-(2, 1,
+(2, 1, 95.200000000, -1.800000000,
  100.000000000, 97.000000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
 -- BGA256 低良率批 → SITE_MEAN 偵測異常（Site 平均值偏移）
-(2, 4,
+(2, 4, 3.380000000, 0.030000000,
  3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
 -- QFN48 正常批 → MEAN 偵測異常（平均值 2.508 接近 UCL 2.510 邊界觸發）
-(1, 3,
+(1, 3, 2.508000000, -0.002000000,
  2.510000000, 2.490000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59');
 
 -- =============================================================================
@@ -99,19 +99,19 @@ VALUES
 --   FREQ_OSC    : 內部振盪器頻率（MHz）
 
 INSERT INTO anomaly_test_items
-    (anomaly_lot_id, test_item_name, site_id, detection_value,
+    (anomaly_lot_id, test_item_name, site_id, detection_value, offset_value,
      spec_upper_limit, spec_lower_limit, spec_calc_start_time, spec_calc_end_time)
 VALUES
 -- anomaly_lot=1 (BGA256/YIELD)：IDD_STANDBY 待機電流異常偏高（Site 1）
-(1, 'IDD_STANDBY', 1, 5.230000000,
+(1, 'IDD_STANDBY', 1, 5.230000000, 0.230000000,
  5.000000000, 0.100000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
 -- anomaly_lot=2 (BGA256/SITE_MEAN)：VOH_PIN12 輸出電壓 Site 2 偏差
-(2, 'VOH_PIN12', 2, 3.380000000,
+(2, 'VOH_PIN12', 2, 3.380000000, 0.030000000,
  3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
 -- anomaly_lot=3 (QFN48/MEAN)：FREQ_OSC 振盪頻率偏移（Site 2）
-(3, 'FREQ_OSC', 2, 2.508500000,
+(3, 'FREQ_OSC', 2, 2.508500000, -0.001500000,
  2.510000000, 2.490000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59');
 
 -- =============================================================================
@@ -121,19 +121,19 @@ VALUES
 -- Unit ID 使用半導體慣用格式：U-{封裝}-{序號}
 
 INSERT INTO anomaly_units
-    (anomaly_test_item_id, unit_id, detection_value,
+    (anomaly_test_item_id, unit_id, detection_value, offset_value,
      spec_upper_limit, spec_lower_limit, spec_calc_start_time, spec_calc_end_time)
 VALUES
 -- test_item=1 (BGA256/IDD_STANDBY)：Unit 電流 5.42mA 超過 UCL 5.0mA
-(1, 'U-BGA256-00142', 5.420000000,
+(1, 'U-BGA256-00142', 5.420000000, 0.420000000,
  5.000000000, 0.100000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
 -- test_item=2 (BGA256/VOH_PIN12)：Unit 電壓 3.39V 超過 UCL 3.35V
-(2, 'U-BGA256-00587', 3.390000000,
+(2, 'U-BGA256-00587', 3.390000000, 0.040000000,
  3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59'),
 
 -- test_item=3 (QFN48/FREQ_OSC)：Unit 頻率 2.5112MHz 超過 UCL 2.510MHz
-(3, 'U-QFN48-03201', 2.511200000,
+(3, 'U-QFN48-03201', 2.511200000, 0.001200000,
  2.510000000, 2.490000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59');
 
 -- =============================================================================
@@ -170,28 +170,28 @@ INSERT INTO anomaly_unit_process_mapping
      wafer_barcode, wafer_id, wafer_x, wafer_y,
      substrate_id, substrate_x, substrate_y,
      wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
-     txn_time, station_name, equipment_id)
+     txn_time, plant_name, station_name, equipment_id)
 VALUES
 -- unit=1 (U-BGA256-00142) 在 Final Test 站
 (1, 'BOAT-FT-001', 3, 7,
  'WF-SM8650-LOT02-W03-BC', 'WF-SM8650-LOT02-W03', 15, 22,
  'SUB-BGA256-A01', 2, 4,
  30, 40, 8, 16,
- '2026-04-02 15:20:00', 'FINAL_TEST', 'FT-J750-01'),
+ '2026-04-02 15:20:00', 'KH-FAB1', 'FINAL_TEST', 'FT-J750-01'),
 
 -- unit=2 (U-BGA256-00587) 在 Final Test 站
 (2, 'BOAT-FT-001', 5, 12,
  'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
  'SUB-BGA256-A01', 3, 6,
  30, 40, 8, 16,
- '2026-04-02 15:45:00', 'FINAL_TEST', 'FT-J750-01'),
+ '2026-04-02 15:45:00', 'KH-FAB1', 'FINAL_TEST', 'FT-J750-01'),
 
 -- unit=3 (U-QFN48-03201) 在 Marking 站
 (3, 'BOAT-MK-003', 1, 2,
  'WF-MT6985-LOT01-W01-BC', 'WF-MT6985-LOT01-W01', 20, 18,
  'SUB-QFN48-B01', 1, 1,
  25, 35, 6, 12,
- '2026-04-01 13:10:00', 'MARKING', 'MK-DOM-02');
+ '2026-04-01 13:10:00', 'KH-FAB2', 'MARKING', 'MK-DOM-02');
 
 -- =============================================================================
 -- 獨立表：detection_specs（偵測規格）
@@ -222,29 +222,29 @@ VALUES
 -- =============================================================================
 -- 獨立表：site_test_statistics（Site 測項統計值）
 -- =============================================================================
--- 記錄每個批號在各 Site 的量測統計數據，包含 Cp/Cpk 製程能力指標。
+-- 記錄每個批號在各 Site 的量測統計數據。
 -- ★ 此資料供 CrudSampleRunner 範例三（SITE_MEAN 規格計算）使用。
 --   需確保至少 2 筆相同 program + site_id + test_item_name 且 mean_value / start_time 非 NULL。
 
 INSERT INTO site_test_statistics
     (lots_info_id, program, site_id, test_item_name,
      mean_value, max_value, min_value, std_value,
-     cp_value, cpk_value, tester_id, start_time, end_time)
+     tester_id, start_time, end_time)
 VALUES
--- 批號 2 (BGA256) / Site 1 / VOH_PIN12 — 製程能力不足（Cpk < 1.33）
+-- 批號 2 (BGA256) / Site 1 / VOH_PIN12
 (2, 'BGA256_PROD_V1', 1, 'VOH_PIN12',
  3.268000000, 3.380000000, 3.162000000, 0.035000000,
- 0.952000000, 0.781000000, 'FT-J750-01', '2026-04-02 14:10:22', '2026-04-02 18:35:48'),
+ 'FT-J750-01', '2026-04-02 14:10:22', '2026-04-02 18:35:48'),
 
--- 批號 1 (QFN48) / Site 1 / FREQ_OSC — 製程能力良好（Cpk > 1.33）
+-- 批號 1 (QFN48) / Site 1 / FREQ_OSC
 (1, 'QFN48_PROD_V3', 1, 'FREQ_OSC',
  2.500200000, 2.509800000, 2.490500000, 0.003100000,
- 1.075000000, 1.052000000, 'FT-J750-02', '2026-04-01 09:30:15', '2026-04-01 12:45:30'),
+ 'FT-J750-02', '2026-04-01 09:30:15', '2026-04-01 12:45:30'),
 
--- 批號 3 (SOIC16) / Site 1 / IDD_STANDBY — 製程能力優良（Cpk > 1.67）
+-- 批號 3 (SOIC16) / Site 1 / IDD_STANDBY
 (3, 'SOIC16_PROD_V2', 1, 'IDD_STANDBY',
  1.250000000, 1.890000000, 0.820000000, 0.180000000,
- 4.537000000, 3.472000000, 'FT-93K-01', '2026-04-03 08:05:30', '2026-04-03 14:20:15');
+ 'FT-93K-01', '2026-04-03 08:05:30', '2026-04-03 14:20:15');
 
 -- =============================================================================
 -- 獨立表：good_lots（好批批號記錄）

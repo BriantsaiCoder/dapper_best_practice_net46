@@ -58,6 +58,9 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>交易時間；允許 Null。</summary>
         public DateTime? TxnTime { get; set; }
 
+        /// <summary>廠區名稱；允許 Null。</summary>
+        public string PlantName { get; set; }
+
         /// <summary>站點名稱。</summary>
         public string StationName { get; set; }
 

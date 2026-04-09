@@ -417,6 +417,26 @@ erDiagram
 
 > **索引精簡原則**：僅保留目前 Repository 查詢實際命中的索引。各表的外鍵欄位由 InnoDB 自動建立隱式索引，不另外手動建立。若未來新增查詢需要新索引，請參考 `schema.sql` 底部的「常見擴充索引」註解區塊，在對應的 Repository 方法旁加註。
 
+### 半導體封測場景索引設計建議
+
+以下索引建議基於半導體後段封測（OSAT）常見查詢模式，依實際 Repository 查詢需求再啟用：
+
+| 資料表 | 建議索引 | 對應查詢場景 |
+|--------|---------|-------------|
+| `anomaly_lots` | `idx_created_at (created_at)` | 依時間區間查詢近期異常批次（日報 / 週報） |
+| `anomaly_test_items` | `idx_test_item_name (test_item_name)` | 跨批號搜尋特定測項（如 IDD_STANDBY）的異常記錄 |
+| `anomaly_units` | `idx_unit (unit_id)` | 依 Unit ID 反查追溯（顆粒級不良分析） |
+| `anomaly_unit_process_mapping` | `idx_wafer_barcode (wafer_barcode)` | 依晶圓條碼追溯所有 Unit（Wafer Map 分析） |
+| `anomaly_unit_process_mapping` | `idx_boat_position (boat_id, boat_x, boat_y)` | Boat Map 分析：查詢特定載具位置的 Unit |
+| `anomaly_unit_process_mapping` | `idx_plant_station (plant_name, station_name)` | 依廠區 + 站點篩選，用於製程異常根因分析 |
+| `anomaly_unit_process_mapping` | `idx_station_equipment (station_name, equipment_id)` | 機台異常關聯分析（特定站點 + 機台的異常聚集） |
+| `site_test_statistics` | 已內建 `idx_program_site_item_time` | SITE_MEAN 規格計算核心查詢（覆蓋索引） |
+
+> **設計原則**：
+> 1. **UNIQUE INDEX 優先**：`unq_lot_method`、`unq_lot_item`、`unq_item_unit`、`unq_lot_site_item` 已涵蓋最常見的 upsert / 重複檢查場景。
+> 2. **FK 隱式索引**：InnoDB 對 FK 欄位自動建立索引，不需手動重複建立（如 `anomaly_lot_id`、`anomaly_test_item_id`）。
+> 3. **延遲建立**：上表索引僅在實作對應 Repository 查詢方法時才加入 schema.sql，避免寫入熱點表上的索引維護開銷。
+
 ### 若既有資料庫仍是 `method_code`
 
 若不是新建資料庫，而是從舊版欄位升級，請先執行：

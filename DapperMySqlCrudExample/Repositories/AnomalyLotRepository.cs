@@ -27,6 +27,8 @@ namespace DapperMySqlCrudExample.Repositories
             id                   AS Id,
             lots_info_id         AS LotsInfoId,
             detection_method_id  AS DetectionMethodId,
+            detection_value      AS DetectionValue,
+            offset_value         AS OffsetValue,
             spec_upper_limit     AS SpecUpperLimit,
             spec_lower_limit     AS SpecLowerLimit,
             spec_calc_start_time AS SpecCalcStartTime,
@@ -62,10 +64,12 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO anomaly_lots
-                    (lots_info_id, detection_method_id, spec_upper_limit, spec_lower_limit,
+                    (lots_info_id, detection_method_id, detection_value, offset_value,
+                     spec_upper_limit, spec_lower_limit,
                      spec_calc_start_time, spec_calc_end_time)
                 VALUES
-                    (@LotsInfoId, @DetectionMethodId, @SpecUpperLimit, @SpecLowerLimit,
+                    (@LotsInfoId, @DetectionMethodId, @DetectionValue, @OffsetValue,
+                     @SpecUpperLimit, @SpecLowerLimit,
                      @SpecCalcStartTime, @SpecCalcEndTime);
                 SELECT LAST_INSERT_ID();";
 
@@ -87,6 +91,8 @@ namespace DapperMySqlCrudExample.Repositories
                 UPDATE anomaly_lots
                 SET    lots_info_id         = @LotsInfoId,
                        detection_method_id  = @DetectionMethodId,
+                       detection_value      = @DetectionValue,
+                       offset_value         = @OffsetValue,
                        spec_upper_limit     = @SpecUpperLimit,
                        spec_lower_limit     = @SpecLowerLimit,
                        spec_calc_start_time = @SpecCalcStartTime,
