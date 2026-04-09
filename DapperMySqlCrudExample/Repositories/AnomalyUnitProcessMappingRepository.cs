@@ -42,6 +42,7 @@ namespace DapperMySqlCrudExample.Repositories
             boat_max_x        AS BoatMaxX,
             boat_max_y        AS BoatMaxY,
             txn_time          AS TxnTime,
+            plant_name        AS PlantName,
             station_name      AS StationName,
             equipment_id      AS EquipmentId,
             created_at        AS CreatedAt,
@@ -84,13 +85,13 @@ namespace DapperMySqlCrudExample.Repositories
                      wafer_barcode, wafer_id, wafer_x, wafer_y,
                      substrate_id, substrate_x, substrate_y,
                      wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
-                     txn_time, station_name, equipment_id)
+                     txn_time, plant_name, station_name, equipment_id)
                 VALUES
                     (@AnomalyUnitId, @BoatId, @BoatX, @BoatY,
                      @WaferBarcode, @WaferId, @WaferX, @WaferY,
                      @SubstrateId, @SubstrateX, @SubstrateY,
                      @WaferMaxX, @WaferMaxY, @BoatMaxX, @BoatMaxY,
-                     @TxnTime, @StationName, @EquipmentId);
+                     @TxnTime, @PlantName, @StationName, @EquipmentId);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -125,6 +126,7 @@ namespace DapperMySqlCrudExample.Repositories
                        boat_max_x        = @BoatMaxX,
                        boat_max_y        = @BoatMaxY,
                        txn_time          = @TxnTime,
+                       plant_name        = @PlantName,
                        station_name      = @StationName,
                        equipment_id      = @EquipmentId
                 WHERE  id = @Id";

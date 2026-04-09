@@ -28,6 +28,7 @@ namespace DapperMySqlCrudExample.Repositories
             anomaly_test_item_id  AS AnomalyTestItemId,
             unit_id               AS UnitId,
             detection_value       AS DetectionValue,
+            offset_value          AS OffsetValue,
             spec_upper_limit      AS SpecUpperLimit,
             spec_lower_limit      AS SpecLowerLimit,
             spec_calc_start_time  AS SpecCalcStartTime,
@@ -64,11 +65,11 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 INSERT INTO anomaly_units
-                    (anomaly_test_item_id, unit_id, detection_value,
+                    (anomaly_test_item_id, unit_id, detection_value, offset_value,
                      spec_upper_limit, spec_lower_limit,
                      spec_calc_start_time, spec_calc_end_time)
                 VALUES
-                    (@AnomalyTestItemId, @UnitId, @DetectionValue,
+                    (@AnomalyTestItemId, @UnitId, @DetectionValue, @OffsetValue,
                      @SpecUpperLimit, @SpecLowerLimit,
                      @SpecCalcStartTime, @SpecCalcEndTime);
                 SELECT LAST_INSERT_ID();";
@@ -92,6 +93,7 @@ namespace DapperMySqlCrudExample.Repositories
                 SET    anomaly_test_item_id  = @AnomalyTestItemId,
                        unit_id               = @UnitId,
                        detection_value       = @DetectionValue,
+                       offset_value          = @OffsetValue,
                        spec_upper_limit      = @SpecUpperLimit,
                        spec_lower_limit      = @SpecLowerLimit,
                        spec_calc_start_time  = @SpecCalcStartTime,

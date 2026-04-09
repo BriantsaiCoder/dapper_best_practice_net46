@@ -37,6 +37,8 @@ CREATE TABLE anomaly_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
     detection_method_id TINYINT UNSIGNED NOT NULL,
+    detection_value DECIMAL(18,9),
+    offset_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NULL,
@@ -60,6 +62,7 @@ CREATE TABLE anomaly_test_items (
     test_item_name VARCHAR(100) NOT NULL,
     site_id INT UNSIGNED NOT NULL,
     detection_value DECIMAL(18,9),
+    offset_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NULL,
@@ -79,6 +82,7 @@ CREATE TABLE anomaly_units (
     anomaly_test_item_id BIGINT NOT NULL,
     unit_id VARCHAR(50) NOT NULL,
     detection_value DECIMAL(18,9),
+    offset_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     spec_calc_start_time DATETIME NULL,
@@ -129,6 +133,7 @@ CREATE TABLE anomaly_unit_process_mapping (
     boat_max_x SMALLINT NOT NULL,
     boat_max_y SMALLINT NOT NULL,
     txn_time DATETIME NULL,
+    plant_name VARCHAR(100),
     station_name VARCHAR(100),
     equipment_id VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -174,8 +179,6 @@ CREATE TABLE site_test_statistics (
     max_value DECIMAL(18,9),
     min_value DECIMAL(18,9),
     std_value DECIMAL(18,9),
-    cp_value DECIMAL(18,9),
-    cpk_value DECIMAL(18,9),
     tester_id VARCHAR(50),
     start_time DATETIME NULL,
     end_time   DATETIME NULL,
@@ -226,7 +229,9 @@ CREATE TABLE good_lots (
 --
 -- anomaly_unit_process_mapping:
 --   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_boat_position (boat_id, boat_x, boat_y);
+--   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_plant_station (plant_name, station_name);
 --   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_station_equipment (station_name, equipment_id);
+--   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_wafer_barcode (wafer_barcode);
 --
 -- =============================================================================
 -- 欄位遷移（若既有環境仍使用舊欄位名稱）

@@ -36,8 +36,6 @@ namespace DapperMySqlCrudExample.Repositories
             max_value      AS MaxValue,
             min_value      AS MinValue,
             std_value      AS StdValue,
-            cp_value       AS CpValue,
-            cpk_value      AS CpkValue,
             tester_id      AS TesterId,
             start_time     AS StartTime,
             end_time       AS EndTime,
@@ -158,13 +156,11 @@ namespace DapperMySqlCrudExample.Repositories
                 INSERT INTO site_test_statistics
                     (lots_info_id, program, site_id, test_item_name,
                      mean_value, max_value, min_value, std_value,
-                     cp_value, cpk_value, tester_id,
-                     start_time, end_time)
+                     tester_id, start_time, end_time)
                 VALUES
                     (@LotsInfoId, @Program, @SiteId, @TestItemName,
                      @MeanValue, @MaxValue, @MinValue, @StdValue,
-                     @CpValue, @CpkValue, @TesterId,
-                     @StartTime, @EndTime);
+                     @TesterId, @StartTime, @EndTime);
                 SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
@@ -191,8 +187,6 @@ namespace DapperMySqlCrudExample.Repositories
                        max_value      = @MaxValue,
                        min_value      = @MinValue,
                        std_value      = @StdValue,
-                       cp_value       = @CpValue,
-                       cpk_value      = @CpkValue,
                        tester_id      = @TesterId,
                        start_time     = @StartTime,
                        end_time       = @EndTime
