@@ -26,7 +26,7 @@ namespace DapperMySqlCrudExample
                 _logger.Info("應用程式啟動檢查完成，資料庫連線驗證成功。");
                 Console.WriteLine("啟動檢查完成，資料庫連線正常。");
 
-                Console.WriteLine("已啟用 sample 模式，開始執行資料存取示範。");
+                Console.WriteLine("開始執行資料存取示範。");
                 CrudSampleRunner.RunAllSamples(connectionFactory);
             }
             catch (Exception ex)
