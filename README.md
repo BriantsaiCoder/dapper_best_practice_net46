@@ -118,7 +118,9 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 ### 1. 連線短生命週期
 
-[DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的已開啟連線，呼叫端以 `using` 管理生命週期。
+[DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的**尚未開啟**的連線，呼叫端以 `using` 管理生命週期。
+
+Dapper 的 `Query`、`Execute`、`ExecuteScalar` 等方法內建自動開關連線的邏輯：傳入未開啟的連線時，Dapper 會自動 Open → 執行 SQL → Close，連線只在 SQL 執行期間被佔用，持有時間最短。需要交易時，必須在 `BeginTransaction()` 前手動呼叫 `conn.Open()`。
 
 這個專案不引入額外的 connection wrapper 或 Unit of Work。
 
@@ -239,13 +241,16 @@ repo.Insert(newMethod);
 
 ```csharp
 using (var conn = connectionFactory.Create())
-using (var tx = conn.BeginTransaction())
 {
-    // 兩筆 Insert 共用同一條連線與交易
-    byte idA1 = repo.Insert(methodA1, tx);
-    byte idA2 = repo.Insert(methodA2, tx);
+    conn.Open();  // 交易前必須明確開啟
+    using (var tx = conn.BeginTransaction())
+    {
+        // 兩筆 Insert 共用同一條連線與交易
+        byte idA1 = repo.Insert(methodA1, tx);
+        byte idA2 = repo.Insert(methodA2, tx);
 
-    tx.Commit(); // 全部成功才寫入
+        tx.Commit(); // 全部成功才寫入
+    }
 }
 // 若 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 自動 Rollback
 ```
@@ -264,19 +269,22 @@ using (var tx = conn.BeginTransaction())
 
 ```csharp
 using (var conn = connectionFactory.Create())
-using (var tx = conn.BeginTransaction())
 {
-    try
+    conn.Open();  // 交易前必須明確開啟
+    using (var tx = conn.BeginTransaction())
     {
-        byte idB = repo.Insert(methodB, tx);
+        try
+        {
+            byte idB = repo.Insert(methodB, tx);
 
-        // 模擬業務邏輯錯誤
-        throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
-    }
-    catch (InvalidOperationException ex)
-    {
-        tx.Rollback(); // 顯式撤銷
-        _logger.Warn(ex, "Rollback 完成");
+            // 模擬業務邏輯錯誤
+            throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
+        }
+        catch (InvalidOperationException ex)
+        {
+            tx.Rollback(); // 顯式撤銷
+            _logger.Warn(ex, "Rollback 完成");
+        }
     }
 }
 ```
@@ -298,23 +306,26 @@ using (var tx = conn.BeginTransaction())
 
 ```csharp
 using (var conn = _factory.Create())
-using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    // 步驟 1：在交易中讀取 30 筆歷史統計資料
-    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+    conn.Open();  // 交易前必須明確開啟
+    using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+    {
+        // 步驟 1：在交易中讀取 30 筆歷史統計資料
+        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
 
-    // 步驟 2：記憶體內計算平均值、標準差、管制上下限
-    var (mean, std) = CalculateMeanAndStd(rows);
-    var (ucl, lcl) = CalculateControlLimits(mean, std);
+        // 步驟 2：記憶體內計算平均值、標準差、管制上下限
+        var (mean, std) = CalculateMeanAndStd(rows);
+        var (ucl, lcl) = CalculateControlLimits(mean, std);
 
-    // 步驟 3：查詢 SITE_MEAN 的 detection_method_id（同一交易內）
-    byte methodId = GetRequiredSiteMeanMethodId(tx);
+        // 步驟 3：查詢 SITE_MEAN 的 detection_method_id（同一交易內）
+        byte methodId = GetRequiredSiteMeanMethodId(tx);
 
-    // 步驟 4：將計算結果寫入 detection_specs
-    long newId = _detectionSpecRepo.Insert(spec, tx);
+        // 步驟 4：將計算結果寫入 detection_specs
+        long newId = _detectionSpecRepo.Insert(spec, tx);
 
-    tx.Commit();
-    return newId;
+        tx.Commit();
+        return newId;
+    }
 }
 ```
 
@@ -381,7 +392,7 @@ public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 
 1. **交易由 Service 層管理，Repository 層不建立交易。** Repository 只負責接受或不接受交易參數，不決定何時開始或結束交易。
 
-2. **連線與交易的 `using` 順序很重要。** 先 `using conn`，再 `using tx`。離開時反序 Dispose：先 Rollback 未 Commit 的交易，再歸還連線。
+2. **連線與交易的 `using` 順序很重要。** 先 `using conn`，再 `conn.Open()`，再 `using tx`。離開時反序 Dispose：先 Rollback 未 Commit 的交易，再歸還連線。
 
 3. **交易內的所有操作必須使用 `transaction.Connection`。** 不可在交易進行中另開新連線，否則新連線不屬於該交易。
 
