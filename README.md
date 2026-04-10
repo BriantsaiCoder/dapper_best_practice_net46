@@ -187,7 +187,7 @@ Repository 保持單一職責：
 - 不做統計運算
 - 不封裝跨表工作流程
 
-Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式 try/catch。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作；在本專案使用的 `MySql.Data 6.10.9` 與後續 8.x 的同步交易 API 上，這個模式都成立。
+Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式 try/catch。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作。
 
 ### 5. SITE_MEAN 取樣策略已做固定上限
 
@@ -309,6 +309,32 @@ using (var tx = conn.BeginTransaction())
 
 兩者效果相同，選擇取決於是否需要在 Rollback 後做額外事情。
 本專案的正式業務流程預設優先使用**隱式 Rollback**；只有像 sample 這種需要立即記錄日誌、輸出示範訊息或執行補充處理時，才使用**顯式 Rollback**。
+
+```csharp
+// 隱式 Rollback：不 Commit，直接讓 using 結束
+using (var conn = connectionFactory.Create())
+using (var tx = conn.BeginTransaction())
+{
+    repo.Insert(method, tx);
+    throw new InvalidOperationException();
+}
+
+// 顯式 Rollback：需要在撤銷後立即做額外處理
+using (var conn = connectionFactory.Create())
+using (var tx = conn.BeginTransaction())
+{
+    try
+    {
+        repo.Insert(method, tx);
+        throw new InvalidOperationException();
+    }
+    catch
+    {
+        tx.Rollback();
+        Console.WriteLine("Rollback 完成");
+    }
+}
+```
 
 ### 情境四：需要交易 — 讀取→計算→寫入的一致性
 
