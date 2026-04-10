@@ -36,7 +36,7 @@ DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
 ```text
 Program.cs
    └─ 啟動檢查 / composition root
-       ├─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
+       ├─ DbConnectionFactory.Create() → MySqlConnection（尚未開啟）
        │   └─ Dapper 驗證連線 → MySQL DB
        └─ CrudSampleRunner（啟動後自動執行，僅接收 DbConnectionFactory）
            ├─ XxxRepository（內部自行建構，sealed 具體類別）
@@ -222,14 +222,17 @@ public sealed class FooService
     public long DoBusinessLogic(string param)
     {
         using (var conn = _factory.Create())
-        using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
         {
-            var foo = _fooRepo.GetByKey(param);
-            // 業務計算…
-            var bar = new Bar { FooId = foo.Id };
-            var barId = _barRepo.Insert(bar, tx);
-            tx.Commit();
-            return barId;
+            conn.Open();  // 交易前必須明確開啟（BeginTransaction 要求連線已開啟）
+            using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+            {
+                var foo = _fooRepo.GetByKey(param);
+                // 業務計算…
+                var bar = new Bar { FooId = foo.Id };
+                var barId = _barRepo.Insert(bar, tx);
+                tx.Commit();
+                return barId;
+            }
         }
     }
 }
