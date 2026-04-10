@@ -82,7 +82,7 @@ namespace DapperMySqlCrudExample.Repositories
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            const string sql =
+            const string insertSql =
                 @"
                 INSERT INTO anomaly_unit_process_mapping
                     (anomaly_unit_id, boat_id, boat_x, boat_y,
@@ -95,15 +95,19 @@ namespace DapperMySqlCrudExample.Repositories
                      @WaferBarcode, @WaferId, @WaferX, @WaferY,
                      @SubstrateId, @SubstrateX, @SubstrateY,
                      @WaferMaxX, @WaferMaxY, @BoatMaxX, @BoatMaxY,
-                     @TxnTime, @PlantName, @StationName, @EquipmentId);
-                SELECT LAST_INSERT_ID();";
+                     @TxnTime, @PlantName, @StationName, @EquipmentId);";
+            const string lastInsertIdSql = "SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+            {
+                transaction.Connection.Execute(insertSql, entity, transaction);
+                return transaction.Connection.ExecuteScalar<long>(lastInsertIdSql, transaction: transaction);
+            }
 
             using (var conn = _factory.Create())
             {
-                return conn.ExecuteScalar<long>(sql, entity);
+                conn.Execute(insertSql, entity);
+                return conn.ExecuteScalar<long>(lastInsertIdSql);
             }
         }
 

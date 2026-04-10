@@ -125,24 +125,28 @@ namespace DapperMySqlCrudExample.Repositories
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            // 【新手導讀】INSERT 後接 SELECT LAST_INSERT_ID() 取得 MySQL 自動遞增的主鍵值。
-            // ExecuteScalar<T>() 會執行 SQL 並回傳結果集第一列第一欄的值，正好取得新主鍵。
-            const string sql =
+            // 【新手導讀】先執行 INSERT，再於同一條連線上查詢 SELECT LAST_INSERT_ID() 取得 MySQL 自動遞增主鍵。
+            // 拆成兩次呼叫可避免驅動在交易中處理多語句結果集時，誤回傳預設值的情況。
+            const string insertSql =
                 @"
                 INSERT INTO detection_methods
                     (method_key, method_name)
                 VALUES
-                    (@MethodKey, @MethodName);
-                SELECT LAST_INSERT_ID();";
+                    (@MethodKey, @MethodName);";
+            const string lastInsertIdSql = "SELECT LAST_INSERT_ID();";
 
             // 【新手導讀】直接傳入 entity 物件作為參數時，Dapper 會自動將物件的所有公開屬性
             // 對應到 SQL 中的 @參數（如 entity.MethodKey → @MethodKey），不需逐一指定。
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
+            {
+                transaction.Connection.Execute(insertSql, entity, transaction);
+                return transaction.Connection.ExecuteScalar<byte>(lastInsertIdSql, transaction: transaction);
+            }
 
             using (var conn = _factory.Create())
             {
-                return conn.ExecuteScalar<byte>(sql, entity);
+                conn.Execute(insertSql, entity);
+                return conn.ExecuteScalar<byte>(lastInsertIdSql);
             }
         }
 

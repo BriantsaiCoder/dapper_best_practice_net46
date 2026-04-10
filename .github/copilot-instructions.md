@@ -106,16 +106,20 @@ public sealed class FooRepository
     {
         if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-        const string sql = @"
-            INSERT INTO foos (foo_name) VALUES (@FooName);
-            SELECT LAST_INSERT_ID();";
+        const string insertSql = @"
+            INSERT INTO foos (foo_name) VALUES (@FooName);";
+        const string lastInsertIdSql = "SELECT LAST_INSERT_ID();";
 
         if (transaction != null)
-            return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+        {
+            transaction.Connection.Execute(insertSql, entity, transaction);
+            return transaction.Connection.ExecuteScalar<long>(lastInsertIdSql, transaction: transaction);
+        }
 
         using (var conn = _factory.Create())
         {
-            return conn.ExecuteScalar<long>(sql, entity);
+            conn.Execute(insertSql, entity);
+            return conn.ExecuteScalar<long>(lastInsertIdSql);
         }
     }
 
@@ -243,7 +247,7 @@ public sealed class FooService
 | **`private const string SelectColumns`** | 每個 Repository 必須有此常數，避免每個方法重複欄位 AS 清單 |
 | **`using (var conn = _factory.Create())`** | 每個方法自己管理連線生命週期，不共享連線；`using` 區塊一律使用大括號 `{ }` 包覆，不使用單行省略寫法 |
 | **`IDbTransaction transaction = null`** | CUD 方法皆接受可選交易參數，有交易時複用既有連線 |
-| **`SELECT LAST_INSERT_ID()`** | Insert 後不做二次 SELECT，直接取自動遞增 PK |
+| **`SELECT LAST_INSERT_ID()`** | Insert 先執行寫入，再於同一連線/交易分開查詢 `SELECT LAST_INSERT_ID()` 取得自動遞增 PK |
 | **`QueryFirstOrDefault`** | 查單筆時使用，不拋例外，由呼叫端處理 null |
 | **Parameterized Query** | 所有 SQL 參數使用 `@ParamName`，對應 Dapper 匿名物件或 entity 屬性 |
 | **欄位名稱轉換** | DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 對齊 |

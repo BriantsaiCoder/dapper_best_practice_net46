@@ -59,20 +59,24 @@ namespace DapperMySqlCrudExample.Repositories
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            const string sql =
+            const string insertSql =
                 @"
                 INSERT INTO good_lots
                     (lots_info_id, detection_method_id)
                 VALUES
-                    (@LotsInfoId, @DetectionMethodId);
-                SELECT LAST_INSERT_ID();";
+                    (@LotsInfoId, @DetectionMethodId);";
+            const string lastInsertIdSql = "SELECT LAST_INSERT_ID();";
 
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+            {
+                transaction.Connection.Execute(insertSql, entity, transaction);
+                return transaction.Connection.ExecuteScalar<long>(lastInsertIdSql, transaction: transaction);
+            }
 
             using (var conn = _factory.Create())
             {
-                return conn.ExecuteScalar<long>(sql, entity);
+                conn.Execute(insertSql, entity);
+                return conn.ExecuteScalar<long>(lastInsertIdSql);
             }
         }
 

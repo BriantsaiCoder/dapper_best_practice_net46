@@ -383,16 +383,21 @@ using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 ```csharp
 public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 {
-    const string sql = "INSERT INTO ... SELECT LAST_INSERT_ID();";
+    const string insertSql = "INSERT INTO ...";
+    const string lastInsertIdSql = "SELECT LAST_INSERT_ID();";
 
     // 有交易：複用交易綁定的連線（由外部 Service 管理生命週期）
     if (transaction != null)
-        return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
+    {
+        transaction.Connection.Execute(insertSql, entity, transaction);
+        return transaction.Connection.ExecuteScalar<byte>(lastInsertIdSql, transaction: transaction);
+    }
 
     // 無交易：自行建立短生命週期連線
     using (var conn = _factory.Create())
     {
-        return conn.ExecuteScalar<byte>(sql, entity);
+        conn.Execute(insertSql, entity);
+        return conn.ExecuteScalar<byte>(lastInsertIdSql);
     }
 }
 ```
@@ -519,7 +524,7 @@ ALTER TABLE detection_methods
 ### Repository 實作原則
 
 - 使用參數化查詢
-- `Insert` 搭配 `SELECT LAST_INSERT_ID()`
+- `Insert` 先寫入，再於同一連線/交易查詢 `SELECT LAST_INSERT_ID()`
 - 有 transaction 時複用 `transaction.Connection`
 - 無 transaction 時自行建立短生命週期連線
 - 不預設提供全表掃描與 offset 分頁
