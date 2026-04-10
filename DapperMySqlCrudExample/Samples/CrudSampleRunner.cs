@@ -1,5 +1,4 @@
 using System;
-using System.Data;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Repositories;
@@ -23,7 +22,6 @@ namespace DapperMySqlCrudExample.Samples
         internal static void RunAllSamples(DbConnectionFactory connectionFactory)
         {
             RunNonTransactionExample(connectionFactory);
-            RunTransactionExample(connectionFactory);
 
             // 【新手導讀】手動建構依賴注入（Manual DI）：
             // 生產環境通常使用 IoC 容器（如 Autofac、Microsoft.Extensions.DependencyInjection）自動解析依賴，
@@ -64,7 +62,9 @@ namespace DapperMySqlCrudExample.Samples
             // 清理可能殘留的示範資料，確保 MethodKey 唯一性
             var existing = repo.GetByKey("DEMO_NO_TX");
             if (existing != null)
+            {
                 repo.Delete(existing.Id);
+            }
 
             // ── Insert ───────────────────────────────────────────────────────
             var newMethod = new DetectionMethod
@@ -120,130 +120,7 @@ namespace DapperMySqlCrudExample.Samples
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // 範例二：使用交易的資料庫存取（展示 Commit 與 Rollback）
-        // ─────────────────────────────────────────────────────────────────────
-        /// <summary>
-        /// 示範將多個資料庫寫入操作包覆在同一交易中。
-        /// 分兩個子場景：(A) 全部成功後 Commit，(B) 模擬失敗後 Rollback。
-        /// </summary>
-        private static void RunTransactionExample(DbConnectionFactory connectionFactory)
-        {
-            Console.WriteLine();
-            Console.WriteLine("═══════════════════════════════════════════════════════");
-            Console.WriteLine("  範例二：使用交易的資料庫存取");
-            Console.WriteLine("═══════════════════════════════════════════════════════");
-
-            var repo = new DetectionMethodRepository(connectionFactory);
-
-            // 清理可能殘留的示範資料
-            foreach (var code in new[] { "TX_DEMO_A1", "TX_DEMO_A2", "TX_DEMO_B" })
-            {
-                var e = repo.GetByKey(code);
-                if (e != null)
-                    repo.Delete(e.Id);
-            }
-
-            // ── (A) Commit 場景 ───────────────────────────────────────────────
-            // 【新手導讀】交易的基本生命週期：
-            //   1. BeginTransaction() — 開始交易
-            //   2. 執行多個 Repository 操作（全部共用同一 connection + transaction）
-            //   3. Commit() — 全部成功時提交，資料正式寫入資料庫
-            //   4. 若未呼叫 Commit()，using 區塊結束時 Dispose() 會自動 Rollback
-            // 因此正常路徑只需呼叫 Commit()，無需顯式 try/catch。
-            Console.WriteLine();
-            Console.WriteLine("  ── (A) Commit 場景：同一交易內新增兩筆，全部成功後提交 ──");
-
-            byte idA1 = 0,
-                idA2 = 0;
-            using (var conn = connectionFactory.Create())
-            using (var tx = conn.BeginTransaction())
-            {
-                var methodA1 = new DetectionMethod
-                {
-                    MethodKey = "TX_DEMO_A1",
-                    MethodName = "交易示範 A1",
-                };
-                idA1 = repo.Insert(methodA1, tx);
-                _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
-                Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}");
-
-                var methodA2 = new DetectionMethod
-                {
-                    MethodKey = "TX_DEMO_A2",
-                    MethodName = "交易示範 A2",
-                };
-                idA2 = repo.Insert(methodA2, tx);
-                _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
-                Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}");
-
-                tx.Commit();
-                _logger.Info("RunTransactionExample(A): Commit 成功");
-                Console.WriteLine("  [TX-A Commit] 交易提交成功。");
-            }
-
-            // 驗證：交易提交後可用一般連線查詢
-            var verifyA1 = repo.GetById(idA1);
-            var verifyA2 = repo.GetById(idA2);
-            Console.WriteLine(
-                $"  [TX-A Verify] A1={verifyA1?.MethodName}, A2={verifyA2?.MethodName}"
-            );
-
-            // 清理測試資料
-            repo.Delete(idA1);
-            repo.Delete(idA2);
-            Console.WriteLine("  [TX-A Cleanup] 測試資料已清除。");
-
-            // ── (B) Rollback 場景 ────────────────────────────────────────────
-            // 【新手導讀】顯式 Rollback vs 隱式 Rollback：
-            //   - 顯式：在 catch 中呼叫 tx.Rollback()，適合需要在 Rollback 後執行額外邏輯的情境。
-            //   - 隱式：不呼叫 Commit() 就離開 using 區塊，Dispose() 自動 Rollback，程式碼更簡潔。
-            //   兩者效果相同，本範例示範顯式 Rollback 以便清楚展示流程。
-            Console.WriteLine();
-            Console.WriteLine(
-                "  ── (B) Rollback 場景：交易內新增一筆後模擬異常，驗證資料未寫入 ──"
-            );
-
-            byte idB = 0;
-            using (var conn = connectionFactory.Create())
-            using (var tx = conn.BeginTransaction())
-            {
-                try
-                {
-                    var methodB = new DetectionMethod
-                    {
-                        MethodKey = "TX_DEMO_B",
-                        MethodName = "交易示範 B（應被 Rollback）",
-                    };
-                    idB = repo.Insert(methodB, tx);
-                    _logger.Info("RunTransactionExample(B): Insert B Id={Id}（尚未 Commit）", idB);
-                    Console.WriteLine($"  [TX-B Insert B] Id={idB}（交易尚未提交）");
-
-                    // 模擬業務邏輯錯誤，觸發 Rollback
-                    throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
-                }
-                catch (InvalidOperationException ex)
-                {
-                    tx.Rollback();
-                    _logger.Warn(ex, "RunTransactionExample(B): Rollback");
-                    Console.WriteLine($"  [TX-B Rollback] {ex.Message}");
-                }
-            }
-
-            // 驗證：Rollback 後應查不到該筆資料
-            var verifyB = repo.GetById(idB);
-            bool wasRolledBack = verifyB == null;
-            _logger.Info(
-                "RunTransactionExample(B): Rollback 驗證，資料不存在={Result}",
-                wasRolledBack
-            );
-            Console.WriteLine($"  [TX-B Verify] Rollback 驗證：資料確實不存在={wasRolledBack}");
-
-            Console.WriteLine();
-            Console.WriteLine("  範例二完成。");
-        }
-
-        // ─────────────────────────────────────────────────────────────────────
-        // 範例三：SITE_MEAN 規格計算
+        // 範例二：SITE_MEAN 規格計算
         // ─────────────────────────────────────────────────────────────────────
         /// <summary>
         /// 示範如何透過 Service 依歷史統計資料建立 detection_specs 記錄。
@@ -253,7 +130,7 @@ namespace DapperMySqlCrudExample.Samples
         /// ★ 前置條件：site_test_statistics 中需有至少 2 筆符合條件的資料
         ///   （program + site_id + test_item_name 相同，且 mean_value、start_time 非 NULL），
         ///   且 lots_info 外鍵依賴表須已建立（參見 Sql/schema-legacy.sql）。
-        ///   空資料庫執行時本範例會自動略過，不影響範例一、二。
+        ///   空資料庫執行時本範例會自動略過，不影響範例一。
         /// </remarks>
         private static void RunComputeSiteMeanSpecExample(
             DetectionSpecService detectionSpecService,
@@ -263,7 +140,7 @@ namespace DapperMySqlCrudExample.Samples
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════");
-            Console.WriteLine("  範例三：SITE_MEAN 規格計算");
+            Console.WriteLine("  範例二：SITE_MEAN 規格計算");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
             var calcParams = siteTestStatisticRepository.GetCalcParamsFromLatestSample();

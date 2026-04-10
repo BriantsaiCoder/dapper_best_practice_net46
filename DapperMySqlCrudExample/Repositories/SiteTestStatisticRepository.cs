@@ -154,12 +154,18 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
+        /// <remarks>
+        /// INSERT 與 SELECT LAST_INSERT_ID() 拆為兩步驟執行：
+        /// MySql.Data 6.x 的 ExecuteScalar 處理多語句批次時，會回傳第一個語句（INSERT）的結果，
+        /// 導致 LAST_INSERT_ID() 的值被忽略而回傳 0。
+        /// 拆分後在同一連線（或交易）上依序執行，確保取得正確的自動遞增主鍵。
+        /// </remarks>
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            const string sql =
+            const string insertSql =
                 @"
                 INSERT INTO site_test_statistics
                     (lots_info_id, program, site_id, test_item_name,
@@ -168,15 +174,20 @@ namespace DapperMySqlCrudExample.Repositories
                 VALUES
                     (@LotsInfoId, @Program, @SiteId, @TestItemName,
                      @MeanValue, @MaxValue, @MinValue, @StdValue,
-                     @TesterId, @StartTime, @EndTime);
-                SELECT LAST_INSERT_ID();";
+                     @TesterId, @StartTime, @EndTime)";
+
+            const string identitySql = "SELECT LAST_INSERT_ID()";
 
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+            {
+                transaction.Connection.Execute(insertSql, entity, transaction);
+                return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+            }
 
             using (var conn = _factory.Create())
             {
-                return conn.ExecuteScalar<long>(sql, entity);
+                conn.Execute(insertSql, entity);
+                return conn.ExecuteScalar<long>(identitySql);
             }
         }
 

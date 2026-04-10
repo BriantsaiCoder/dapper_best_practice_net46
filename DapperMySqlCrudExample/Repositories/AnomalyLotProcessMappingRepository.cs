@@ -65,27 +65,38 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
+        /// <remarks>
+        /// INSERT 與 SELECT LAST_INSERT_ID() 拆為兩步驟執行：
+        /// MySql.Data 6.x 的 ExecuteScalar 處理多語句批次時，會回傳第一個語句（INSERT）的結果，
+        /// 導致 LAST_INSERT_ID() 的值被忽略而回傳 0。
+        /// 拆分後在同一連線（或交易）上依序執行，確保取得正確的自動遞增主鍵。
+        /// </remarks>
         public long Insert(AnomalyLotProcessMapping entity, IDbTransaction transaction = null)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            const string sql =
+            const string insertSql =
                 @"
                 INSERT INTO anomaly_lot_process_mapping
                     (anomaly_lot_id, plant_name, station_name, machine_id,
                      trackin_user, trackout_user, recipe)
                 VALUES
                     (@AnomalyLotId, @PlantName, @StationName, @MachineId,
-                     @TrackinUser, @TrackoutUser, @Recipe);
-                SELECT LAST_INSERT_ID();";
+                     @TrackinUser, @TrackoutUser, @Recipe)";
+
+            const string identitySql = "SELECT LAST_INSERT_ID()";
 
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+            {
+                transaction.Connection.Execute(insertSql, entity, transaction);
+                return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+            }
 
             using (var conn = _factory.Create())
             {
-                return conn.ExecuteScalar<long>(sql, entity);
+                conn.Execute(insertSql, entity);
+                return conn.ExecuteScalar<long>(identitySql);
             }
         }
 

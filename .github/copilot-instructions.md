@@ -18,11 +18,8 @@ nuget restore dapper_best_practice_net46.sln
 # 建置
 msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
 
-# 執行啟動檢查（確認 App.config 或環境變數已設定連線字串）
+# 執行（啟動檢查 + 資料存取示範，確認 App.config 或環境變數已設定連線字串）
 DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
-
-# 執行 CRUD 展示（需帶 --sample 旗標）
-DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe --sample
 ```
 
 **前置需求**：
@@ -39,9 +36,9 @@ DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe --sample
 ```text
 Program.cs
    └─ 啟動檢查 / composition root
-       ├─ DbConnectionFactory.Create() → MySqlConnection（已 Open）
+       ├─ DbConnectionFactory.Create() → MySqlConnection（尚未開啟）
        │   └─ Dapper 驗證連線 → MySQL DB
-       └─ CrudSampleRunner（--sample 旗標時執行，僅接收 DbConnectionFactory）
+       └─ CrudSampleRunner（啟動後自動執行，僅接收 DbConnectionFactory）
            ├─ XxxRepository（內部自行建構，sealed 具體類別）
            │   └─ Dapper 查詢 / 寫入 → MySQL DB
            └─ XxxService（內部自行建構，sealed 具體類別）
@@ -50,12 +47,12 @@ Program.cs
 
 | 層次     | 目錄              | 職責                                                     |
 | -------- | ----------------- | -------------------------------------------------------- |
-| 進入點   | `Program.cs`      | 啟動檢查與 composition root，不預設執行資料寫入           |
+| 進入點   | `Program.cs`      | 啟動檢查與 composition root，驗證連線後執行資料存取示範   |
 | 基礎建設 | `Infrastructure/` | `DbConnectionFactory`（sealed concrete class，無介面）    |
 | 模型     | `Models/`         | Dapper 對應 POCO（無 ORM Attribute）+ sealed DTO          |
 | 資料存取 | `Repositories/`   | sealed 具體類別，共 9 個，純 CRUD                         |
 | 業務邏輯 | `Services/`       | sealed 具體類別，跨 Repository 業務編排（交易、計算）      |
-| 展示     | `Samples/`        | `CrudSampleRunner`，3 個 Sample 方法（非必要）            |
+| 展示     | `Samples/`        | `CrudSampleRunner`，2 個 Sample 方法（非必要）            |
 | 資料庫   | `Sql/`            | 核心 9 張表 DDL + 既有系統整合表 DDL                      |
 
 ---
@@ -106,16 +103,21 @@ public sealed class FooRepository
     {
         if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-        const string sql = @"
-            INSERT INTO foos (foo_name) VALUES (@FooName);
-            SELECT LAST_INSERT_ID();";
+        const string insertSql = @"
+            INSERT INTO foos (foo_name) VALUES (@FooName)";
+
+        const string identitySql = "SELECT LAST_INSERT_ID()";
 
         if (transaction != null)
-            return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
+        {
+            transaction.Connection.Execute(insertSql, entity, transaction);
+            return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+        }
 
         using (var conn = _factory.Create())
         {
-            return conn.ExecuteScalar<long>(sql, entity);
+            conn.Execute(insertSql, entity);
+            return conn.ExecuteScalar<long>(identitySql);
         }
     }
 
@@ -220,14 +222,17 @@ public sealed class FooService
     public long DoBusinessLogic(string param)
     {
         using (var conn = _factory.Create())
-        using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
         {
-            var foo = _fooRepo.GetByKey(param);
-            // 業務計算…
-            var bar = new Bar { FooId = foo.Id };
-            var barId = _barRepo.Insert(bar, tx);
-            tx.Commit();
-            return barId;
+            conn.Open();  // 交易前必須明確開啟（BeginTransaction 要求連線已開啟）
+            using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+            {
+                var foo = _fooRepo.GetByKey(param);
+                // 業務計算…
+                var bar = new Bar { FooId = foo.Id };
+                var barId = _barRepo.Insert(bar, tx);
+                tx.Commit();
+                return barId;
+            }
         }
     }
 }
@@ -243,7 +248,7 @@ public sealed class FooService
 | **`private const string SelectColumns`** | 每個 Repository 必須有此常數，避免每個方法重複欄位 AS 清單 |
 | **`using (var conn = _factory.Create())`** | 每個方法自己管理連線生命週期，不共享連線；`using` 區塊一律使用大括號 `{ }` 包覆，不使用單行省略寫法 |
 | **`IDbTransaction transaction = null`** | CUD 方法皆接受可選交易參數，有交易時複用既有連線 |
-| **`SELECT LAST_INSERT_ID()`** | Insert 後不做二次 SELECT，直接取自動遞增 PK |
+| **`SELECT LAST_INSERT_ID()`** | Insert 先 `Execute` 再於同一連線 `ExecuteScalar` 取自動遞增 PK（MySql.Data 6.x 不支援多語句批次 ExecuteScalar） |
 | **`QueryFirstOrDefault`** | 查單筆時使用，不拋例外，由呼叫端處理 null |
 | **Parameterized Query** | 所有 SQL 參數使用 `@ParamName`，對應 Dapper 匿名物件或 entity 屬性 |
 | **欄位名稱轉換** | DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 對齊 |
@@ -274,8 +279,7 @@ public sealed class FooService
 ## 常見陷阱
 
 - **Dapper 屬性對應區分大小寫**：`AS CreatedAt` 須與 `public DateTime CreatedAt` 完全一致，拼寫不同將靜默對應失敗（欄位值為預設值）。
-- **MySql.Data 9.x 移除 MySQL 5.x 支援**：升級前確認 MySQL Server 版本。目前鎖定 8.0.33。
-- **net461 + MySql.Data 8.x 警告**：非功能性警告，已以 `SuppressTfmSupportBuildWarnings` 抑制，不需處理。
+- **MySql.Data 6.x 多語句批次 ExecuteScalar 回傳 0**：`ExecuteScalar("INSERT ...; SELECT LAST_INSERT_ID()")` 會回傳第一個語句的結果（0），而非 LAST_INSERT_ID() 的值。必須拆為 `Execute` + `ExecuteScalar` 兩步驟。
 - **`DbConnectionFactory()` 讀 App.config**：執行時若 `DefaultConnection` 未設定，會拋出 `InvalidOperationException` 並附帶明確說明；確認連線字串正確後再執行。
 - **交易與連線生命週期**：有交易時必須使用 `transaction.Connection`，不可自建新連線。無交易時使用 `using (var conn = _factory.Create())`。
 
@@ -286,6 +290,6 @@ public sealed class FooService
 | 套件                | 版本   | 備註                                             |
 | ------------------- | ------ | ------------------------------------------------ |
 | `Dapper`            | 2.1.35 | 不升至 3.x（API 有異動）                         |
-| `MySql.Data`        | 8.0.33 | 9.x 移除 MySQL 5.x；若升級需同步確認 Server 版本 |
+| `MySql.Data`        | 6.10.9 | Oracle 更改授權前最後穩定版；純 managed assembly，net461 + VS2017 可直接編譯 |
 | `MathNet.Numerics`  | 5.0.0  | 用於 SITE_MEAN 統計計算（平均值 / 標準差）        |
 | `NLog`              | 5.3.4  | 結構化日誌（主控台 + 檔案輪替）                    |

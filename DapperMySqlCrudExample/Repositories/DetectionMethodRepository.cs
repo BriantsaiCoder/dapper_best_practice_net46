@@ -119,30 +119,40 @@ namespace DapperMySqlCrudExample.Repositories
         /// 【新手導讀】交易參數模式：transaction 預設為 null，讓同一方法可在有/無交易兩種情境下使用。
         /// 有交易時透過 transaction.Connection 取得該交易綁定的連線，確保所有操作共用同一連線與交易。
         /// 無交易時自行建立新連線（走 using 區塊）。此模式在本專案所有 Repository 的寫入方法中通用。
+        ///
+        /// INSERT 與 SELECT LAST_INSERT_ID() 拆為兩步驟執行：
+        /// MySql.Data 6.x 的 ExecuteScalar 處理多語句批次時，會回傳第一個語句（INSERT）的結果，
+        /// 導致 LAST_INSERT_ID() 的值被忽略而回傳 0。
+        /// 拆分後在同一連線（或交易）上依序執行，確保取得正確的自動遞增主鍵。
         /// </remarks>
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            // 【新手導讀】INSERT 後接 SELECT LAST_INSERT_ID() 取得 MySQL 自動遞增的主鍵值。
-            // ExecuteScalar<T>() 會執行 SQL 並回傳結果集第一列第一欄的值，正好取得新主鍵。
-            const string sql =
+            // 【新手導讀】先執行 INSERT，再於同一連線查詢 LAST_INSERT_ID() 取得 MySQL 自動遞增的主鍵值。
+            // 兩步驟必須在同一連線上執行，因為 LAST_INSERT_ID() 是 session-scoped 的函式。
+            const string insertSql =
                 @"
                 INSERT INTO detection_methods
                     (method_key, method_name)
                 VALUES
-                    (@MethodKey, @MethodName);
-                SELECT LAST_INSERT_ID();";
+                    (@MethodKey, @MethodName)";
+
+            const string identitySql = "SELECT LAST_INSERT_ID()";
 
             // 【新手導讀】直接傳入 entity 物件作為參數時，Dapper 會自動將物件的所有公開屬性
             // 對應到 SQL 中的 @參數（如 entity.MethodKey → @MethodKey），不需逐一指定。
             if (transaction != null)
-                return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
+            {
+                transaction.Connection.Execute(insertSql, entity, transaction);
+                return transaction.Connection.ExecuteScalar<byte>(identitySql, transaction: transaction);
+            }
 
             using (var conn = _factory.Create())
             {
-                return conn.ExecuteScalar<byte>(sql, entity);
+                conn.Execute(insertSql, entity);
+                return conn.ExecuteScalar<byte>(identitySql);
             }
         }
 

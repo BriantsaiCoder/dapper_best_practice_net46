@@ -55,6 +55,29 @@ namespace DapperMySqlCrudExample.Services
         /// 取樣策略為取最新 30 筆有效資料進行統計。
         /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
         /// </summary>
+        /// <remarks>
+        /// 【Rollback 機制說明】
+        /// 本方法不使用顯式 try/catch + tx.Rollback()，而是依賴 using 區塊的隱式 Rollback：
+        ///
+        ///   using (var tx = conn.BeginTransaction(...))
+        ///   {
+        ///       // ... 多個 Repository 操作 ...
+        ///       tx.Commit();   ← 只有走到這行，資料才會真正寫入資料庫
+        ///       return newId;
+        ///   }
+        ///
+        /// 若在 tx.Commit() 之前的任何一步發生例外（例如樣本數不足拋出 InvalidOperationException、
+        /// detection_methods 找不到 SITE_MEAN、或 Insert 時 SQL 錯誤），例外會直接往上拋出，
+        /// 程式流程跳過 tx.Commit()，離開 using 區塊時 C# 會自動呼叫 tx.Dispose()。
+        ///
+        /// IDbTransaction.Dispose() 的行為：
+        /// - 若交易已 Commit → Dispose 不做額外動作。
+        /// - 若交易未 Commit（即本情境）→ Dispose 會自動執行 Rollback，
+        ///   撤銷此交易中所有已執行的 SQL 操作（包含已 Execute 但未 Commit 的 INSERT）。
+        ///
+        /// 這種「隱式 Rollback」模式比顯式 try/catch + tx.Rollback() 更簡潔，
+        /// 且效果完全相同，是本專案 Service 層的慣用寫法。
+        /// </remarks>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,
@@ -73,48 +96,53 @@ namespace DapperMySqlCrudExample.Services
             // 外層 using 管理連線（conn），內層 using 管理交易（tx）。
             // 離開區塊時會依反序 Dispose：先 tx（自動 Rollback 未 Commit 的交易），再 conn（歸還連線池）。
             using (var conn = _factory.Create())
-            // 【新手導讀】IsolationLevel.RepeatableRead 確保在交易期間，已讀取的資料不會被其他交易修改。
-            // 這對統計計算很重要：避免「查詢歷史資料」與「寫入計算結果」之間資料被外部異動導致不一致。
-            using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
             {
-                var rows = _siteTestStatRepo.QuerySiteMeanRows(
-                    programName,
-                    siteId,
-                    testItemName,
-                    tx
-                );
-
-                if (rows.Count < MinimumSampleCount)
-                    throw new InvalidOperationException(
-                        $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
-                            + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
+                // 【新手導讀】BeginTransaction() 要求連線已開啟，因此交易場景需手動 Open()。
+                // 一般不需交易的 Repository 方法由 Dapper 自動管理開關連線，不須手動 Open()。
+                conn.Open();
+                // 【新手導讀】IsolationLevel.RepeatableRead 確保在交易期間，已讀取的資料不會被其他交易修改。
+                // 這對統計計算很重要：避免「查詢歷史資料」與「寫入計算結果」之間資料被外部異動導致不一致。
+                using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+                {
+                    var rows = _siteTestStatRepo.QuerySiteMeanRows(
+                        programName,
+                        siteId,
+                        testItemName,
+                        tx
                     );
 
-                var (mean, std) = CalculateMeanAndStd(rows);
-                var (ucl, lcl) = CalculateControlLimits(mean, std);
-                var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
+                    if (rows.Count < MinimumSampleCount)
+                        throw new InvalidOperationException(
+                            $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
+                                + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
+                        );
 
-                byte methodId = GetRequiredSiteMeanMethodId(tx);
+                    var (mean, std) = CalculateMeanAndStd(rows);
+                    var (ucl, lcl) = CalculateControlLimits(mean, std);
+                    var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
 
-                var spec = BuildDetectionSpec(
-                    programName,
-                    siteId,
-                    testItemName,
-                    methodId,
-                    ucl,
-                    lcl,
-                    specCalcStart,
-                    specCalcEnd,
-                    mean,
-                    std
-                );
+                    byte methodId = GetRequiredSiteMeanMethodId(tx);
 
-                long newId = _detectionSpecRepo.Insert(spec, tx);
-                // 【新手導讀】必須明確呼叫 Commit() 才會真正寫入資料庫。
-                // 若在 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 會自動 Rollback，
-                // 所有在此交易中的操作都會被撤銷，確保資料一致性（全成功或全失敗）。
-                tx.Commit();
-                return newId;
+                    var spec = BuildDetectionSpec(
+                        programName,
+                        siteId,
+                        testItemName,
+                        methodId,
+                        ucl,
+                        lcl,
+                        specCalcStart,
+                        specCalcEnd,
+                        mean,
+                        std
+                    );
+
+                    long newId = _detectionSpecRepo.Insert(spec, tx);
+                    // ★ 只有成功走到此行，資料才會真正寫入資料庫。
+                    // 若上方任何步驟拋出例外，程式流程會跳過 Commit()，
+                    // 離開 using 區塊時 tx.Dispose() 自動 Rollback 所有未提交的操作。
+                    tx.Commit();
+                    return newId;
+                }
             }
         }
 

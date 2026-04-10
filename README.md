@@ -50,11 +50,8 @@ msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
 # 擇一設定連線字串
 set MYSQL_CONNECTION_STRING=Server=localhost;Database=app_db;Uid=root;Pwd=your_password;
 
-# 僅驗證資料庫連線
+# 執行（啟動檢查 + 資料存取示範）
 DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
-
-# 執行 sample
-DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe --sample
 ```
 
 > 本專案使用 `MySql.Data 6.10.9`，為純 managed assembly、無間接依賴，在 net461 + VS2017 下可直接編譯，不需額外的警告抑制設定。  
@@ -103,31 +100,16 @@ dapper_best_practice_net46.sln
         └── sample-data.sql
 ```
 
-## 執行模式
+## 執行流程
 
-### 1. 預設模式
+執行時會依序進行：
 
-不帶參數時只做啟動檢查：
+1. 建立 `DbConnectionFactory` 並驗證資料庫連線（`SELECT 1`）
+2. 執行 [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
+   - 不使用交易的基本 CRUD
+   - `DetectionSpecService` 的 SITE_MEAN 計算範例（含交易與隱式 Rollback）
 
-- 建立 `DbConnectionFactory`
-- 開啟 MySQL 連線
-- 執行 `SELECT 1`
-
-這個模式適合：
-
-- 部署前驗證
-- 連線字串確認
-- 監控或排程環境健康檢查
-
-### 2. Sample 模式
-
-`--sample` 會執行 [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
-
-- 不使用交易的基本 CRUD
-- 同一交易中的 Commit / Rollback
-- `DetectionSpecService` 的 SITE_MEAN 計算範例
-
-> ⚠️ **注意**：`--sample` 會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。
+> ⚠️ **注意**：執行時會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。
 
 Sample 只是教學入口，不應直接視為正式工作流程實作。
 
@@ -135,7 +117,9 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 ### 1. 連線短生命週期
 
-[DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的已開啟連線，呼叫端以 `using` 管理生命週期。
+[DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的**尚未開啟**的連線，呼叫端以 `using` 管理生命週期。
+
+Dapper 的 `Query`、`Execute`、`ExecuteScalar` 等方法內建自動開關連線的邏輯：傳入未開啟的連線時，Dapper 會自動 Open → 執行 SQL → Close，連線只在 SQL 執行期間被佔用，持有時間最短。需要交易時，必須在 `BeginTransaction()` 前手動呼叫 `conn.Open()`。
 
 這個專案不引入額外的 connection wrapper 或 Unit of Work。
 
@@ -250,88 +234,90 @@ repo.Insert(newMethod);
 
 > 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例一
 
-### 情境二：需要交易 — 多筆寫入的原子性
+### 情境二：需要交易 — 多筆操作的原子性與隱式 Rollback
 
-當多個寫入操作必須全部成功或全部撤銷時，需要交易。
-
-```csharp
-using (var conn = connectionFactory.Create())
-using (var tx = conn.BeginTransaction())
-{
-    // 兩筆 Insert 共用同一條連線與交易
-    byte idA1 = repo.Insert(methodA1, tx);
-    byte idA2 = repo.Insert(methodA2, tx);
-
-    tx.Commit(); // 全部成功才寫入
-}
-// 若 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 自動 Rollback
-```
-
-> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例二 (A) Commit 場景
-
-設計原因：
-
-- 兩筆 Insert 代表一個業務單元（例如同時建立偵測方法與其關聯設定）
-- 若第二筆失敗但第一筆已寫入，資料庫會出現孤立記錄
-- 交易確保「全有或全無」（all-or-nothing）
-
-### 情境三：需要交易 — 顯式 Rollback
-
-當需要在 catch 區塊中執行額外清理邏輯時，使用顯式 Rollback：
+當多個寫入操作必須全部成功或全部撤銷時，需要交易。本專案在 Service 層統一管理交易邊界：
 
 ```csharp
-using (var conn = connectionFactory.Create())
-using (var tx = conn.BeginTransaction())
+using (var conn = _factory.Create())
 {
-    try
+    conn.Open();  // 交易前必須明確開啟
+    using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
     {
-        byte idB = repo.Insert(methodB, tx);
+        // 步驟 1：在交易中讀取歷史資料
+        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
 
-        // 模擬業務邏輯錯誤
-        throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
+        // 步驟 2：記憶體內計算
+        var (mean, std) = CalculateMeanAndStd(rows);
+
+        // 步驟 3：將計算結果寫入
+        long newId = _detectionSpecRepo.Insert(spec, tx);
+
+        tx.Commit();   // ★ 只有走到這行，資料才會真正寫入資料庫
+        return newId;
     }
-    catch (InvalidOperationException ex)
-    {
-        tx.Rollback(); // 顯式撤銷
-        _logger.Warn(ex, "Rollback 完成");
-    }
+    // 若 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 自動 Rollback
 }
 ```
 
-> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例二 (B) Rollback 場景
+> 對應程式碼：[DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) `ComputeAndInsertSiteMeanSpec()`
+
+**隱式 Rollback 的運作原理：**
+
+```
+正常路徑：                          異常路徑：
+  BeginTransaction()                  BeginTransaction()
+    ↓                                   ↓
+  QuerySiteMeanRows()                 QuerySiteMeanRows()
+    ↓                                   ↓
+  CalculateMeanAndStd()               CalculateMeanAndStd()
+    ↓                                   ↓
+  Insert()                            Insert() → 拋出例外！
+    ↓                                   ↓
+  Commit() ← 資料正式寫入             跳過 Commit()
+    ↓                                   ↓
+  Dispose() → 無動作                  Dispose() → 自動 Rollback ★
+```
+
+`IDbTransaction.Dispose()` 的行為取決於是否已呼叫 `Commit()`：
+- **已 Commit** → `Dispose()` 不做額外動作
+- **未 Commit**（例外跳過）→ `Dispose()` 自動執行 Rollback，撤銷所有未提交的操作
 
 **兩種 Rollback 方式的差異：**
 
 | 方式 | 做法 | 適用場景 |
 |------|------|---------|
-| 隱式 Rollback | 不呼叫 `Commit()`，讓 `using` 結束時 `Dispose()` 自動 Rollback | 例外直接往上拋，不需額外處理 |
+| 隱式 Rollback | 不呼叫 `Commit()`，讓 `using` 結束時 `Dispose()` 自動 Rollback | 例外直接往上拋，不需額外處理（本專案慣用） |
 | 顯式 Rollback | 在 `catch` 中呼叫 `tx.Rollback()` | 需要在 Rollback 後記錄日誌、通知或執行補償邏輯 |
 
-兩者效果相同，選擇取決於是否需要在 Rollback 後做額外事情。
+兩者效果相同，本專案 Service 層採用隱式 Rollback，程式碼更簡潔。
 
-### 情境四：需要交易 — 讀取→計算→寫入的一致性
+### 情境三：需要交易 — 讀取→計算→寫入的一致性
 
 這是本專案最複雜的交易場景，出現在 [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) 的 SITE_MEAN 規格計算：
 
 ```csharp
 using (var conn = _factory.Create())
-using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 {
-    // 步驟 1：在交易中讀取 30 筆歷史統計資料
-    var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+    conn.Open();  // 交易前必須明確開啟
+    using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+    {
+        // 步驟 1：在交易中讀取 30 筆歷史統計資料
+        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
 
-    // 步驟 2：記憶體內計算平均值、標準差、管制上下限
-    var (mean, std) = CalculateMeanAndStd(rows);
-    var (ucl, lcl) = CalculateControlLimits(mean, std);
+        // 步驟 2：記憶體內計算平均值、標準差、管制上下限
+        var (mean, std) = CalculateMeanAndStd(rows);
+        var (ucl, lcl) = CalculateControlLimits(mean, std);
 
-    // 步驟 3：查詢 SITE_MEAN 的 detection_method_id（同一交易內）
-    byte methodId = GetRequiredSiteMeanMethodId(tx);
+        // 步驟 3：查詢 SITE_MEAN 的 detection_method_id（同一交易內）
+        byte methodId = GetRequiredSiteMeanMethodId(tx);
 
-    // 步驟 4：將計算結果寫入 detection_specs
-    long newId = _detectionSpecRepo.Insert(spec, tx);
+        // 步驟 4：將計算結果寫入 detection_specs
+        long newId = _detectionSpecRepo.Insert(spec, tx);
 
-    tx.Commit();
-    return newId;
+        tx.Commit();
+        return newId;
+    }
 }
 ```
 
@@ -356,16 +342,21 @@ using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 ```csharp
 public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 {
-    const string sql = "INSERT INTO ... SELECT LAST_INSERT_ID();";
+    const string insertSql = "INSERT INTO ... VALUES (...)";
+    const string identitySql = "SELECT LAST_INSERT_ID()";
 
     // 有交易：複用交易綁定的連線（由外部 Service 管理生命週期）
     if (transaction != null)
-        return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
+    {
+        transaction.Connection.Execute(insertSql, entity, transaction);
+        return transaction.Connection.ExecuteScalar<byte>(identitySql, transaction: transaction);
+    }
 
     // 無交易：自行建立短生命週期連線
     using (var conn = _factory.Create())
     {
-        return conn.ExecuteScalar<byte>(sql, entity);
+        conn.Execute(insertSql, entity);
+        return conn.ExecuteScalar<byte>(identitySql);
     }
 }
 ```
@@ -393,7 +384,7 @@ public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 
 1. **交易由 Service 層管理，Repository 層不建立交易。** Repository 只負責接受或不接受交易參數，不決定何時開始或結束交易。
 
-2. **連線與交易的 `using` 順序很重要。** 先 `using conn`，再 `using tx`。離開時反序 Dispose：先 Rollback 未 Commit 的交易，再歸還連線。
+2. **連線與交易的 `using` 順序很重要。** 先 `using conn`，再 `conn.Open()`，再 `using tx`。離開時反序 Dispose：先 Rollback 未 Commit 的交易，再歸還連線。
 
 3. **交易內的所有操作必須使用 `transaction.Connection`。** 不可在交易進行中另開新連線，否則新連線不屬於該交易。
 
@@ -478,7 +469,7 @@ ALTER TABLE detection_methods
 ### Repository 實作原則
 
 - 使用參數化查詢
-- `Insert` 搭配 `SELECT LAST_INSERT_ID()`
+- `Insert` 先 `Execute` 再於同一連線 `ExecuteScalar` 取 `SELECT LAST_INSERT_ID()`
 - 有 transaction 時複用 `transaction.Connection`
 - 無 transaction 時自行建立短生命週期連線
 - 不預設提供全表掃描與 offset 分頁
