@@ -6,9 +6,10 @@
 --   2. schema.sql          （建立 9 張核心表 + detection_methods 種子資料）
 --   3. 本檔 sample-data.sql（插入範例資料）
 --
--- ★ 本檔提供每張資料表各 3 筆範例資料，模擬以下半導體後段封測場景：
---   - 三個批號分屬不同客戶 / 封裝 / 程式（QFN48、BGA256、SOIC16）
---   - BGA256 批為低良率批，觸發 YIELD 與 SITE_MEAN 異常偵測
+-- ★ 本檔提供範例資料，模擬以下半導體後段封測場景：
+--   - 五個批號：QFN48 / BGA256(×3) / SOIC16，分屬不同客戶 / 封裝 / 程式
+--   - BGA256 批號 2 為低良率批，觸發 YIELD 與 SITE_MEAN 異常偵測
+--   - BGA256 批號 4、5 為同程式正常批，提供 SITE_MEAN 規格計算所需歷史樣本（≥2 筆）
 --   - QFN48 批因平均值接近邊界，觸發 MEAN 異常偵測
 --   - 測試項目使用真實 Final Test 參數（IDD_STANDBY、VOH、FREQ_OSC 等）
 --   - Process Mapping 反映封測典型製程流程（Die Attach → Wire Bond → Molding → Final Test）
@@ -28,6 +29,8 @@
 -- QFN48 正常批（良率 98.5%）  → db_key = 'QFN48-20260401-001'
 -- BGA256 低良率批（良率 95.2%，將觸發異常偵測） → db_key = 'BGA256-20260402-001'
 -- SOIC16 正常批（良率 99.1%） → db_key = 'SOIC16-20260403-001'
+-- BGA256 正常批（良率 97.8%，SITE_MEAN 計算用歷史樣本） → db_key = 'BGA256-20260405-001'
+-- BGA256 正常批（良率 98.1%，SITE_MEAN 計算用歷史樣本） → db_key = 'BGA256-20260408-001'
 
 INSERT INTO lots_info
     (version, mac_address, db_key, customer, package, bonding_diagram, program, device,
@@ -69,7 +72,29 @@ VALUES
  9000.0, 3000.0, 2000.0, 2500.0, 1500.0,
  64, 0.42, 0, '2026-04-03 08:05:30', '2026-04-03 14:20:15',
  19830, 55, 50, 35,
- 8500.0, 2750.0, 2500.0, 1750.0);
+ 8500.0, 2750.0, 2500.0, 1750.0),
+
+-- 批號 4：BGA256 — Qualcomm SM8650，正常批（SITE_MEAN 規格計算用歷史樣本）
+('V1.0.5', '00:1A:2B:3C:4D:04', 'BGA256-20260405-001', 'Qualcomm', 'BGA256',
+ 'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
+ 'CL-2026040501', 'AO-2026040501', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-20260405-A',
+ 'BGA256_PROD_V1_20260405_100000.stdf',
+ 97.8, 5000, 4890, 35, 25, 30, 20,
+ 22000.0, 7000.0, 5000.0, 6000.0, 4000.0,
+ 256, 1.50, 0, '2026-04-05 10:00:00', '2026-04-05 14:30:00',
+ 4895, 30, 28, 22,
+ 21000.0, 6000.0, 5600.0, 4400.0),
+
+-- 批號 5：BGA256 — Qualcomm SM8650，正常批（SITE_MEAN 規格計算用歷史樣本）
+('V1.0.5', '00:1A:2B:3C:4D:05', 'BGA256-20260408-001', 'Qualcomm', 'BGA256',
+ 'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
+ 'CL-2026040801', 'AO-2026040801', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-20260408-A',
+ 'BGA256_PROD_V1_20260408_090000.stdf',
+ 98.1, 5000, 4905, 30, 20, 28, 17,
+ 19000.0, 6000.0, 4000.0, 5600.0, 3400.0,
+ 256, 1.48, 0, '2026-04-08 09:00:00', '2026-04-08 13:15:00',
+ 4910, 28, 25, 18,
+ 18000.0, 5600.0, 5000.0, 3600.0);
 
 -- =============================================================================
 -- 層級 1：anomaly_lots（異常批號主表）
@@ -328,6 +353,28 @@ VALUES
  3.268000000, 3.380000000, 3.162000000, 0.035000000,
  'FT-J750-01', '2026-04-02 14:10:22', '2026-04-02 18:35:48');
 
+-- 批號 4 (BGA256) / Site 1 / VOH_PIN12（SITE_MEAN 計算用歷史樣本）
+INSERT INTO site_test_statistics
+    (lots_info_id, program, site_id, test_item_name,
+     mean_value, max_value, min_value, std_value,
+     tester_id, start_time, end_time)
+VALUES
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'),
+ 'BGA256_PROD_V1', 1, 'VOH_PIN12',
+ 3.252000000, 3.345000000, 3.170000000, 0.031000000,
+ 'FT-J750-01', '2026-04-05 10:00:00', '2026-04-05 14:30:00');
+
+-- 批號 5 (BGA256) / Site 1 / VOH_PIN12（SITE_MEAN 計算用歷史樣本）
+INSERT INTO site_test_statistics
+    (lots_info_id, program, site_id, test_item_name,
+     mean_value, max_value, min_value, std_value,
+     tester_id, start_time, end_time)
+VALUES
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'),
+ 'BGA256_PROD_V1', 1, 'VOH_PIN12',
+ 3.241000000, 3.338000000, 3.158000000, 0.029000000,
+ 'FT-J750-01', '2026-04-08 09:00:00', '2026-04-08 13:15:00');
+
 -- 批號 1 (QFN48) / Site 1 / FREQ_OSC
 INSERT INTO site_test_statistics
     (lots_info_id, program, site_id, test_item_name,
@@ -367,3 +414,11 @@ VALUES ((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'), 1);
 -- 批號 3 (SOIC16) 通過 SITE_MEAN 偵測 → 列為好批
 INSERT INTO good_lots (lots_info_id, detection_method_id)
 VALUES ((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'), 4);
+
+-- 批號 4 (BGA256) 通過 SITE_MEAN 偵測 → 列為好批（SITE_MEAN 計算用歷史樣本）
+INSERT INTO good_lots (lots_info_id, detection_method_id)
+VALUES ((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'), 4);
+
+-- 批號 5 (BGA256) 通過 SITE_MEAN 偵測 → 列為好批（SITE_MEAN 計算用歷史樣本）
+INSERT INTO good_lots (lots_info_id, detection_method_id)
+VALUES ((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'), 4);
