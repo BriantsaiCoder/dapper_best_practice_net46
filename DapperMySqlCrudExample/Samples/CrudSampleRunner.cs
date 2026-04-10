@@ -156,29 +156,34 @@ namespace DapperMySqlCrudExample.Samples
             byte idA1 = 0,
                 idA2 = 0;
             using (var conn = connectionFactory.Create())
-            using (var tx = conn.BeginTransaction())
             {
-                var methodA1 = new DetectionMethod
+                // 【新手導讀】BeginTransaction() 要求連線已開啟，因此交易場景需手動 Open()。
+                // 一般不需交易的 Repository 方法由 Dapper 自動管理開關連線，不須手動 Open()。
+                conn.Open();
+                using (var tx = conn.BeginTransaction())
                 {
-                    MethodKey = "TX_DEMO_A1",
-                    MethodName = "交易示範 A1",
-                };
-                idA1 = repo.Insert(methodA1, tx);
-                _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
-                Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}");
+                    var methodA1 = new DetectionMethod
+                    {
+                        MethodKey = "TX_DEMO_A1",
+                        MethodName = "交易示範 A1",
+                    };
+                    idA1 = repo.Insert(methodA1, tx);
+                    _logger.Info("RunTransactionExample(A): Insert A1 Id={Id}", idA1);
+                    Console.WriteLine($"  [TX-A Insert A1] Id={idA1}, MethodKey={methodA1.MethodKey}");
 
-                var methodA2 = new DetectionMethod
-                {
-                    MethodKey = "TX_DEMO_A2",
-                    MethodName = "交易示範 A2",
-                };
-                idA2 = repo.Insert(methodA2, tx);
-                _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
-                Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}");
+                    var methodA2 = new DetectionMethod
+                    {
+                        MethodKey = "TX_DEMO_A2",
+                        MethodName = "交易示範 A2",
+                    };
+                    idA2 = repo.Insert(methodA2, tx);
+                    _logger.Info("RunTransactionExample(A): Insert A2 Id={Id}", idA2);
+                    Console.WriteLine($"  [TX-A Insert A2] Id={idA2}, MethodKey={methodA2.MethodKey}");
 
-                tx.Commit();
-                _logger.Info("RunTransactionExample(A): Commit 成功");
-                Console.WriteLine("  [TX-A Commit] 交易提交成功。");
+                    tx.Commit();
+                    _logger.Info("RunTransactionExample(A): Commit 成功");
+                    Console.WriteLine("  [TX-A Commit] 交易提交成功。");
+                }
             }
 
             // 驗證：交易提交後可用一般連線查詢
@@ -205,27 +210,31 @@ namespace DapperMySqlCrudExample.Samples
 
             byte idB = 0;
             using (var conn = connectionFactory.Create())
-            using (var tx = conn.BeginTransaction())
             {
-                try
+                // 【新手導讀】BeginTransaction() 要求連線已開啟，因此交易場景需手動 Open()。
+                conn.Open();
+                using (var tx = conn.BeginTransaction())
                 {
-                    var methodB = new DetectionMethod
+                    try
                     {
-                        MethodKey = "TX_DEMO_B",
-                        MethodName = "交易示範 B（應被 Rollback）",
-                    };
-                    idB = repo.Insert(methodB, tx);
-                    _logger.Info("RunTransactionExample(B): Insert B Id={Id}（尚未 Commit）", idB);
-                    Console.WriteLine($"  [TX-B Insert B] Id={idB}（交易尚未提交）");
+                        var methodB = new DetectionMethod
+                        {
+                            MethodKey = "TX_DEMO_B",
+                            MethodName = "交易示範 B（應被 Rollback）",
+                        };
+                        idB = repo.Insert(methodB, tx);
+                        _logger.Info("RunTransactionExample(B): Insert B Id={Id}（尚未 Commit）", idB);
+                        Console.WriteLine($"  [TX-B Insert B] Id={idB}（交易尚未提交）");
 
-                    // 模擬業務邏輯錯誤，觸發 Rollback
-                    throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
-                }
-                catch (InvalidOperationException ex)
-                {
-                    tx.Rollback();
-                    _logger.Warn(ex, "RunTransactionExample(B): Rollback");
-                    Console.WriteLine($"  [TX-B Rollback] {ex.Message}");
+                        // 模擬業務邏輯錯誤，觸發 Rollback
+                        throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        tx.Rollback();
+                        _logger.Warn(ex, "RunTransactionExample(B): Rollback");
+                        Console.WriteLine($"  [TX-B Rollback] {ex.Message}");
+                    }
                 }
             }
 
