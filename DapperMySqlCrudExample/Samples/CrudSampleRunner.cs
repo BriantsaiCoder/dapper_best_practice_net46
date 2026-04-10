@@ -197,7 +197,8 @@ namespace DapperMySqlCrudExample.Samples
             // 【新手導讀】顯式 Rollback vs 隱式 Rollback：
             //   - 顯式：在 catch 中呼叫 tx.Rollback()，適合需要在 Rollback 後執行額外邏輯的情境。
             //   - 隱式：不呼叫 Commit() 就離開 using 區塊，Dispose() 自動 Rollback，程式碼更簡潔。
-            //   兩者效果相同，本範例示範顯式 Rollback 以便清楚展示流程。
+            //   - MySql.Data 6.x 與 8.x 的同步交易 API 在這個模式上相容，
+            //     因此本專案正式業務流程預設採隱式 Rollback；本 sample 因需立即記錄日誌與輸出訊息，才示範顯式 Rollback。
             Console.WriteLine();
             Console.WriteLine(
                 "  ── (B) Rollback 場景：交易內新增一筆後模擬異常，驗證資料未寫入 ──"

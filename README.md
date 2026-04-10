@@ -187,7 +187,7 @@ Repository 保持單一職責：
 - 不做統計運算
 - 不封裝跨表工作流程
 
-Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式 try/catch。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作。
+Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式 try/catch。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作；在本專案使用的 `MySql.Data 6.10.9` 與後續 8.x 的同步交易 API 上，這個模式都成立。
 
 ### 5. SITE_MEAN 取樣策略已做固定上限
 
@@ -308,6 +308,7 @@ using (var tx = conn.BeginTransaction())
 | 顯式 Rollback | 在 `catch` 中呼叫 `tx.Rollback()` | 需要在 Rollback 後記錄日誌、通知或執行補償邏輯 |
 
 兩者效果相同，選擇取決於是否需要在 Rollback 後做額外事情。
+本專案的正式業務流程預設優先使用**隱式 Rollback**；只有像 sample 這種需要立即記錄日誌、輸出示範訊息或執行補充處理時，才使用**顯式 Rollback**。
 
 ### 情境四：需要交易 — 讀取→計算→寫入的一致性
 
@@ -398,6 +399,20 @@ public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 3. **交易內的所有操作必須使用 `transaction.Connection`。** 不可在交易進行中另開新連線，否則新連線不屬於該交易。
 
 4. **隔離層級根據業務需求選擇。** 預設 `ReadCommitted` 足以應付多數場景；需要讀取一致性（如統計計算）時才升級為 `RepeatableRead`。
+
+### MySql.Data 6.x 與 8.x 在交易使用上的差異
+
+目前專案實際使用的是 **MySql.Data 6.10.9**。針對目前 codebase 的交易寫法，可整理成以下結論：
+
+| 項目 | 6.x | 8.x | 對本專案的影響 |
+|------|-----|-----|----------------|
+| 同步交易 API | `BeginTransaction` / `Commit` / `Rollback` / `Dispose` | 相同 | **沒有差異，不需重構**；目前 `IDbTransaction + using` 寫法可直接延用 |
+| Repository 傳遞 `IDbTransaction` | 支援 | 支援 | **沒有差異，不需重構**；CUD 方法維持 optional transaction 即可 |
+| 隱式 Rollback 模式 | 支援 | 支援 | **沒有差異，不需重構**；未 `Commit()` 即離開 `using` 可沿用 |
+| Async 交易 API | 能力有限，無明顯實益 | 較完整 | 若未來升 8.x，才需要評估是否引入 async repository / service |
+| `TransactionScope` 適用性 | 不作為本專案預設方案 | 可用性較 6.x 更成熟 | 即使升 8.x，現階段仍建議維持顯式 `IDbTransaction`，不改用 `TransactionScope` |
+
+因此，**從 6.x 升到 8.x 前，不需要為現有交易邏輯做結構性重寫**；真正需要重新評估的點主要是 async API、連線參數與相容性設定，而不是 `BeginTransaction()` / `Commit()` / `Rollback()` 這套同步交易模式本身。
 
 ## Schema 重點
 

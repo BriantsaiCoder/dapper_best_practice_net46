@@ -274,8 +274,8 @@ public sealed class FooService
 ## 常見陷阱
 
 - **Dapper 屬性對應區分大小寫**：`AS CreatedAt` 須與 `public DateTime CreatedAt` 完全一致，拼寫不同將靜默對應失敗（欄位值為預設值）。
-- **MySql.Data 9.x 移除 MySQL 5.x 支援**：升級前確認 MySQL Server 版本。目前鎖定 8.0.33。
-- **net461 + MySql.Data 8.x 警告**：非功能性警告，已以 `SuppressTfmSupportBuildWarnings` 抑制，不需處理。
+- **目前實際驅動版本為 MySql.Data 6.10.9**：若文件或註解提到 8.0.x / 8.0.33，應視為待同步的過時資訊。
+- **6.x 與 8.x 的同步交易 API 一致**：`BeginTransaction` / `Commit` / `Rollback` / `Dispose` 的使用模式不需因升版而重寫；真正需要重新評估的是 async API、連線參數與相容性。
 - **`DbConnectionFactory()` 讀 App.config**：執行時若 `DefaultConnection` 未設定，會拋出 `InvalidOperationException` 並附帶明確說明；確認連線字串正確後再執行。
 - **交易與連線生命週期**：有交易時必須使用 `transaction.Connection`，不可自建新連線。無交易時使用 `using (var conn = _factory.Create())`。
 
@@ -286,6 +286,6 @@ public sealed class FooService
 | 套件                | 版本   | 備註                                             |
 | ------------------- | ------ | ------------------------------------------------ |
 | `Dapper`            | 2.1.35 | 不升至 3.x（API 有異動）                         |
-| `MySql.Data`        | 8.0.33 | 9.x 移除 MySQL 5.x；若升級需同步確認 Server 版本 |
+| `MySql.Data`        | 6.10.9 | 目前實際使用版本；若未來升級至 8.x，優先重驗 async / SSL / 相容性設定 |
 | `MathNet.Numerics`  | 5.0.0  | 用於 SITE_MEAN 統計計算（平均值 / 標準差）        |
 | `NLog`              | 5.3.4  | 結構化日誌（主控台 + 檔案輪替）                    |
