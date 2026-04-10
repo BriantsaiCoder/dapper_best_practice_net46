@@ -8,20 +8,15 @@ namespace DapperMySqlCrudExample
 {
     /// <summary>
     /// 應用程式進入點。
-    /// 負責初始化基礎設施並驗證資料庫連線可用性。
-    /// 使用 --sample 參數可執行 sample（參見 Samples/CrudSampleRunner.cs）。
+    /// 負責初始化基礎設施並驗證資料庫連線可用性，接著執行資料存取示範。
     /// </summary>
     internal static class Program
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
-        // 【新手導讀】Main() 回傳 int 作為 exit code：0 表示成功，非 0 表示失敗。
-        // 這是 CLI 程式的慣例，讓 CI/CD pipeline 或呼叫端腳本可據此判斷執行結果。
-        private static int Main(string[] args)
+        private static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-
-            var shouldRunSample = HasArgument(args, "--sample");
 
             try
             {
@@ -31,18 +26,8 @@ namespace DapperMySqlCrudExample
                 _logger.Info("應用程式啟動檢查完成，資料庫連線驗證成功。");
                 Console.WriteLine("啟動檢查完成，資料庫連線正常。");
 
-                if (shouldRunSample)
-                {
-                    Console.WriteLine("已啟用 sample 模式，開始執行資料存取示範。");
-                    CrudSampleRunner.RunAllSamples(connectionFactory);
-                }
-                else
-                {
-                    Console.WriteLine("目前為安全模式，僅進行啟動檢查。");
-                    Console.WriteLine("若要執行 sample，請以 --sample 重新啟動。");
-                }
-
-                return 0;
+                Console.WriteLine("開始執行資料存取示範。");
+                CrudSampleRunner.RunAllSamples(connectionFactory);
             }
             catch (Exception ex)
             {
@@ -51,7 +36,6 @@ namespace DapperMySqlCrudExample
                 Console.Error.WriteLine(
                     "請確認連線字串設定正確，且目標資料庫可連線；若後續工作流程依賴特定資料表，請確認 schema 已完成部署。"
                 );
-                return 1;
             }
             finally
             {
@@ -74,21 +58,5 @@ namespace DapperMySqlCrudExample
             }
         }
 
-        private static bool HasArgument(string[] args, params string[] flags)
-        {
-            if (args == null || args.Length == 0)
-                return false;
-
-            foreach (var arg in args)
-            {
-                foreach (var flag in flags)
-                {
-                    if (string.Equals(arg, flag, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
-
-            return false;
-        }
     }
 }
