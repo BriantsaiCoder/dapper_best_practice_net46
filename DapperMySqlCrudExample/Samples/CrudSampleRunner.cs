@@ -291,7 +291,9 @@ namespace DapperMySqlCrudExample.Samples
 
                 newSpecId = detectionSpecRepository.Insert(spec, tx);
                 if (newSpecId <= 0)
+                {
                     throw new InvalidOperationException("交易內 Insert 回傳的新主鍵不可為 0。");
+                }
 
                 _logger.Info(
                     "RunTransactionInsertIdVerificationExample: 交易內 Insert 成功，Id={Id}",
