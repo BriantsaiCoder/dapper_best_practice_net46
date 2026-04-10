@@ -50,11 +50,8 @@ msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
 # 擇一設定連線字串
 set MYSQL_CONNECTION_STRING=Server=localhost;Database=app_db;Uid=root;Pwd=your_password;
 
-# 僅驗證資料庫連線
+# 執行（啟動檢查 + 資料存取示範）
 DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
-
-# 執行 sample
-DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe --sample
 ```
 
 > 本專案使用 `MySql.Data 6.10.9`，為純 managed assembly、無間接依賴，在 net461 + VS2017 下可直接編譯，不需額外的警告抑制設定。  
@@ -103,31 +100,17 @@ dapper_best_practice_net46.sln
         └── sample-data.sql
 ```
 
-## 執行模式
+## 執行流程
 
-### 1. 預設模式
+執行時會依序進行：
 
-不帶參數時只做啟動檢查：
+1. 建立 `DbConnectionFactory` 並驗證資料庫連線（`SELECT 1`）
+2. 執行 [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
+   - 不使用交易的基本 CRUD
+   - 同一交易中的 Commit / Rollback
+   - `DetectionSpecService` 的 SITE_MEAN 計算範例
 
-- 建立 `DbConnectionFactory`
-- 開啟 MySQL 連線
-- 執行 `SELECT 1`
-
-這個模式適合：
-
-- 部署前驗證
-- 連線字串確認
-- 監控或排程環境健康檢查
-
-### 2. Sample 模式
-
-`--sample` 會執行 [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
-
-- 不使用交易的基本 CRUD
-- 同一交易中的 Commit / Rollback
-- `DetectionSpecService` 的 SITE_MEAN 計算範例
-
-> ⚠️ **注意**：`--sample` 會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。
+> ⚠️ **注意**：執行時會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。
 
 Sample 只是教學入口，不應直接視為正式工作流程實作。
 
@@ -356,16 +339,21 @@ using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
 ```csharp
 public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 {
-    const string sql = "INSERT INTO ... SELECT LAST_INSERT_ID();";
+    const string insertSql = "INSERT INTO ... VALUES (...)";
+    const string identitySql = "SELECT LAST_INSERT_ID()";
 
     // 有交易：複用交易綁定的連線（由外部 Service 管理生命週期）
     if (transaction != null)
-        return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
+    {
+        transaction.Connection.Execute(insertSql, entity, transaction);
+        return transaction.Connection.ExecuteScalar<byte>(identitySql, transaction: transaction);
+    }
 
     // 無交易：自行建立短生命週期連線
     using (var conn = _factory.Create())
     {
-        return conn.ExecuteScalar<byte>(sql, entity);
+        conn.Execute(insertSql, entity);
+        return conn.ExecuteScalar<byte>(identitySql);
     }
 }
 ```
@@ -478,7 +466,7 @@ ALTER TABLE detection_methods
 ### Repository 實作原則
 
 - 使用參數化查詢
-- `Insert` 搭配 `SELECT LAST_INSERT_ID()`
+- `Insert` 先 `Execute` 再於同一連線 `ExecuteScalar` 取 `SELECT LAST_INSERT_ID()`
 - 有 transaction 時複用 `transaction.Connection`
 - 無 transaction 時自行建立短生命週期連線
 - 不預設提供全表掃描與 offset 分頁
