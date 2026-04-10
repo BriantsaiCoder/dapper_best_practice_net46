@@ -107,8 +107,7 @@ dapper_best_practice_net46.sln
 1. 建立 `DbConnectionFactory` 並驗證資料庫連線（`SELECT 1`）
 2. 執行 [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 中的示範流程：
    - 不使用交易的基本 CRUD
-   - 同一交易中的 Commit / Rollback
-   - `DetectionSpecService` 的 SITE_MEAN 計算範例
+   - `DetectionSpecService` 的 SITE_MEAN 計算範例（含交易與隱式 Rollback）
 
 > ⚠️ **注意**：執行時會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。
 
@@ -235,72 +234,65 @@ repo.Insert(newMethod);
 
 > 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例一
 
-### 情境二：需要交易 — 多筆寫入的原子性
+### 情境二：需要交易 — 多筆操作的原子性與隱式 Rollback
 
-當多個寫入操作必須全部成功或全部撤銷時，需要交易。
-
-```csharp
-using (var conn = connectionFactory.Create())
-{
-    conn.Open();  // 交易前必須明確開啟
-    using (var tx = conn.BeginTransaction())
-    {
-        // 兩筆 Insert 共用同一條連線與交易
-        byte idA1 = repo.Insert(methodA1, tx);
-        byte idA2 = repo.Insert(methodA2, tx);
-
-        tx.Commit(); // 全部成功才寫入
-    }
-}
-// 若 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 自動 Rollback
-```
-
-> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例二 (A) Commit 場景
-
-設計原因：
-
-- 兩筆 Insert 代表一個業務單元（例如同時建立偵測方法與其關聯設定）
-- 若第二筆失敗但第一筆已寫入，資料庫會出現孤立記錄
-- 交易確保「全有或全無」（all-or-nothing）
-
-### 情境三：需要交易 — 顯式 Rollback
-
-當需要在 catch 區塊中執行額外清理邏輯時，使用顯式 Rollback：
+當多個寫入操作必須全部成功或全部撤銷時，需要交易。本專案在 Service 層統一管理交易邊界：
 
 ```csharp
-using (var conn = connectionFactory.Create())
+using (var conn = _factory.Create())
 {
     conn.Open();  // 交易前必須明確開啟
-    using (var tx = conn.BeginTransaction())
+    using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
     {
-        try
-        {
-            byte idB = repo.Insert(methodB, tx);
+        // 步驟 1：在交易中讀取歷史資料
+        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
 
-            // 模擬業務邏輯錯誤
-            throw new InvalidOperationException("模擬業務錯誤，強制 Rollback。");
-        }
-        catch (InvalidOperationException ex)
-        {
-            tx.Rollback(); // 顯式撤銷
-            _logger.Warn(ex, "Rollback 完成");
-        }
+        // 步驟 2：記憶體內計算
+        var (mean, std) = CalculateMeanAndStd(rows);
+
+        // 步驟 3：將計算結果寫入
+        long newId = _detectionSpecRepo.Insert(spec, tx);
+
+        tx.Commit();   // ★ 只有走到這行，資料才會真正寫入資料庫
+        return newId;
     }
+    // 若 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 自動 Rollback
 }
 ```
 
-> 對應程式碼：[CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs) 範例二 (B) Rollback 場景
+> 對應程式碼：[DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) `ComputeAndInsertSiteMeanSpec()`
+
+**隱式 Rollback 的運作原理：**
+
+```
+正常路徑：                          異常路徑：
+  BeginTransaction()                  BeginTransaction()
+    ↓                                   ↓
+  QuerySiteMeanRows()                 QuerySiteMeanRows()
+    ↓                                   ↓
+  CalculateMeanAndStd()               CalculateMeanAndStd()
+    ↓                                   ↓
+  Insert()                            Insert() → 拋出例外！
+    ↓                                   ↓
+  Commit() ← 資料正式寫入             跳過 Commit()
+    ↓                                   ↓
+  Dispose() → 無動作                  Dispose() → 自動 Rollback ★
+```
+
+`IDbTransaction.Dispose()` 的行為取決於是否已呼叫 `Commit()`：
+- **已 Commit** → `Dispose()` 不做額外動作
+- **未 Commit**（例外跳過）→ `Dispose()` 自動執行 Rollback，撤銷所有未提交的操作
 
 **兩種 Rollback 方式的差異：**
 
 | 方式 | 做法 | 適用場景 |
 |------|------|---------|
-| 隱式 Rollback | 不呼叫 `Commit()`，讓 `using` 結束時 `Dispose()` 自動 Rollback | 例外直接往上拋，不需額外處理 |
+| 隱式 Rollback | 不呼叫 `Commit()`，讓 `using` 結束時 `Dispose()` 自動 Rollback | 例外直接往上拋，不需額外處理（本專案慣用） |
 | 顯式 Rollback | 在 `catch` 中呼叫 `tx.Rollback()` | 需要在 Rollback 後記錄日誌、通知或執行補償邏輯 |
 
-兩者效果相同，選擇取決於是否需要在 Rollback 後做額外事情。
+兩者效果相同，本專案 Service 層採用隱式 Rollback，程式碼更簡潔。
 
-### 情境四：需要交易 — 讀取→計算→寫入的一致性
+### 情境三：需要交易 — 讀取→計算→寫入的一致性
 
 這是本專案最複雜的交易場景，出現在 [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) 的 SITE_MEAN 規格計算：
 

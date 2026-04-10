@@ -55,6 +55,29 @@ namespace DapperMySqlCrudExample.Services
         /// 取樣策略為取最新 30 筆有效資料進行統計。
         /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
         /// </summary>
+        /// <remarks>
+        /// 【Rollback 機制說明】
+        /// 本方法不使用顯式 try/catch + tx.Rollback()，而是依賴 using 區塊的隱式 Rollback：
+        ///
+        ///   using (var tx = conn.BeginTransaction(...))
+        ///   {
+        ///       // ... 多個 Repository 操作 ...
+        ///       tx.Commit();   ← 只有走到這行，資料才會真正寫入資料庫
+        ///       return newId;
+        ///   }
+        ///
+        /// 若在 tx.Commit() 之前的任何一步發生例外（例如樣本數不足拋出 InvalidOperationException、
+        /// detection_methods 找不到 SITE_MEAN、或 Insert 時 SQL 錯誤），例外會直接往上拋出，
+        /// 程式流程跳過 tx.Commit()，離開 using 區塊時 C# 會自動呼叫 tx.Dispose()。
+        ///
+        /// IDbTransaction.Dispose() 的行為：
+        /// - 若交易已 Commit → Dispose 不做額外動作。
+        /// - 若交易未 Commit（即本情境）→ Dispose 會自動執行 Rollback，
+        ///   撤銷此交易中所有已執行的 SQL 操作（包含已 Execute 但未 Commit 的 INSERT）。
+        ///
+        /// 這種「隱式 Rollback」模式比顯式 try/catch + tx.Rollback() 更簡潔，
+        /// 且效果完全相同，是本專案 Service 層的慣用寫法。
+        /// </remarks>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,
@@ -114,9 +137,9 @@ namespace DapperMySqlCrudExample.Services
                     );
 
                     long newId = _detectionSpecRepo.Insert(spec, tx);
-                    // 【新手導讀】必須明確呼叫 Commit() 才會真正寫入資料庫。
-                    // 若在 Commit() 之前發生例外，using 區塊結束時 tx.Dispose() 會自動 Rollback，
-                    // 所有在此交易中的操作都會被撤銷，確保資料一致性（全成功或全失敗）。
+                    // ★ 只有成功走到此行，資料才會真正寫入資料庫。
+                    // 若上方任何步驟拋出例外，程式流程會跳過 Commit()，
+                    // 離開 using 區塊時 tx.Dispose() 自動 Rollback 所有未提交的操作。
                     tx.Commit();
                     return newId;
                 }
