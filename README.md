@@ -125,6 +125,7 @@ dapper_best_practice_net46.sln
 
 - 不使用交易的基本 CRUD
 - 同一交易中的 Commit / Rollback
+- 驗證 transaction 內 `Insert()` 回傳的新主鍵不為 0
 - `DetectionSpecService` 的 SITE_MEAN 計算範例
 
 > ⚠️ **注意**：`--sample` 會對連線的資料庫執行實際的 INSERT / UPDATE / DELETE，請勿對正式環境資料庫執行。

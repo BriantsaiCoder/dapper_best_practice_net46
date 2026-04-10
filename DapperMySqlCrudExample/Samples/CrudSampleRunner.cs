@@ -24,6 +24,7 @@ namespace DapperMySqlCrudExample.Samples
         {
             RunNonTransactionExample(connectionFactory);
             RunTransactionExample(connectionFactory);
+            RunTransactionInsertIdVerificationExample(connectionFactory);
 
             // 【新手導讀】手動建構依賴注入（Manual DI）：
             // 生產環境通常使用 IoC 容器（如 Autofac、Microsoft.Extensions.DependencyInjection）自動解析依賴，
@@ -244,7 +245,76 @@ namespace DapperMySqlCrudExample.Samples
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // 範例三：SITE_MEAN 規格計算
+        // 範例三：驗證交易內 Insert 取號
+        // ─────────────────────────────────────────────────────────────────────
+        /// <summary>
+        /// 示範在同一交易中呼叫 <see cref="DetectionSpecRepository.Insert"/>，
+        /// 並驗證回傳的新主鍵不是 0。
+        /// </summary>
+        private static void RunTransactionInsertIdVerificationExample(
+            DbConnectionFactory connectionFactory
+        )
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════");
+            Console.WriteLine("  範例三：驗證交易內 Insert 取號");
+            Console.WriteLine("═══════════════════════════════════════════════════════");
+
+            var detectionSpecRepository = new DetectionSpecRepository(connectionFactory);
+            var detectionMethodRepository = new DetectionMethodRepository(connectionFactory);
+            var detectionMethodId = detectionMethodRepository.GetIdByKey("SITE_MEAN");
+
+            if (!detectionMethodId.HasValue)
+            {
+                Console.WriteLine("  [Skip] detection_methods 缺少 SITE_MEAN，略過交易取號驗證。");
+                return;
+            }
+
+            long newSpecId = 0;
+            using (var conn = connectionFactory.Create())
+            using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
+            {
+                var now = DateTime.Now;
+                var spec = new DetectionSpec
+                {
+                    Program = "TX_ID_VERIFY",
+                    TestItemName = "TX_ID_ONLY",
+                    SiteId = 1,
+                    DetectionMethodId = detectionMethodId.Value,
+                    SpecUpperLimit = 1.234567890m,
+                    SpecLowerLimit = 0.123456789m,
+                    SpecCalcStartTime = now.AddMinutes(-5),
+                    SpecCalcEndTime = now,
+                    SpecCalcMean = 0.500000000m,
+                    SpecCalcStd = 0.100000000m,
+                };
+
+                newSpecId = detectionSpecRepository.Insert(spec, tx);
+                if (newSpecId <= 0)
+                    throw new InvalidOperationException("交易內 Insert 回傳的新主鍵不可為 0。");
+
+                _logger.Info(
+                    "RunTransactionInsertIdVerificationExample: 交易內 Insert 成功，Id={Id}",
+                    newSpecId
+                );
+                Console.WriteLine($"  [TX Insert] newId={newSpecId}");
+
+                tx.Rollback();
+                Console.WriteLine("  [TX Rollback] 已回滾示範交易，避免殘留資料。");
+            }
+
+            var rolledBackSpec = detectionSpecRepository.GetById(newSpecId);
+            bool wasRolledBack = rolledBackSpec == null;
+            _logger.Info(
+                "RunTransactionInsertIdVerificationExample: Rollback 驗證，資料不存在={Result}",
+                wasRolledBack
+            );
+            Console.WriteLine($"  [Verify] newId != 0：{newSpecId > 0}");
+            Console.WriteLine($"  [Verify] Rollback 後資料不存在={wasRolledBack}");
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // 範例四：SITE_MEAN 規格計算
         // ─────────────────────────────────────────────────────────────────────
         /// <summary>
         /// 示範如何透過 Service 依歷史統計資料建立 detection_specs 記錄。
@@ -254,7 +324,7 @@ namespace DapperMySqlCrudExample.Samples
         /// ★ 前置條件：site_test_statistics 中需有至少 2 筆符合條件的資料
         ///   （program + site_id + test_item_name 相同，且 mean_value、start_time 非 NULL），
         ///   且 lots_info 外鍵依賴表須已建立（參見 Sql/schema-legacy.sql）。
-        ///   空資料庫執行時本範例會自動略過，不影響範例一、二。
+        ///   空資料庫執行時本範例會自動略過，不影響前面其他範例。
         /// </remarks>
         private static void RunComputeSiteMeanSpecExample(
             DetectionSpecService detectionSpecService,
@@ -264,7 +334,7 @@ namespace DapperMySqlCrudExample.Samples
         {
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════");
-            Console.WriteLine("  範例三：SITE_MEAN 規格計算");
+            Console.WriteLine("  範例四：SITE_MEAN 規格計算");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
             var calcParams = siteTestStatisticRepository.GetCalcParamsFromLatestSample();
