@@ -36,6 +36,8 @@ ScaffoldingReadMe.txt
 *.nupkg
 # NuGet Symbol Packages
 *.snupkg
+# NuGet restore 目錄（傳統 packages.config 模式）
+packages/
 
 # Others
 ~$*
