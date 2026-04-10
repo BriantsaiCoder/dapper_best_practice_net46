@@ -94,7 +94,9 @@ public sealed class FooRepository
     {
         const string sql = "SELECT " + SelectColumns + " FROM foos WHERE id = @Id";
         using (var conn = _factory.Create())
+        {
             return conn.QueryFirstOrDefault<Foo>(sql, new { Id = id });
+        }
     }
 
     /// <summary>
@@ -112,7 +114,9 @@ public sealed class FooRepository
             return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
 
         using (var conn = _factory.Create())
+        {
             return conn.ExecuteScalar<long>(sql, entity);
+        }
     }
 
     /// <summary>
@@ -128,7 +132,9 @@ public sealed class FooRepository
             return transaction.Connection.Execute(sql, entity, transaction) > 0;
 
         using (var conn = _factory.Create())
+        {
             return conn.Execute(sql, entity) > 0;
+        }
     }
 
     /// <summary>
@@ -142,7 +148,9 @@ public sealed class FooRepository
             return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
 
         using (var conn = _factory.Create())
+        {
             return conn.Execute(sql, new { Id = id }) > 0;
+        }
     }
 
     /// <summary>
@@ -152,7 +160,9 @@ public sealed class FooRepository
     {
         const string sql = "SELECT 1 FROM foos WHERE id = @Id LIMIT 1";
         using (var conn = _factory.Create())
+        {
             return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
+        }
     }
 
     /// <summary>
@@ -162,7 +172,9 @@ public sealed class FooRepository
     {
         const string sql = "SELECT " + SelectColumns + " FROM foos WHERE bar_id = @BarId ORDER BY id";
         using (var conn = _factory.Create())
+        {
             return conn.Query<Foo>(sql, new { BarId = barId }).ToList();
+        }
     }
 }
 ```
@@ -229,7 +241,7 @@ public sealed class FooService
 | ---- | ---- |
 | **`sealed` 類別** | 所有 Repository、Service、DbConnectionFactory 皆為 `sealed`，不使用介面 |
 | **`private const string SelectColumns`** | 每個 Repository 必須有此常數，避免每個方法重複欄位 AS 清單 |
-| **`using (var conn = _factory.Create())`** | 每個方法自己管理連線生命週期，不共享連線 |
+| **`using (var conn = _factory.Create())`** | 每個方法自己管理連線生命週期，不共享連線；`using` 區塊一律使用大括號 `{ }` 包覆，不使用單行省略寫法 |
 | **`IDbTransaction transaction = null`** | CUD 方法皆接受可選交易參數，有交易時複用既有連線 |
 | **`SELECT LAST_INSERT_ID()`** | Insert 後不做二次 SELECT，直接取自動遞增 PK |
 | **`QueryFirstOrDefault`** | 查單筆時使用，不拋例外，由呼叫端處理 null |

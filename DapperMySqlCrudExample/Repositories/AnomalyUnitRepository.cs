@@ -41,7 +41,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT " + SelectColumns + " FROM anomaly_units WHERE id = @Id";
             using (var conn = _factory.Create())
+            {
                 return conn.QueryFirstOrDefault<AnomalyUnit>(sql, new { Id = id });
+            }
         }
 
         /// <summary>依 anomaly_test_item_id 查詢多筆資料。</summary>
@@ -52,8 +54,10 @@ namespace DapperMySqlCrudExample.Repositories
                 + SelectColumns
                 + " FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId ORDER BY id";
             using (var conn = _factory.Create())
+            {
                 return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId })
                     .ToList();
+            }
         }
 
         /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
@@ -78,7 +82,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
 
             using (var conn = _factory.Create())
+            {
                 return conn.ExecuteScalar<long>(sql, entity);
+            }
         }
 
         /// <summary>更新一筆資料。</summary>
@@ -104,7 +110,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.Execute(sql, entity, transaction) > 0;
 
             using (var conn = _factory.Create())
+            {
                 return conn.Execute(sql, entity) > 0;
+            }
         }
 
         /// <summary>依主鍵刪除一筆資料。</summary>
@@ -116,7 +124,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
 
             using (var conn = _factory.Create())
+            {
                 return conn.Execute(sql, new { Id = id }) > 0;
+            }
         }
 
         /// <summary>檢查指定主鍵的資料是否存在。</summary>
@@ -124,7 +134,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT 1 FROM anomaly_units WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
+            {
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
+            }
         }
     }
 }
