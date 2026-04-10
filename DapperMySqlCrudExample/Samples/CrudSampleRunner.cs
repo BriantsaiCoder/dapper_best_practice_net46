@@ -290,7 +290,7 @@ namespace DapperMySqlCrudExample.Samples
                 };
 
                 newSpecId = detectionSpecRepository.Insert(spec, tx);
-                if (newSpecId <= 0)
+                if (newSpecId == 0)
                 {
                     throw new InvalidOperationException("交易內 Insert 回傳的新主鍵不可為 0。");
                 }
@@ -306,13 +306,15 @@ namespace DapperMySqlCrudExample.Samples
             }
 
             var rolledBackSpec = detectionSpecRepository.GetById(newSpecId);
-            bool wasRolledBack = rolledBackSpec == null;
+            bool isDataNotFoundAfterRollback = rolledBackSpec == null;
             _logger.Info(
                 "RunTransactionInsertIdVerificationExample: Rollback 驗證，資料不存在={Result}",
-                wasRolledBack
+                isDataNotFoundAfterRollback
             );
             Console.WriteLine($"  [Verify] newId != 0：{newSpecId > 0}");
-            Console.WriteLine($"  [Verify] Rollback 後資料不存在={wasRolledBack}");
+            Console.WriteLine(
+                $"  [Verify] Rollback 後資料不存在={isDataNotFoundAfterRollback}"
+            );
         }
 
         // ─────────────────────────────────────────────────────────────────────
