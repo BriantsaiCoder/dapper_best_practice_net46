@@ -30,24 +30,35 @@
 
 ## 快速開始
 
+本專案使用**傳統（非 SDK-style）.csproj** 格式搭配 `packages.config`，需在 Windows 環境下以 Visual Studio 或 MSBuild 建置。
+
+### 使用 Visual Studio
+
+1. 以 Visual Studio 2017（15.0）以上版本開啟 `dapper_best_practice_net46.sln`
+2. NuGet 套件會在開啟方案時自動還原（或手動執行「還原 NuGet 套件」）
+3. 按 <kbd>F5</kbd> 或 <kbd>Ctrl</kbd>+<kbd>F5</kbd> 執行
+
+### 使用命令列（需安裝 Visual Studio 或 Build Tools）
+
 ```bash
-dotnet build dapper_best_practice_net46.sln
+# 還原 NuGet 套件（packages/ 目錄）
+nuget restore dapper_best_practice_net46.sln
+
+# 建置
+msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
 
 # 擇一設定連線字串
-export MYSQL_CONNECTION_STRING="Server=localhost;Database=app_db;Uid=root;Pwd=your_password;"
+set MYSQL_CONNECTION_STRING=Server=localhost;Database=app_db;Uid=root;Pwd=your_password;
 
 # 僅驗證資料庫連線
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
+DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
 
 # 執行 sample
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --sample
-
-# 僅驗證連線（不帶參數）
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
+DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe --sample
 ```
 
-> 若使用 Visual Studio 2017，需 **15.3 以上**版本（支援 SDK-style 專案格式）。請直接以 VS 內建 MSBuild 建置本方案即可。  
-> 本專案使用 `MySql.Data 6.10.9`，為純 managed assembly、無間接依賴，在 net461 + VS2017 下可直接編譯，不需額外的警告抑制設定。
+> 本專案使用 `MySql.Data 6.10.9`，為純 managed assembly、無間接依賴，在 net461 + VS2017 下可直接編譯，不需額外的警告抑制設定。  
+> **注意**：傳統 .csproj 格式不支援 `dotnet build` / `dotnet run`，請使用 MSBuild 或 Visual Studio 建置。
 
 ## 目前結構
 
@@ -504,8 +515,9 @@ ALTER TABLE detection_methods
 - [ ] `MYSQL_CONNECTION_STRING` 或 `DefaultConnection` 已正確設定
 - [ ] `schema-legacy.sql` 與 `schema.sql` 已依順序套用
 - [ ] `detection_methods` 種子資料已存在：`YIELD`、`SITE_STD`、`MEAN`、`SITE_MEAN`
-- [ ] `dotnet build dapper_best_practice_net46.sln` 成功
-- [ ] `dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj` 可成功連線
+- [ ] `nuget restore dapper_best_practice_net46.sln` 成功
+- [ ] `msbuild dapper_best_practice_net46.sln` 成功
+- [ ] `DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe` 可成功連線
 
 ## 設計決策備忘
 
