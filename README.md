@@ -227,7 +227,9 @@ public DetectionMethod GetById(byte id)
 {
     const string sql = "SELECT ... FROM detection_methods WHERE id = @Id";
     using (var conn = _factory.Create())
+    {
         return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
+    }
 }
 ```
 
@@ -362,7 +364,9 @@ public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 
     // 無交易：自行建立短生命週期連線
     using (var conn = _factory.Create())
+    {
         return conn.ExecuteScalar<byte>(sql, entity);
+    }
 }
 ```
 

@@ -45,10 +45,12 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT " + SelectColumns + " FROM detection_methods ORDER BY id";
             using (var conn = _factory.Create())
+            {
                 // 【新手導讀】Dapper 的 Query<T>() 回傳 IEnumerable<T>，預設是延遲執行（lazy evaluation）。
                 // 必須在 using 區塊內呼叫 .ToList() 強制「具體化」所有資料，
                 // 否則離開 using 後連線已關閉，再嘗試讀取會拋出 ObjectDisposedException。
                 return conn.Query<DetectionMethod>(sql).ToList();
+            }
         }
 
         /// <summary>依主鍵查詢單筆資料。</summary>
@@ -56,6 +58,7 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT " + SelectColumns + " FROM detection_methods WHERE id = @Id";
             using (var conn = _factory.Create())
+            {
                 // 【新手導讀】QueryFirstOrDefault<T>() 只取結果集的第一筆就停止讀取，效能優於 Query().FirstOrDefault()。
                 // 找不到資料時：參考型別回傳 null，值型別回傳 default（如 int 回傳 0）。
                 //
@@ -63,6 +66,7 @@ namespace DapperMySqlCrudExample.Repositories
                 //   屬性 Id → 對應 SQL 的 @Id（大小寫不敏感）
                 // 這是參數化查詢，可有效防止 SQL Injection 攻擊。
                 return conn.QueryFirstOrDefault<DetectionMethod>(sql, new { Id = id });
+            }
         }
 
         /// <summary>依 method_key 查詢單筆偵測方法。</summary>
@@ -74,10 +78,12 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 "SELECT " + SelectColumns + " FROM detection_methods WHERE method_key = @MethodKey";
             using (var conn = _factory.Create())
+            {
                 return conn.QueryFirstOrDefault<DetectionMethod>(
                     sql,
                     new { MethodKey = methodKey }
                 );
+            }
         }
 
         /// <summary>
@@ -103,7 +109,9 @@ namespace DapperMySqlCrudExample.Repositories
                 );
 
             using (var conn = _factory.Create())
+            {
                 return conn.ExecuteScalar<byte?>(sql, new { MethodKey = methodKey });
+            }
         }
 
         /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
@@ -133,7 +141,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.ExecuteScalar<byte>(sql, entity, transaction);
 
             using (var conn = _factory.Create())
+            {
                 return conn.ExecuteScalar<byte>(sql, entity);
+            }
         }
 
         /// <summary>更新一筆資料。</summary>
@@ -155,7 +165,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.Execute(sql, entity, transaction) > 0;
 
             using (var conn = _factory.Create())
+            {
                 return conn.Execute(sql, entity) > 0;
+            }
         }
 
         /// <summary>依主鍵刪除一筆資料。</summary>
@@ -167,7 +179,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
 
             using (var conn = _factory.Create())
+            {
                 return conn.Execute(sql, new { Id = id }) > 0;
+            }
         }
 
         /// <summary>檢查指定主鍵的資料是否存在。</summary>
@@ -178,7 +192,9 @@ namespace DapperMySqlCrudExample.Repositories
             // 比 SELECT COUNT(1) 更高效，因為找到第一筆就停止掃描。
             const string sql = "SELECT 1 FROM detection_methods WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
+            {
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
+            }
         }
 
         /// <remarks>
@@ -190,7 +206,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT COUNT(1) FROM detection_methods";
             using (var conn = _factory.Create())
+            {
                 return conn.ExecuteScalar<int>(sql);
+            }
         }
     }
 }

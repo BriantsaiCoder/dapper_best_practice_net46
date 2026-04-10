@@ -45,7 +45,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT " + SelectColumns + " FROM detection_specs WHERE id = @Id";
             using (var conn = _factory.Create())
+            {
                 return conn.QueryFirstOrDefault<DetectionSpec>(sql, new { Id = id });
+            }
         }
 
         /// <summary>依 program 與 detection_method_id 查詢多筆資料。</summary>
@@ -72,11 +74,13 @@ namespace DapperMySqlCrudExample.Repositories
                    LIMIT 1000";
 
             using (var conn = _factory.Create())
+            {
                 return conn.Query<DetectionSpec>(
                         sql,
                         new { Program = program, DetectionMethodId = detectionMethodId }
                     )
                     .ToList();
+            }
         }
 
         /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
@@ -102,7 +106,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.ExecuteScalar<long>(sql, entity, transaction);
 
             using (var conn = _factory.Create())
+            {
                 return conn.ExecuteScalar<long>(sql, entity);
+            }
         }
 
         /// <summary>更新一筆資料。</summary>
@@ -129,7 +135,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.Execute(sql, entity, transaction) > 0;
 
             using (var conn = _factory.Create())
+            {
                 return conn.Execute(sql, entity) > 0;
+            }
         }
 
         /// <summary>依主鍵刪除一筆資料。</summary>
@@ -141,7 +149,9 @@ namespace DapperMySqlCrudExample.Repositories
                 return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
 
             using (var conn = _factory.Create())
+            {
                 return conn.Execute(sql, new { Id = id }) > 0;
+            }
         }
 
         /// <summary>檢查指定主鍵的資料是否存在。</summary>
@@ -149,7 +159,9 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "SELECT 1 FROM detection_specs WHERE id = @Id LIMIT 1";
             using (var conn = _factory.Create())
+            {
                 return conn.QueryFirstOrDefault<int?>(sql, new { Id = id }).HasValue;
+            }
         }
     }
 }
