@@ -64,7 +64,9 @@ namespace DapperMySqlCrudExample.Samples
             // 清理可能殘留的示範資料，確保 MethodKey 唯一性
             var existing = repo.GetByKey("DEMO_NO_TX");
             if (existing != null)
+            {
                 repo.Delete(existing.Id);
+            }
 
             // ── Insert ───────────────────────────────────────────────────────
             var newMethod = new DetectionMethod
@@ -140,7 +142,9 @@ namespace DapperMySqlCrudExample.Samples
             {
                 var e = repo.GetByKey(code);
                 if (e != null)
+                {
                     repo.Delete(e.Id);
+                }
             }
 
             // ── (A) Commit 場景 ───────────────────────────────────────────────
