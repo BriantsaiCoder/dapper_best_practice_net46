@@ -1,5 +1,7 @@
 # GitHub Copilot 工作區指引
 
+> **回覆語言**：一律使用**繁體中文（zh-TW）**回覆，包含程式碼註解、commit message、PR 描述與對話內容。
+
 > 本專案為 **.NET Framework 4.6.1 + Dapper + MySQL** 的正式生產環境基底專案。
 > 詳細專案目的與技術說明請參閱 [`README.md`](../README.md)。
 
@@ -8,25 +10,25 @@
 ## 建構與執行
 
 ```bash
-# SDK-style 專案，支援 dotnet CLI（需安裝任意 .NET SDK）
-dotnet build dapper_best_practice_net46.sln
+# 傳統（非 SDK-style）.csproj，需使用 NuGet + MSBuild 建置（不支援 dotnet build / dotnet run）
 
-# 執行啟動檢查（確認 App.config 或環境變數已設定連線字串）
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj
+# 還原 NuGet 套件
+nuget restore dapper_best_practice_net46.sln
 
-# 執行 CRUD 展示（需帶 --sample 旗標）
-dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.csproj -- --sample
-
-# 亦可用 MSBuild
+# 建置
 msbuild dapper_best_practice_net46.sln /p:Configuration=Debug
 
-# 執行編譯後的輸出
-DapperMySqlCrudExample/bin/Debug/net461/DapperMySqlCrudExample.exe
+# 執行啟動檢查（確認 App.config 或環境變數已設定連線字串）
+DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
+
+# 執行 CRUD 展示（需帶 --sample 旗標）
+DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe --sample
 ```
 
 **前置需求**：
 
-- 目標框架：`net461`（.NET Framework 4.6.1）；C# 語言版本鎖定 `7.3`
+- 目標框架：`net461`（.NET Framework 4.6.1）；C# 語言版本鎖定 `7.0`
+- 專案格式：傳統（非 SDK-style）.csproj + `packages.config`；建置需要 Visual Studio 或 MSBuild（不支援 `dotnet build`）
 - 執行前需有可連線的 MySQL 執行個體，並透過 `MYSQL_CONNECTION_STRING` 或 `DapperMySqlCrudExample/App.config` 的 `DefaultConnection` 提供連線字串
 - 資料庫 DDL 位於 [`DapperMySqlCrudExample/Sql/schema.sql`](../DapperMySqlCrudExample/Sql/schema.sql)
 
@@ -234,8 +236,8 @@ public sealed class FooService
 | **Parameterized Query** | 所有 SQL 參數使用 `@ParamName`，對應 Dapper 匿名物件或 entity 屬性 |
 | **欄位名稱轉換** | DB 欄位為 `snake_case`，C# 屬性為 `PascalCase`，透過 `AS` 對齊 |
 | **無 ORM Attribute** | 不使用 `[Column]`、`[Table]`，依賴 SQL 別名對應 |
-| **C# 版本限制** | 語言版本為 `7.3`，不用 C# 8+ 語法（如 `??=`、record、switch 運算式） |
-| **Nullable 未啟用** | C# 7.3 + net461 不支援可空參考型別分析，`string` 可能為 null |
+| **C# 版本限制** | 語言版本為 `7.0`，不用 C# 7.1+ 語法（如 `async Main`、`default` 字面值、tuple name inference）及 C# 8+ 語法（如 `??=`、record、switch 運算式） |
+| **Nullable 未啟用** | C# 7.0 + net461 不支援可空參考型別分析，`string` 可能為 null |
 | **Repository = 純 CRUD** | Repository 不含業務邏輯，計算與編排由 Service 層負責 |
 | **Service = 業務邏輯** | 跨 Repository 協調、交易邊界、統計計算皆放在 Service |
 | **讀取查詢用 `const string` 串接** | 使用 `SelectColumns` 的查詢必須用 `const string sql = "SELECT " + SelectColumns + " FROM ...";`，不可用 `var sql = $"SELECT {SelectColumns} ..."`（`$` 插值無法在編譯期常數折疊） |
