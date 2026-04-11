@@ -151,6 +151,11 @@ namespace DapperMySqlCrudExample.Repositories
 
             using (var conn = _factory.Create())
             {
+                // conn.Open() 確保兩個 Dapper 呼叫共用同一 MySQL Session。
+                // 若連線為 Closed，Dapper 會在每次 Execute/ExecuteScalar 後自動 Close，
+                // 下一次呼叫可能取得連線池中不同的實體連線（新 Session），
+                // 導致 LAST_INSERT_ID() 查不到本次 INSERT 的 id 而回傳 0。
+                conn.Open();
                 conn.Execute(insertSql, entity);
                 return conn.ExecuteScalar<byte>(identitySql);
             }

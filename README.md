@@ -119,7 +119,37 @@ Sample 只是教學入口，不應直接視為正式工作流程實作。
 
 [DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs) 每次 `Create()` 都回傳新的**尚未開啟**的連線，呼叫端以 `using` 管理生命週期。
 
-Dapper 的 `Query`、`Execute`、`ExecuteScalar` 等方法內建自動開關連線的邏輯：傳入未開啟的連線時，Dapper 會自動 Open → 執行 SQL → Close，連線只在 SQL 執行期間被佔用，持有時間最短。需要交易時，必須在 `BeginTransaction()` 前手動呼叫 `conn.Open()`。
+Dapper 的 `Query`、`Execute`、`ExecuteScalar` 等方法內建自動開關連線的邏輯：傳入未開啟的連線時，Dapper 會自動 Open → 執行 SQL → Close，連線只在 SQL 執行期間被佔用，持有時間最短。
+
+**必須手動呼叫 `conn.Open()` 的兩種情境：**
+
+| 情境 | 原因 |
+|------|------|
+| 需要交易：`conn.BeginTransaction()` 前 | `BeginTransaction()` 要求連線已開啟 |
+| 同一 `using` 區塊內有多次 Dapper 呼叫，且後續呼叫依賴前次的 MySQL session 狀態 | 若連線為 Closed，Dapper 每次呼叫後自動 Close，下次重開可能從連線池取得不同的實體連線（新 session），導致跨呼叫的 session-scoped 函式（如 `LAST_INSERT_ID()`）失效回傳 0 |
+
+```csharp
+// ✅ 需要交易
+using (var conn = _factory.Create())
+{
+    conn.Open();
+    using (var tx = conn.BeginTransaction()) { ... }
+}
+
+// ✅ 同一 using 內多次呼叫且依賴 session 狀態（Insert 取 LAST_INSERT_ID()）
+using (var conn = _factory.Create())
+{
+    conn.Open();                                 // 確保兩次呼叫共用同一 MySQL session
+    conn.Execute(insertSql, entity);             // INSERT
+    return conn.ExecuteScalar<long>(identitySql); // LAST_INSERT_ID()（同 session）
+}
+
+// ✅ 單次呼叫：不須手動 Open，Dapper 自動管理
+using (var conn = _factory.Create())
+{
+    return conn.QueryFirstOrDefault<T>(sql, param); // 單一呼叫，無 session 跨呼叫依賴
+}
+```
 
 這個專案不引入額外的 connection wrapper 或 Unit of Work。
 

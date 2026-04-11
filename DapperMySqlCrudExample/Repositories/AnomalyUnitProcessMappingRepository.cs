@@ -113,6 +113,7 @@ namespace DapperMySqlCrudExample.Repositories
 
             using (var conn = _factory.Create())
             {
+                conn.Open();
                 conn.Execute(insertSql, entity);
                 return conn.ExecuteScalar<long>(identitySql);
             }
