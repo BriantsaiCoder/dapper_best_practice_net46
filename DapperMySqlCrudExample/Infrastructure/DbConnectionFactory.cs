@@ -76,7 +76,50 @@ namespace DapperMySqlCrudExample.Infrastructure
         {
             // 【新手導讀】雖然每次都 new MySqlConnection，但 MySql.Data 驅動內建連線池機制，
             // 實際上會重用已建立的 TCP 連線，不會每次都重新建立網路連線，效能無虞。
-            return new MySqlConnection(_connectionString);
+            var conn = new MySqlConnection(_connectionString);
+            conn.StateChange += OnConnectionStateChange;
+            return conn;
+        }
+
+        /// <summary>
+        /// 連線開啟後強制指定 MySql.Data 6.10.9 認識的排序規則，修正 MySQL 8.0 相容性問題。
+        /// </summary>
+        /// <remarks>
+        /// MySQL 8.0 將 utf8mb4 的預設排序規則改為 utf8mb4_0900_ai_ci（collation ID=255），
+        /// 但 MySql.Data 6.10.9 的內部字元集對照表不包含此 ID。
+        /// 當驅動處理結果集欄位中繼資料時會在 MySqlField.SetFieldEncoding() 中拋出
+        /// KeyNotFoundException。
+        /// 連線開啟後立即以 SET NAMES 強制使用 utf8mb4_unicode_ci（ID=224），
+        /// 即可在不升級驅動的前提下正常連線 MySQL 8.0。
+        ///
+        /// 相容性：utf8mb4_unicode_ci 自 MySQL 5.5.3 起可用，與本專案 Schema 所需的最低版本一致。
+        /// 在 MySQL 5.x 上此命令無害（5.x 不存在 collation ID=255 問題），僅多一趟往返。
+        /// 若 SET NAMES 因不明原因失敗（例如極舊版本不支援 utf8mb4），僅記錄警告不中斷連線，
+        /// 避免影響 MySQL 5.x 環境的正常運作。
+        /// </remarks>
+        private static void OnConnectionStateChange(object sender, StateChangeEventArgs e)
+        {
+            if (e.CurrentState == ConnectionState.Open)
+            {
+                try
+                {
+                    using (var cmd = ((MySqlConnection)sender).CreateCommand())
+                    {
+                        cmd.CommandText = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci";
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    // MySQL 5.5.3 以下不支援 utf8mb4，但本專案 Schema 已要求 utf8mb4，
+                    // 理論上不會進入此分支；僅作為防禦性處理，避免 SET NAMES 失敗導致連線中斷。
+                    _logger.Warn(
+                        ex,
+                        "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci 失敗，可能為 MySQL 5.5.3 以下版本。"
+                            + "若連線 MySQL 8.0+ 且持續出現此警告，請確認伺服器版本與字元集設定。"
+                    );
+                }
+            }
         }
     }
 }
