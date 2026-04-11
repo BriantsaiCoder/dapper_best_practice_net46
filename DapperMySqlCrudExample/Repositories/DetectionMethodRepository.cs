@@ -5,6 +5,7 @@ using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
+using NLog;
 
 namespace DapperMySqlCrudExample.Repositories
 {
@@ -14,6 +15,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// </summary>
     public sealed class DetectionMethodRepository
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 DetectionMethodRepository 實體。</summary>
@@ -143,21 +145,34 @@ namespace DapperMySqlCrudExample.Repositories
 
             // 【新手導讀】直接傳入 entity 物件作為參數時，Dapper 會自動將物件的所有公開屬性
             // 對應到 SQL 中的 @參數（如 entity.MethodKey → @MethodKey），不需逐一指定。
-            if (transaction != null)
+            try
             {
-                transaction.Connection.Execute(insertSql, entity, transaction);
-                return transaction.Connection.ExecuteScalar<byte>(identitySql, transaction: transaction);
-            }
+                if (transaction != null)
+                {
+                    transaction.Connection.Execute(insertSql, entity, transaction);
+                    return transaction.Connection.ExecuteScalar<byte>(identitySql, transaction: transaction);
+                }
 
-            using (var conn = _factory.Create())
+                using (var conn = _factory.Create())
+                {
+                    // conn.Open() 確保兩個 Dapper 呼叫共用同一 MySQL Session。
+                    // 若連線為 Closed，Dapper 會在每次 Execute/ExecuteScalar 後自動 Close，
+                    // 下一次呼叫可能取得連線池中不同的實體連線（新 Session），
+                    // 導致 LAST_INSERT_ID() 查不到本次 INSERT 的 id 而回傳 0。
+                    conn.Open();
+                    conn.Execute(insertSql, entity);
+                    return conn.ExecuteScalar<byte>(identitySql);
+                }
+            }
+            catch (Exception ex)
             {
-                // conn.Open() 確保兩個 Dapper 呼叫共用同一 MySQL Session。
-                // 若連線為 Closed，Dapper 會在每次 Execute/ExecuteScalar 後自動 Close，
-                // 下一次呼叫可能取得連線池中不同的實體連線（新 Session），
-                // 導致 LAST_INSERT_ID() 查不到本次 INSERT 的 id 而回傳 0。
-                conn.Open();
-                conn.Execute(insertSql, entity);
-                return conn.ExecuteScalar<byte>(identitySql);
+                _logger.Error(
+                    ex,
+                    "Insert detection_methods 失敗 | MethodKey={MethodKey} | MethodName={MethodName}",
+                    entity.MethodKey,
+                    entity.MethodName
+                );
+                throw;
             }
         }
 
@@ -176,12 +191,20 @@ namespace DapperMySqlCrudExample.Repositories
 
             // 【新手導讀】Execute() 回傳受影響的行數（affected rows）。
             // > 0 表示確實有更新到資料；若 WHERE 條件不符合任何列則回傳 0。
-            if (transaction != null)
-                return transaction.Connection.Execute(sql, entity, transaction) > 0;
-
-            using (var conn = _factory.Create())
+            try
             {
-                return conn.Execute(sql, entity) > 0;
+                if (transaction != null)
+                    return transaction.Connection.Execute(sql, entity, transaction) > 0;
+
+                using (var conn = _factory.Create())
+                {
+                    return conn.Execute(sql, entity) > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Update detection_methods 失敗 | Id={Id}", entity.Id);
+                throw;
             }
         }
 
@@ -190,12 +213,20 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "DELETE FROM detection_methods WHERE id = @Id";
 
-            if (transaction != null)
-                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
-
-            using (var conn = _factory.Create())
+            try
             {
-                return conn.Execute(sql, new { Id = id }) > 0;
+                if (transaction != null)
+                    return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+
+                using (var conn = _factory.Create())
+                {
+                    return conn.Execute(sql, new { Id = id }) > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Delete detection_methods 失敗 | Id={Id}", id);
+                throw;
             }
         }
 

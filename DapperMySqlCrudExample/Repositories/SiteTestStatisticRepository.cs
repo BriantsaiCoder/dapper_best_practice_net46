@@ -6,6 +6,7 @@ using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Models.QueryModels;
+using NLog;
 
 namespace DapperMySqlCrudExample.Repositories
 {
@@ -14,6 +15,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// </summary>
     public sealed class SiteTestStatisticRepository
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly DbConnectionFactory _factory;
 
         private const int PreferredHistoryCount = 30;
@@ -178,17 +180,31 @@ namespace DapperMySqlCrudExample.Repositories
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
 
-            if (transaction != null)
+            try
             {
-                transaction.Connection.Execute(insertSql, entity, transaction);
-                return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
-            }
+                if (transaction != null)
+                {
+                    transaction.Connection.Execute(insertSql, entity, transaction);
+                    return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+                }
 
-            using (var conn = _factory.Create())
+                using (var conn = _factory.Create())
+                {
+                    conn.Open();
+                    conn.Execute(insertSql, entity);
+                    return conn.ExecuteScalar<long>(identitySql);
+                }
+            }
+            catch (Exception ex)
             {
-                conn.Open();
-                conn.Execute(insertSql, entity);
-                return conn.ExecuteScalar<long>(identitySql);
+                _logger.Error(
+                    ex,
+                    "Insert site_test_statistics 失敗 | Program={Program} | SiteId={SiteId} | TestItemName={TestItemName}",
+                    entity.Program,
+                    entity.SiteId,
+                    entity.TestItemName
+                );
+                throw;
             }
         }
 
@@ -214,12 +230,20 @@ namespace DapperMySqlCrudExample.Repositories
                        end_time       = @EndTime
                 WHERE  id = @Id";
 
-            if (transaction != null)
-                return transaction.Connection.Execute(sql, entity, transaction) > 0;
-
-            using (var conn = _factory.Create())
+            try
             {
-                return conn.Execute(sql, entity) > 0;
+                if (transaction != null)
+                    return transaction.Connection.Execute(sql, entity, transaction) > 0;
+
+                using (var conn = _factory.Create())
+                {
+                    return conn.Execute(sql, entity) > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Update site_test_statistics 失敗 | Id={Id}", entity.Id);
+                throw;
             }
         }
 
@@ -228,12 +252,20 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "DELETE FROM site_test_statistics WHERE id = @Id";
 
-            if (transaction != null)
-                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
-
-            using (var conn = _factory.Create())
+            try
             {
-                return conn.Execute(sql, new { Id = id }) > 0;
+                if (transaction != null)
+                    return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+
+                using (var conn = _factory.Create())
+                {
+                    return conn.Execute(sql, new { Id = id }) > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Delete site_test_statistics 失敗 | Id={Id}", id);
+                throw;
             }
         }
 

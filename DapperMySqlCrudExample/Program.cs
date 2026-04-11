@@ -52,9 +52,17 @@ namespace DapperMySqlCrudExample
         /// </remarks>
         private static void VerifyDatabaseConnectivity(DbConnectionFactory connectionFactory)
         {
-            using (var connection = connectionFactory.Create())
+            try
             {
-                connection.ExecuteScalar<int>("SELECT 1");
+                using (var connection = connectionFactory.Create())
+                {
+                    connection.ExecuteScalar<int>("SELECT 1");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "資料庫連線驗證失敗（SELECT 1）。");
+                throw;
             }
         }
 

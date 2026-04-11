@@ -5,6 +5,7 @@ using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
+using NLog;
 
 namespace DapperMySqlCrudExample.Repositories
 {
@@ -14,6 +15,7 @@ namespace DapperMySqlCrudExample.Repositories
     /// </summary>
     public sealed class DetectionSpecRepository
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly DbConnectionFactory _factory;
 
         /// <summary>建立 <see cref="DetectionSpecRepository"/> 實例。</summary>
@@ -113,17 +115,32 @@ namespace DapperMySqlCrudExample.Repositories
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
 
-            if (transaction != null)
+            try
             {
-                transaction.Connection.Execute(insertSql, entity, transaction);
-                return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
-            }
+                if (transaction != null)
+                {
+                    transaction.Connection.Execute(insertSql, entity, transaction);
+                    return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+                }
 
-            using (var conn = _factory.Create())
+                using (var conn = _factory.Create())
+                {
+                    conn.Open();
+                    conn.Execute(insertSql, entity);
+                    return conn.ExecuteScalar<long>(identitySql);
+                }
+            }
+            catch (Exception ex)
             {
-                conn.Open();
-                conn.Execute(insertSql, entity);
-                return conn.ExecuteScalar<long>(identitySql);
+                _logger.Error(
+                    ex,
+                    "Insert detection_specs 失敗 | Program={Program} | TestItemName={TestItemName} | SiteId={SiteId} | DetectionMethodId={DetectionMethodId}",
+                    entity.Program,
+                    entity.TestItemName,
+                    entity.SiteId,
+                    entity.DetectionMethodId
+                );
+                throw;
             }
         }
 
@@ -149,14 +166,22 @@ namespace DapperMySqlCrudExample.Repositories
                          spec_calc_std        = @SpecCalcStd
                   WHERE  id = @Id";
 
-            if (transaction != null)
+            try
             {
-                return transaction.Connection.Execute(sql, entity, transaction) > 0;
-            }
+                if (transaction != null)
+                {
+                    return transaction.Connection.Execute(sql, entity, transaction) > 0;
+                }
 
-            using (var conn = _factory.Create())
+                using (var conn = _factory.Create())
+                {
+                    return conn.Execute(sql, entity) > 0;
+                }
+            }
+            catch (Exception ex)
             {
-                return conn.Execute(sql, entity) > 0;
+                _logger.Error(ex, "Update detection_specs 失敗 | Id={Id}", entity.Id);
+                throw;
             }
         }
 
@@ -165,14 +190,22 @@ namespace DapperMySqlCrudExample.Repositories
         {
             const string sql = "DELETE FROM detection_specs WHERE id = @Id";
 
-            if (transaction != null)
+            try
             {
-                return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
-            }
+                if (transaction != null)
+                {
+                    return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+                }
 
-            using (var conn = _factory.Create())
+                using (var conn = _factory.Create())
+                {
+                    return conn.Execute(sql, new { Id = id }) > 0;
+                }
+            }
+            catch (Exception ex)
             {
-                return conn.Execute(sql, new { Id = id }) > 0;
+                _logger.Error(ex, "Delete detection_specs 失敗 | Id={Id}", id);
+                throw;
             }
         }
 

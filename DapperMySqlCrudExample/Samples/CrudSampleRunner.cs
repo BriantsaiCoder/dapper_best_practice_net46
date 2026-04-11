@@ -57,66 +57,79 @@ namespace DapperMySqlCrudExample.Samples
             Console.WriteLine("  範例一：不使用交易的 CRUD 操作");
             Console.WriteLine("═══════════════════════════════════════════════════════");
 
-            var repo = new DetectionMethodRepository(connectionFactory);
-
-            // 清理可能殘留的示範資料，確保 MethodKey 唯一性
-            var existing = repo.GetByKey("DEMO_NO_TX");
-            if (existing != null)
+            try
             {
-                repo.Delete(existing.Id);
+                var repo = new DetectionMethodRepository(connectionFactory);
+
+                // 清理可能殘留的示範資料，確保 MethodKey 唯一性
+                var existing = repo.GetByKey("DEMO_NO_TX");
+                if (existing != null)
+                {
+                    repo.Delete(existing.Id);
+                }
+
+                // ── Insert ───────────────────────────────────────────────────────
+                var newMethod = new DetectionMethod
+                {
+                    MethodKey = "DEMO_NO_TX",
+                    MethodName = "展示用檢測方法（無交易）",
+                };
+
+                byte newId = repo.Insert(newMethod);
+                _logger.Info("RunNonTransactionExample: 新增 DetectionMethod，Id={Id}", newId);
+                Console.WriteLine($"  [Insert] 新增成功 → Id={newId}, MethodKey={newMethod.MethodKey}");
+
+                // ── GetById ──────────────────────────────────────────────────────
+                var inserted = repo.GetById(newId);
+                Console.WriteLine(
+                    $"  [GetById] 查詢結果 → MethodName={inserted?.MethodName}"
+                );
+
+                // ── Update ───────────────────────────────────────────────────────
+                inserted.MethodName = "展示用檢測方法（無交易）— 已更新";
+                bool updated = repo.Update(inserted);
+                _logger.Info(
+                    "RunNonTransactionExample: 更新 DetectionMethod，Id={Id}, 結果={Result}",
+                    newId,
+                    updated
+                );
+                Console.WriteLine($"  [Update] 更新成功={updated}");
+
+                // ── GetById after update ─────────────────────────────────────────
+                var afterUpdate = repo.GetById(newId);
+                Console.WriteLine($"  [GetById] 更新後 MethodName={afterUpdate?.MethodName}");
+
+                // ── Exists / GetCount / GetByKey ────────────────────────────────
+                bool existsAfterUpdate = repo.Exists(newId);
+                Console.WriteLine($"  [Exists] 更新後資料存在={existsAfterUpdate}");
+
+                int total = repo.GetCount();
+                Console.WriteLine($"  [GetCount] 現有筆數={total}");
+
+                var builtInMethod = repo.GetByKey("YIELD");
+                Console.WriteLine($"  [GetByKey] 內建方法 YIELD 存在={builtInMethod != null}");
+
+                // ── Delete ───────────────────────────────────────────────────────
+                bool deleted = repo.Delete(newId);
+                _logger.Info(
+                    "RunNonTransactionExample: 刪除 DetectionMethod，Id={Id}, 結果={Result}",
+                    newId,
+                    deleted
+                );
+                Console.WriteLine($"  [Delete] 刪除成功={deleted}");
+
+                Console.WriteLine("  範例一完成。");
             }
-
-            // ── Insert ───────────────────────────────────────────────────────
-            var newMethod = new DetectionMethod
+            catch (Exception ex)
             {
-                MethodKey = "DEMO_NO_TX",
-                MethodName = "展示用檢測方法（無交易）",
-            };
-
-            byte newId = repo.Insert(newMethod);
-            _logger.Info("RunNonTransactionExample: 新增 DetectionMethod，Id={Id}", newId);
-            Console.WriteLine($"  [Insert] 新增成功 → Id={newId}, MethodKey={newMethod.MethodKey}");
-
-            // ── GetById ──────────────────────────────────────────────────────
-            var inserted = repo.GetById(newId);
-            Console.WriteLine(
-                $"  [GetById] 查詢結果 → MethodName={inserted?.MethodName}"
-            );
-
-            // ── Update ───────────────────────────────────────────────────────
-            inserted.MethodName = "展示用檢測方法（無交易）— 已更新";
-            bool updated = repo.Update(inserted);
-            _logger.Info(
-                "RunNonTransactionExample: 更新 DetectionMethod，Id={Id}, 結果={Result}",
-                newId,
-                updated
-            );
-            Console.WriteLine($"  [Update] 更新成功={updated}");
-
-            // ── GetById after update ─────────────────────────────────────────
-            var afterUpdate = repo.GetById(newId);
-            Console.WriteLine($"  [GetById] 更新後 MethodName={afterUpdate?.MethodName}");
-
-            // ── Exists / GetCount / GetByKey ────────────────────────────────
-            bool existsAfterUpdate = repo.Exists(newId);
-            Console.WriteLine($"  [Exists] 更新後資料存在={existsAfterUpdate}");
-
-            int total = repo.GetCount();
-            Console.WriteLine($"  [GetCount] 現有筆數={total}");
-
-            var builtInMethod = repo.GetByKey("YIELD");
-            Console.WriteLine($"  [GetByKey] 內建方法 YIELD 存在={builtInMethod != null}");
-
-            // ── Delete ───────────────────────────────────────────────────────
-            bool deleted = repo.Delete(newId);
-            _logger.Info(
-                "RunNonTransactionExample: 刪除 DetectionMethod，Id={Id}, 結果={Result}",
-                newId,
-                deleted
-            );
-            Console.WriteLine($"  [Delete] 刪除成功={deleted}");
-
-            Console.WriteLine("  範例一完成。");
+                _logger.Error(
+                    ex,
+                    "RunNonTransactionExample: 非預期例外 | Type={Type} | Message={Message}",
+                    ex.GetType().FullName,
+                    ex.Message
+                );
+                Console.Error.WriteLine($"  [Error] 範例一執行失敗：{ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -183,6 +196,16 @@ namespace DapperMySqlCrudExample.Samples
             {
                 _logger.Warn(ex, "RunComputeSiteMeanSpecExample: 示範略過");
                 Console.WriteLine($"  [Skip] {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(
+                    ex,
+                    "RunComputeSiteMeanSpecExample: 非預期例外 | Type={Type} | Message={Message}",
+                    ex.GetType().FullName,
+                    ex.Message
+                );
+                Console.WriteLine($"  [Error] {ex.GetType().Name}: {ex.Message}");
             }
             finally
             {

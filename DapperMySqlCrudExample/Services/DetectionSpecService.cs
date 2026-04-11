@@ -7,6 +7,7 @@ using DapperMySqlCrudExample.Models;
 using DapperMySqlCrudExample.Models.QueryModels;
 using DapperMySqlCrudExample.Repositories;
 using MathNet.Numerics.Statistics;
+using NLog;
 
 namespace DapperMySqlCrudExample.Services
 {
@@ -24,6 +25,8 @@ namespace DapperMySqlCrudExample.Services
     /// </remarks>
     public sealed class DetectionSpecService
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
         private readonly DbConnectionFactory _factory;
         private readonly DetectionSpecRepository _detectionSpecRepo;
         private readonly SiteTestStatisticRepository _siteTestStatRepo;
@@ -109,49 +112,69 @@ namespace DapperMySqlCrudExample.Services
                 // 這對統計計算很重要：避免「查詢歷史資料」與「寫入計算結果」之間資料被外部異動導致不一致。
                 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
                 {
-                    var rows = _siteTestStatRepo.QuerySiteMeanRows(
-                        programName,
-                        siteId,
-                        testItemName,
-                        tx
-                    );
-
-                    if (rows.Count < MinimumSampleCount)
+                    try
                     {
-                        throw new InvalidOperationException(
-                            $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
-                                + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
+                        var rows = _siteTestStatRepo.QuerySiteMeanRows(
+                            programName,
+                            siteId,
+                            testItemName,
+                            tx
                         );
-                    }
 
-                    var (mean, std) = CalculateMeanAndStd(rows);
-                    Console.WriteLine($"計算結果：mean={mean:F4}, std={std:F4}，樣本數={rows.Count}");
-                    var (ucl, lcl) = CalculateControlLimits(mean, std);
-                    Console.WriteLine($"計算結果：ucl={ucl:F4}, lcl={lcl:F4}");
-                    var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
-                    Console.WriteLine($"計算結果：specCalcStart={specCalcStart}, specCalcEnd={specCalcEnd}");
-                    byte methodId = GetRequiredSiteMeanMethodId(tx);
-                    Console.WriteLine($"計算結果：methodId={methodId}");
-                    var spec = BuildDetectionSpec(
-                        programName,
-                        siteId,
-                        testItemName,
-                        methodId,
-                        ucl,
-                        lcl,
-                        specCalcStart,
-                        specCalcEnd,
-                        mean,
-                        std
-                    );
-                    Console.WriteLine($"建立 DetectionSpec 實體：{spec}");
-                    long newId = _detectionSpecRepo.Insert(spec, tx);
-                    Console.WriteLine($"Insert 成功，newId={newId}");
-                    // ★ 只有成功走到此行，資料才會真正寫入資料庫。
-                    // 若上方任何步驟拋出例外，程式流程會跳過 Commit()，
-                    // 離開 using 區塊時 tx.Dispose() 自動 Rollback 所有未提交的操作。
-                    tx.Commit();
-                    return newId;
+                        if (rows.Count < MinimumSampleCount)
+                        {
+                            throw new InvalidOperationException(
+                                $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
+                                    + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
+                            );
+                        }
+
+                        var (mean, std) = CalculateMeanAndStd(rows);
+                        Console.WriteLine($"計算結果：mean={mean:F4}, std={std:F4}，樣本數={rows.Count}");
+                        var (ucl, lcl) = CalculateControlLimits(mean, std);
+                        Console.WriteLine($"計算結果：ucl={ucl:F4}, lcl={lcl:F4}");
+                        var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
+                        Console.WriteLine($"計算結果：specCalcStart={specCalcStart}, specCalcEnd={specCalcEnd}");
+                        byte methodId = GetRequiredSiteMeanMethodId(tx);
+                        Console.WriteLine($"計算結果：methodId={methodId}");
+                        var spec = BuildDetectionSpec(
+                            programName,
+                            siteId,
+                            testItemName,
+                            methodId,
+                            ucl,
+                            lcl,
+                            specCalcStart,
+                            specCalcEnd,
+                            mean,
+                            std
+                        );
+                        Console.WriteLine($"建立 DetectionSpec 實體：{spec}");
+                        long newId = _detectionSpecRepo.Insert(spec, tx);
+                        Console.WriteLine($"Insert 成功，newId={newId}");
+                        // ★ 只有成功走到此行，資料才會真正寫入資料庫。
+                        // 若上方任何步驟拋出例外，程式流程會跳過 Commit()，
+                        // 離開 using 區塊時 tx.Dispose() 自動 Rollback 所有未提交的操作。
+                        tx.Commit();
+                        return newId;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // 業務邏輯例外（樣本不足、找不到 SITE_MEAN 設定），不額外紀錄，直接往上拋出。
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(
+                            ex,
+                            "ComputeAndInsertSiteMeanSpec 交易失敗（將自動 Rollback） | Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
+                            programName,
+                            siteId,
+                            testItemName
+                        );
+
+                        throw;
+                    }
                 }
             }
         }
