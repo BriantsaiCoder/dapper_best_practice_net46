@@ -1,7 +1,11 @@
 using System;
 using System.Configuration;
 using System.Data;
+#if NETFRAMEWORK
 using MySql.Data.MySqlClient;
+#else
+using MySqlConnector;
+#endif
 using NLog;
 
 namespace DapperMySqlCrudExample.Infrastructure
@@ -74,8 +78,8 @@ namespace DapperMySqlCrudExample.Infrastructure
         /// </remarks>
         public IDbConnection Create()
         {
-            // 【新手導讀】雖然每次都 new MySqlConnection，但 MySql.Data 驅動內建連線池機制，
-            // 實際上會重用已建立的 TCP 連線，不會每次都重新建立網路連線，效能無虞。
+            // 【新手導讀】雖然每次都 new MySqlConnection，但 MySQL 驅動（MySql.Data / MySqlConnector）
+            // 內建連線池機制，實際上會重用已建立的 TCP 連線，不會每次都重新建立網路連線，效能無虞。
             return new MySqlConnection(_connectionString);
         }
     }
