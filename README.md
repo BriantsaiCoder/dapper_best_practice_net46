@@ -22,23 +22,30 @@
 
 | 類別 | 內容 |
 |------|------|
-| Runtime | .NET Framework 4.6.1 |
+| Runtime | .NET Framework 4.6.1（Windows） / .NET 8.0（跨平台） |
 | ORM | Dapper 2.1.35 |
-| MySQL Driver | MySql.Data 6.10.9 |
+| MySQL Driver | MySql.Data 6.10.9（net461） / MySqlConnector 2.3.7（net8.0） |
 | Logging | NLog 5.3.4 |
 | Statistics | MathNet.Numerics 5.0.0 |
 
 ## 快速開始
 
-本專案使用**傳統（非 SDK-style）.csproj** 格式搭配 `packages.config`，需在 Windows 環境下以 Visual Studio 或 MSBuild 建置。
+本專案提供**兩組方案檔**，分別對應不同開發環境：
 
-### 使用 Visual Studio
+| 方案檔 | 專案格式 | 適用環境 | 建置工具 |
+|--------|---------|---------|---------|
+| `dapper_best_practice_net46.sln` | 傳統 .csproj + `packages.config` | VS2017 (Windows) | `nuget restore` + `msbuild` |
+| `dapper_best_practice_net46.core.sln` | SDK-style .csproj（multi-target） | VS2022 (Windows) / VSCode (macOS) | `dotnet build` |
 
-1. 以 Visual Studio 2017（15.0）以上版本開啟 `dapper_best_practice_net46.sln`
+兩組方案共用同一份 C# 源碼，不需切換分支。
+
+### 方式 A：Visual Studio 2017（Windows，傳統格式）
+
+1. 開啟 `dapper_best_practice_net46.sln`
 2. NuGet 套件會在開啟方案時自動還原（或手動執行「還原 NuGet 套件」）
 3. 按 <kbd>F5</kbd> 或 <kbd>Ctrl</kbd>+<kbd>F5</kbd> 執行
 
-### 使用命令列（需安裝 Visual Studio 或 Build Tools）
+命令列建置：
 
 ```bash
 # 還原 NuGet 套件（packages/ 目錄）
@@ -57,11 +64,37 @@ DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe
 > 本專案使用 `MySql.Data 6.10.9`，為純 managed assembly、無間接依賴，在 net461 + VS2017 下可直接編譯，不需額外的警告抑制設定。  
 > **注意**：傳統 .csproj 格式不支援 `dotnet build` / `dotnet run`，請使用 MSBuild 或 Visual Studio 建置。
 
+### 方式 B：VS2022（Windows）或 VSCode（macOS）— SDK-style
+
+1. 開啟 `dapper_best_practice_net46.core.sln`（VS2022）或資料夾（VSCode）
+2. 使用 `dotnet build` 建置：
+
+```bash
+# 還原 + 建置（net8.0，macOS / Windows 皆可）
+dotnet build dapper_best_practice_net46.core.sln -f net8.0
+
+# 僅在 Windows 可同時建置 net461
+dotnet build dapper_best_practice_net46.core.sln
+
+# 設定連線字串（macOS / Linux）
+export MYSQL_CONNECTION_STRING="Server=localhost;Database=app_db;Uid=root;Pwd=your_password;"
+
+# 執行
+dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.Core.csproj -f net8.0
+```
+
+> **跨平台說明**：`net461` target 僅能在 Windows 上建置（需要 .NET Framework 4.6.1 Targeting Pack）。macOS / Linux 環境請使用 `-f net8.0` 指定只建 .NET 8 target。  
+> **MySQL 驅動差異**：net461 使用 `MySql.Data 6.10.9`，net8.0 使用 `MySqlConnector 2.3.7`（MIT 授權的 drop-in replacement）。兩者的 `MySqlConnection` 類別名稱相同，透過 `#if NETFRAMEWORK` 條件編譯在 `DbConnectionFactory.cs` 切換 namespace。
+
 ## 目前結構
 
 ```text
-dapper_best_practice_net46.sln
+dapper_best_practice_net46.sln              ← 傳統格式（VS2017 用）
+dapper_best_practice_net46.core.sln         ← SDK-style（VS2022 / VSCode 用）
 └── DapperMySqlCrudExample/
+    ├── DapperMySqlCrudExample.csproj        ← 傳統 .csproj（net461 only）
+    ├── DapperMySqlCrudExample.Core.csproj   ← SDK-style（net461 + net8.0）
+    ├── packages.config                      ← 傳統 .csproj 用
     ├── Program.cs
     ├── App.config
     ├── NLog.config
@@ -492,7 +525,7 @@ ALTER TABLE detection_methods
 | 目標 | 等級 | 說明 |
 |------|------|------|
 | Console | Info 以上 | 開發時即時檢視 |
-| File | Warn 以上 | `logs/` 目錄下每日輪替，保留 30 天 |
+| File | Info 以上 | `LocalApplicationData/{processname}/` 目錄下每次啟動歸檔，保留 30 天 |
 
 程式碼中使用 `NLog.LogManager.GetCurrentClassLogger()` 取得 logger，不引入額外抽象。
 
@@ -507,12 +540,22 @@ ALTER TABLE detection_methods
 
 ## 驗證清單
 
+### 傳統格式（VS2017 / Windows）
+
 - [ ] `MYSQL_CONNECTION_STRING` 或 `DefaultConnection` 已正確設定
 - [ ] `schema-legacy.sql` 與 `schema.sql` 已依順序套用
 - [ ] `detection_methods` 種子資料已存在：`YIELD`、`SITE_STD`、`MEAN`、`SITE_MEAN`
 - [ ] `nuget restore dapper_best_practice_net46.sln` 成功
 - [ ] `msbuild dapper_best_practice_net46.sln` 成功
 - [ ] `DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe` 可成功連線
+
+### SDK-style（VS2022 / VSCode / macOS）
+
+- [ ] `MYSQL_CONNECTION_STRING` 或 `DefaultConnection` 已正確設定
+- [ ] `schema-legacy.sql` 與 `schema.sql` 已依順序套用
+- [ ] `detection_methods` 種子資料已存在：`YIELD`、`SITE_STD`、`MEAN`、`SITE_MEAN`
+- [ ] `dotnet build dapper_best_practice_net46.core.sln -f net8.0` 成功
+- [ ] `dotnet run --project DapperMySqlCrudExample/DapperMySqlCrudExample.Core.csproj -f net8.0` 可成功連線
 
 ## 設計決策備忘
 
@@ -524,3 +567,28 @@ ALTER TABLE detection_methods
 - `MySql.Data` 6.x 的非同步方法為同步包裝，使用 async 無實質效能增益
 - 移除 async 後程式碼更短、堆疊追蹤更清楚、新工程師更容易理解
 - 若未來需要遷移至 ASP.NET Core 或 .NET 8+，屆時再將 Repository / Service 方法改為 async 即可
+
+### 為什麼使用雙 .csproj + 雙 .sln
+
+本專案同時維護傳統格式與 SDK-style 兩組專案檔，源碼完全共用：
+
+- **傳統 .csproj**（`DapperMySqlCrudExample.csproj`）：保證 VS2017 開箱即用，不需安裝額外 SDK
+- **SDK-style .csproj**（`DapperMySqlCrudExample.Core.csproj`）：支援 `dotnet build`，可在 VS2022、VSCode、macOS 上開發
+
+兩者的差異只在專案格式與套件管理方式（`packages.config` vs `PackageReference`），C# 源碼一字不差。
+
+**維護須知：**
+
+| 操作 | 傳統 .csproj | SDK-style .csproj |
+|------|-------------|------------------|
+| 新增 .cs 檔案 | 需手動加 `<Compile Include>` | 自動包含（無需修改） |
+| 新增 NuGet 套件 | 更新 `packages.config` + `<Reference>` | 加 `<PackageReference>` |
+| 新增設定檔 | 手動加 `<Content>` 或 `<None>` | 手動加 `<Content>` |
+
+**MySQL 驅動條件編譯：**
+
+`DbConnectionFactory.cs` 使用 `#if NETFRAMEWORK` 切換 MySQL driver namespace：
+- `net461` → `MySql.Data.MySqlClient`（MySql.Data 6.10.9）
+- `net8.0` → `MySqlConnector`（MySqlConnector 2.3.7，MIT 授權）
+
+兩個驅動的 `MySqlConnection` 類別名稱相同、API 相容，其餘程式碼無需條件編譯。
