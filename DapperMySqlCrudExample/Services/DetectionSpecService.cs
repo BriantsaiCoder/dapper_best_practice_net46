@@ -85,12 +85,17 @@ namespace DapperMySqlCrudExample.Services
         )
         {
             if (string.IsNullOrWhiteSpace(programName))
+            {
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(programName));
+            }
+
             if (string.IsNullOrWhiteSpace(testItemName))
+            {
                 throw new ArgumentException(
                     "參數不可為 null、空字串或空白。",
                     nameof(testItemName)
                 );
+            }
 
             // 【新手導讀】雙層 using 管理連線與交易的生命週期：
             // 外層 using 管理連線（conn），內層 using 管理交易（tx）。
@@ -112,17 +117,21 @@ namespace DapperMySqlCrudExample.Services
                     );
 
                     if (rows.Count < MinimumSampleCount)
+                    {
                         throw new InvalidOperationException(
                             $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
                                 + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
                         );
+                    }
 
                     var (mean, std) = CalculateMeanAndStd(rows);
+                    Console.WriteLine($"計算結果：mean={mean:F4}, std={std:F4}，樣本數={rows.Count}");
                     var (ucl, lcl) = CalculateControlLimits(mean, std);
+                    Console.WriteLine($"計算結果：ucl={ucl:F4}, lcl={lcl:F4}");
                     var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
-
+                    Console.WriteLine($"計算結果：specCalcStart={specCalcStart}, specCalcEnd={specCalcEnd}");
                     byte methodId = GetRequiredSiteMeanMethodId(tx);
-
+                    Console.WriteLine($"計算結果：methodId={methodId}");
                     var spec = BuildDetectionSpec(
                         programName,
                         siteId,
@@ -135,8 +144,9 @@ namespace DapperMySqlCrudExample.Services
                         mean,
                         std
                     );
-
+                    Console.WriteLine($"建立 DetectionSpec 實體：{spec}");
                     long newId = _detectionSpecRepo.Insert(spec, tx);
+                    Console.WriteLine($"Insert 成功，newId={newId}");
                     // ★ 只有成功走到此行，資料才會真正寫入資料庫。
                     // 若上方任何步驟拋出例外，程式流程會跳過 Commit()，
                     // 離開 using 區塊時 tx.Dispose() 自動 Rollback 所有未提交的操作。
@@ -190,9 +200,11 @@ namespace DapperMySqlCrudExample.Services
         {
             var methodId = _detectionMethodRepo.GetIdByKey(SiteMeanMethodKey, tx);
             if (!methodId.HasValue)
+            {
                 throw new InvalidOperationException(
                     "detection_methods 中找不到 method_key = 'SITE_MEAN' 的設定，無法建立 DetectionSpec。"
                 );
+            }
 
             return methodId.Value;
         }

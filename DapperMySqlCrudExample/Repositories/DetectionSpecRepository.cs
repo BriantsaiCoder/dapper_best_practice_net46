@@ -61,7 +61,9 @@ namespace DapperMySqlCrudExample.Repositories
         )
         {
             if (string.IsNullOrWhiteSpace(program))
+            {
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(program));
+            }
 
             const string sql =
                 "SELECT "
@@ -93,7 +95,9 @@ namespace DapperMySqlCrudExample.Repositories
         public long Insert(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string insertSql =
                 @"INSERT INTO detection_specs
@@ -127,7 +131,9 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Update(DetectionSpec entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string sql =
                 @"UPDATE detection_specs
@@ -144,7 +150,9 @@ namespace DapperMySqlCrudExample.Repositories
                   WHERE  id = @Id";
 
             if (transaction != null)
+            {
                 return transaction.Connection.Execute(sql, entity, transaction) > 0;
+            }
 
             using (var conn = _factory.Create())
             {
@@ -158,7 +166,9 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql = "DELETE FROM detection_specs WHERE id = @Id";
 
             if (transaction != null)
+            {
                 return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+            }
 
             using (var conn = _factory.Create())
             {
