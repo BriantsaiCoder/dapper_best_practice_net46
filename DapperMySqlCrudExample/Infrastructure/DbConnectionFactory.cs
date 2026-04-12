@@ -44,9 +44,11 @@ namespace DapperMySqlCrudExample.Infrastructure
 
             var entry = ConfigurationManager.ConnectionStrings["DefaultConnection"];
             if (entry == null || string.IsNullOrWhiteSpace(entry.ConnectionString))
+            {
                 throw new InvalidOperationException(
                     $"找不到連線字串：環境變數 '{EnvVarName}' 未設定，且 App.config 中無 'DefaultConnection'。"
                 );
+            }
 
             _connectionString = entry.ConnectionString;
             _logger.Info("連線字串來源：App.config DefaultConnection");
@@ -55,10 +57,12 @@ namespace DapperMySqlCrudExample.Infrastructure
         public DbConnectionFactory(string connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
+            {
                 throw new ArgumentNullException(
                     nameof(connectionString),
                     "連線字串不可為 null 或空白。"
                 );
+            }
 
             _connectionString = connectionString;
         }

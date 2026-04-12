@@ -65,7 +65,9 @@ namespace DapperMySqlCrudExample.Repositories
         public long Insert(GoodLot entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string insertSql =
                 @"
@@ -81,7 +83,10 @@ namespace DapperMySqlCrudExample.Repositories
                 if (transaction != null)
                 {
                     transaction.Connection.Execute(insertSql, entity, transaction);
-                    return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+                    return transaction.Connection.ExecuteScalar<long>(
+                        identitySql,
+                        transaction: transaction
+                    );
                 }
 
                 using (var conn = _factory.Create())
@@ -107,7 +112,9 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Update(GoodLot entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string sql =
                 @"
@@ -119,7 +126,9 @@ namespace DapperMySqlCrudExample.Repositories
             try
             {
                 if (transaction != null)
+                {
                     return transaction.Connection.Execute(sql, entity, transaction) > 0;
+                }
 
                 using (var conn = _factory.Create())
                 {
@@ -141,7 +150,9 @@ namespace DapperMySqlCrudExample.Repositories
             try
             {
                 if (transaction != null)
+                {
                     return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+                }
 
                 using (var conn = _factory.Create())
                 {

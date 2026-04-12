@@ -75,7 +75,9 @@ namespace DapperMySqlCrudExample.Repositories
         public DetectionMethod GetByKey(string methodKey)
         {
             if (string.IsNullOrWhiteSpace(methodKey))
+            {
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(methodKey));
+            }
 
             const string sql =
                 "SELECT " + SelectColumns + " FROM detection_methods WHERE method_key = @MethodKey";
@@ -99,16 +101,20 @@ namespace DapperMySqlCrudExample.Repositories
         public byte? GetIdByKey(string methodKey, IDbTransaction transaction = null)
         {
             if (string.IsNullOrWhiteSpace(methodKey))
+            {
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(methodKey));
+            }
 
             const string sql = "SELECT id FROM detection_methods WHERE method_key = @MethodKey";
 
             if (transaction != null)
+            {
                 return transaction.Connection.ExecuteScalar<byte?>(
                     sql,
                     new { MethodKey = methodKey },
                     transaction
                 );
+            }
 
             using (var conn = _factory.Create())
             {
@@ -130,7 +136,9 @@ namespace DapperMySqlCrudExample.Repositories
         public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             // 【新手導讀】先執行 INSERT，再於同一連線查詢 LAST_INSERT_ID() 取得 MySQL 自動遞增的主鍵值。
             // 兩步驟必須在同一連線上執行，因為 LAST_INSERT_ID() 是 session-scoped 的函式。
@@ -150,7 +158,10 @@ namespace DapperMySqlCrudExample.Repositories
                 if (transaction != null)
                 {
                     transaction.Connection.Execute(insertSql, entity, transaction);
-                    return transaction.Connection.ExecuteScalar<byte>(identitySql, transaction: transaction);
+                    return transaction.Connection.ExecuteScalar<byte>(
+                        identitySql,
+                        transaction: transaction
+                    );
                 }
 
                 using (var conn = _factory.Create())
@@ -180,7 +191,9 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Update(DetectionMethod entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string sql =
                 @"
@@ -194,7 +207,9 @@ namespace DapperMySqlCrudExample.Repositories
             try
             {
                 if (transaction != null)
+                {
                     return transaction.Connection.Execute(sql, entity, transaction) > 0;
+                }
 
                 using (var conn = _factory.Create())
                 {
@@ -216,7 +231,9 @@ namespace DapperMySqlCrudExample.Repositories
             try
             {
                 if (transaction != null)
+                {
                     return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+                }
 
                 using (var conn = _factory.Create())
                 {

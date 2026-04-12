@@ -113,12 +113,17 @@ namespace DapperMySqlCrudExample.Repositories
         )
         {
             if (string.IsNullOrWhiteSpace(programName))
+            {
                 throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(programName));
+            }
+
             if (string.IsNullOrWhiteSpace(testItemName))
+            {
                 throw new ArgumentException(
                     "參數不可為 null、空字串或空白。",
                     nameof(testItemName)
                 );
+            }
 
             // 【新手導讀】多參數查詢時，將所有參數包進同一個匿名物件，
             // Dapper 會自動將每個屬性對應到 SQL 的 @參數（同 DetectionMethodRepository.GetById 說明）。
@@ -147,7 +152,9 @@ namespace DapperMySqlCrudExample.Repositories
                   LIMIT @Limit";
 
             if (transaction != null)
+            {
                 return transaction.Connection.Query<SiteMeanRow>(sql, p, transaction).ToList();
+            }
 
             using (var conn = _factory.Create())
             {
@@ -165,7 +172,9 @@ namespace DapperMySqlCrudExample.Repositories
         public long Insert(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string insertSql =
                 @"
@@ -185,7 +194,10 @@ namespace DapperMySqlCrudExample.Repositories
                 if (transaction != null)
                 {
                     transaction.Connection.Execute(insertSql, entity, transaction);
-                    return transaction.Connection.ExecuteScalar<long>(identitySql, transaction: transaction);
+                    return transaction.Connection.ExecuteScalar<long>(
+                        identitySql,
+                        transaction: transaction
+                    );
                 }
 
                 using (var conn = _factory.Create())
@@ -212,7 +224,9 @@ namespace DapperMySqlCrudExample.Repositories
         public bool Update(SiteTestStatistic entity, IDbTransaction transaction = null)
         {
             if (entity == null)
+            {
                 throw new ArgumentNullException(nameof(entity));
+            }
 
             const string sql =
                 @"
@@ -233,7 +247,9 @@ namespace DapperMySqlCrudExample.Repositories
             try
             {
                 if (transaction != null)
+                {
                     return transaction.Connection.Execute(sql, entity, transaction) > 0;
+                }
 
                 using (var conn = _factory.Create())
                 {
@@ -255,7 +271,9 @@ namespace DapperMySqlCrudExample.Repositories
             try
             {
                 if (transaction != null)
+                {
                     return transaction.Connection.Execute(sql, new { Id = id }, transaction) > 0;
+                }
 
                 using (var conn = _factory.Create())
                 {
