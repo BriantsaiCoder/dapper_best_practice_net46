@@ -201,7 +201,7 @@ Repository 保持單一職責：
 - 不做統計運算
 - 不封裝跨表工作流程
 
-Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式 try/catch。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作。
+Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式呼叫 `tx.Rollback()`。目前 [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) 仍保留 `try/catch`，用於業務例外分類與錯誤記錄；Rollback 則仍由 `Dispose()` 隱式完成。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作。
 
 ### 5. SITE_MEAN 取樣策略已做固定上限
 
@@ -445,7 +445,7 @@ erDiagram
 
 ### 重要索引
 
-- `site_test_statistics(program, site_id, test_item_name, start_time)` — SITE_MEAN 查詢的核心覆蓋索引
+- `site_test_statistics(program, site_id, test_item_name, start_time)` — SITE_MEAN 查詢的核心複合索引（支援 WHERE + ORDER BY）
 - `site_test_statistics(start_time)` — 取最新樣本排序用
 - `detection_specs(program, detection_method_id)` — 規格查詢
 - `detection_specs(program, test_item_name, detection_method_id)` — 含測項的規格查詢
@@ -468,7 +468,7 @@ erDiagram
 | `anomaly_unit_process_mapping` | `idx_boat_position (boat_id, boat_x, boat_y)` | Boat Map 分析：查詢特定載具位置的 Unit |
 | `anomaly_unit_process_mapping` | `idx_plant_station (plant_name, station_name)` | 依廠區 + 站點篩選，用於製程異常根因分析 |
 | `anomaly_unit_process_mapping` | `idx_station_equipment (station_name, equipment_id)` | 機台異常關聯分析（特定站點 + 機台的異常聚集） |
-| `site_test_statistics` | 已內建 `idx_program_site_item_time` | SITE_MEAN 規格計算核心查詢（覆蓋索引） |
+| `site_test_statistics` | 已內建 `idx_program_site_item_time` | SITE_MEAN 規格計算核心查詢索引（非覆蓋索引，查詢仍需讀取 `mean_value`） |
 
 > **設計原則**：
 > 1. **UNIQUE INDEX 優先**：`unq_lot_method`、`unq_lot_item`、`unq_item_unit`、`unq_lot_site_item` 已涵蓋最常見的 upsert / 重複檢查場景。
@@ -519,10 +519,8 @@ ALTER TABLE detection_methods
 
 [NLog.config](DapperMySqlCrudExample/NLog.config) 定義兩個輸出目標：
 
-| 目標 | 等級 | 說明 |
-|------|------|------|
-| Console | Info 以上 | 開發時即時檢視 |
-| File | Warn 以上 | `logs/` 目錄下每日輪替，保留 30 天 |
+- `console`：`Info` 以上，供開發時即時檢視
+- `file`：`Info` 以上，輸出到 `C:\temp\${processname}\app.log`；程式啟動時封存舊檔，封存檔以時間戳記命名，最多保留 30 天
 
 程式碼中使用 `NLog.LogManager.GetCurrentClassLogger()` 取得 logger，不引入額外抽象。
 
