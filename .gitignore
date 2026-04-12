@@ -42,6 +42,7 @@ packages/
 # Others
 ~$*
 *~
+.DS_Store
 *.lscache
 CodeCoverage/
 
