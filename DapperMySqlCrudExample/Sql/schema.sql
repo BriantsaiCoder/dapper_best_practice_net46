@@ -135,6 +135,7 @@ CREATE TABLE anomaly_unit_process_mapping (
     txn_time DATETIME NULL,
     plant_name VARCHAR(100),
     station_name VARCHAR(100),
+    wafer_station_name VARCHAR(100) NULL,
     equipment_id VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -238,3 +239,5 @@ CREATE TABLE good_lots (
 -- =============================================================================
 -- ALTER TABLE detection_methods
 --   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
+-- ALTER TABLE anomaly_unit_process_mapping
+--   ADD COLUMN wafer_station_name VARCHAR(100) NULL AFTER station_name;
