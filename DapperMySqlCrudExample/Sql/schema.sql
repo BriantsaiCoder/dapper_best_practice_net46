@@ -124,7 +124,6 @@ CREATE TABLE anomaly_unit_process_mapping (
     wafer_max_y SMALLINT NOT NULL,
     boat_max_x SMALLINT NOT NULL,
     boat_max_y SMALLINT NOT NULL,
-    txn_time DATETIME NULL,
     plant_name VARCHAR(100),
     station_name VARCHAR(100),
     equipment_id VARCHAR(50),

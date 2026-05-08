@@ -173,7 +173,7 @@ INSERT INTO anomaly_unit_process_mapping
      wafer_barcode, wafer_id, wafer_x, wafer_y,
      substrate_id, substrate_x, substrate_y,
      wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
-     txn_time, plant_name, station_name, equipment_id)
+     plant_name, station_name, equipment_id)
 VALUES
 ((SELECT au.id FROM anomaly_units au
   JOIN anomaly_test_items ati ON au.anomaly_test_item_id = ati.id
@@ -185,7 +185,7 @@ VALUES
  'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
  'SUB-BGA256-A01', 3, 6,
  30, 40, 8, 16,
- '2026-04-02 15:45:00', 'KH-FAB1', 'FINAL_TEST', 'FT-J750-01');
+ 'KH-FAB1', 'FINAL_TEST', 'FT-J750-01');
 
 -- =============================================================================
 -- 獨立表：detection_specs（偵測規格）

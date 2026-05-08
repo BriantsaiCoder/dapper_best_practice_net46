@@ -55,9 +55,6 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>Boat 最大 Y 座標。</summary>
         public short BoatMaxY { get; set; }
 
-        /// <summary>交易時間；允許 Null。</summary>
-        public DateTime? TxnTime { get; set; }
-
         /// <summary>廠區名稱；允許 Null。</summary>
         public string PlantName { get; set; }
 
