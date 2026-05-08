@@ -27,8 +27,10 @@ CREATE TABLE detection_methods (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO detection_methods (method_key, method_name) VALUES
-('SITE_STD',  '標準差偵測'),
-('SITE_MEAN', 'Site平均值偵測');
+('SITE_STD',  'Site標準差偵測'),
+('SITE_MEAN', 'Site平均值偵測'),
+('OPEN_PPM',  'OPEN PPM偵測'),
+('SHORT_PPM', 'SHORT PPM偵測');
 
 -- 2. 異常批號主表
 CREATE TABLE anomaly_lots (
