@@ -46,7 +46,6 @@ namespace DapperMySqlCrudExample.Repositories
             txn_time          AS TxnTime,
             plant_name        AS PlantName,
             station_name      AS StationName,
-            wafer_station_name AS WaferStationName,
             equipment_id      AS EquipmentId,
             created_at        AS CreatedAt,
             updated_at        AS UpdatedAt";
@@ -100,13 +99,13 @@ namespace DapperMySqlCrudExample.Repositories
                      wafer_barcode, wafer_id, wafer_x, wafer_y,
                      substrate_id, substrate_x, substrate_y,
                      wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
-                     txn_time, plant_name, station_name, wafer_station_name, equipment_id)
+                     txn_time, plant_name, station_name, equipment_id)
                 VALUES
                     (@AnomalyUnitId, @BoatId, @BoatX, @BoatY,
                      @WaferBarcode, @WaferId, @WaferX, @WaferY,
                      @SubstrateId, @SubstrateX, @SubstrateY,
                      @WaferMaxX, @WaferMaxY, @BoatMaxX, @BoatMaxY,
-                     @TxnTime, @PlantName, @StationName, @WaferStationName, @EquipmentId)";
+                     @TxnTime, @PlantName, @StationName, @EquipmentId)";
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
 
@@ -168,7 +167,6 @@ namespace DapperMySqlCrudExample.Repositories
                        txn_time          = @TxnTime,
                        plant_name        = @PlantName,
                        station_name      = @StationName,
-                       wafer_station_name = @WaferStationName,
                        equipment_id      = @EquipmentId
                 WHERE  id = @Id";
 

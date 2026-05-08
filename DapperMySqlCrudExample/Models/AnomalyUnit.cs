@@ -28,12 +28,6 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>規格下限；允許 Null 表示尚未計算。</summary>
         public decimal? SpecLowerLimit { get; set; }
 
-        /// <summary>Spec 計算採樣的起始時間。</summary>
-        public DateTime? SpecCalcStartTime { get; set; }
-
-        /// <summary>Spec 計算採樣的結束時間。</summary>
-        public DateTime? SpecCalcEndTime { get; set; }
-
         /// <summary>記錄建立時間（由資料庫自動填入）。</summary>
         public DateTime CreatedAt { get; set; }
 

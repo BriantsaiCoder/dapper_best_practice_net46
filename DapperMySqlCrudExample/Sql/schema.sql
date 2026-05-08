@@ -27,9 +27,7 @@ CREATE TABLE detection_methods (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO detection_methods (method_key, method_name) VALUES
-('YIELD',     '良率偵測'),
 ('SITE_STD',  '標準差偵測'),
-('MEAN',      '平均值偵測'),
 ('SITE_MEAN', 'Site平均值偵測');
 
 -- 2. 異常批號主表
@@ -41,8 +39,6 @@ CREATE TABLE anomaly_lots (
     offset_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time DATETIME NULL,
-    spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
@@ -65,8 +61,6 @@ CREATE TABLE anomaly_test_items (
     offset_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time DATETIME NULL,
-    spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE INDEX unq_lot_item (anomaly_lot_id, test_item_name),
@@ -85,8 +79,6 @@ CREATE TABLE anomaly_units (
     offset_value DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time DATETIME NULL,
-    spec_calc_end_time DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE INDEX unq_item_unit (anomaly_test_item_id, unit_id),
@@ -135,7 +127,6 @@ CREATE TABLE anomaly_unit_process_mapping (
     txn_time DATETIME NULL,
     plant_name VARCHAR(100),
     station_name VARCHAR(100),
-    wafer_station_name VARCHAR(100) NULL,
     equipment_id VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -149,7 +140,7 @@ CREATE TABLE anomaly_unit_process_mapping (
 CREATE TABLE detection_specs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     program VARCHAR(100) NOT NULL,
-    -- NULL when detection method does not use test items (e.g. YIELD)
+    -- NULL when detection method does not use test items
     test_item_name VARCHAR(100),
     site_id INT UNSIGNED NOT NULL,
     detection_method_id TINYINT UNSIGNED NOT NULL,
@@ -239,5 +230,3 @@ CREATE TABLE good_lots (
 -- =============================================================================
 -- ALTER TABLE detection_methods
 --   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
--- ALTER TABLE anomaly_unit_process_mapping
---   ADD COLUMN wafer_station_name VARCHAR(100) NULL AFTER station_name;

@@ -106,8 +106,8 @@ namespace DapperMySqlCrudExample.Samples
                 int total = repo.GetCount();
                 Console.WriteLine($"  [GetCount] 現有筆數={total}");
 
-                var builtInMethod = repo.GetByKey("YIELD");
-                Console.WriteLine($"  [GetByKey] 內建方法 YIELD 存在={builtInMethod != null}");
+                var builtInMethod = repo.GetByKey("SITE_STD");
+                Console.WriteLine($"  [GetByKey] 內建方法 SITE_STD 存在={builtInMethod != null}");
 
                 // ── Delete ───────────────────────────────────────────────────────
                 bool deleted = repo.Delete(newId);

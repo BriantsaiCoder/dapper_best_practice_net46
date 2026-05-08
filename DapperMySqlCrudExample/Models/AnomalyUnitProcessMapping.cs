@@ -64,9 +64,6 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>站點名稱。</summary>
         public string StationName { get; set; }
 
-        /// <summary>Wafer 站點名稱；允許 Null。</summary>
-        public string WaferStationName { get; set; }
-
         /// <summary>機台 ID。</summary>
         public string EquipmentId { get; set; }
 
