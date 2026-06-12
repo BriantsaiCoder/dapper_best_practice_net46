@@ -5,16 +5,15 @@
 --
 -- ★ 執行順序：若為全新環境，請先執行 schema-legacy.sql 建立 lots_info 等外鍵依賴資料表。
 --
--- ★ 本檔包含 9 張核心資料表，由 Repository 直接管理：
+-- ★ 本檔包含 8 張核心資料表，由 Repository 直接管理：
 --    1. detection_methods            — 偵測方法主表
 --    2. anomaly_lots                 — 異常批號主表
---    3. anomaly_test_items           — 異常測項明細
---    4. anomaly_units                — 異常 Unit 明細
---    5. anomaly_lot_process_mapping  — 批號 Process Mapping
---    6. anomaly_unit_process_mapping — Unit Process Mapping
---    7. detection_specs              — Spec 規格表
---    8. site_test_statistics         — Site 測項統計值表
---    9. good_lots                    — 好批批號記錄表
+--    3. anomaly_units                — 異常明細表（含測項與 Unit 層，unit_id='' 表示無 Unit 的測項層異常）
+--    4. anomaly_lot_process_mapping  — 批號 Process Mapping
+--    5. anomaly_unit_process_mapping — Unit Process Mapping
+--    6. detection_specs              — Spec 規格表
+--    7. site_test_statistics         — Site 測項統計值表
+--    8. good_lots                    — 好批批號記錄表
 -- =============================================================================
 
 -- 1. 偵測方法主表
@@ -53,44 +52,29 @@ CREATE TABLE anomaly_lots (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. 異常測項明細表
-CREATE TABLE anomaly_test_items (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    anomaly_lot_id BIGINT NOT NULL,
-    test_item_name VARCHAR(100) NOT NULL,
-    site_id INT UNSIGNED NOT NULL,
-    detection_value DECIMAL(18,9),
-    offset_value DECIMAL(18,9),
+-- 3. 異常明細表（測項 + Unit 合併）
+-- unit_id = '' 表示無 Unit 的測項層異常（detection_value 儲存測項層偵測值）；
+-- unit_id 有值表示 Unit 層異常（detection_value 儲存該 Unit 的量測值）。
+CREATE TABLE anomaly_units (
+    id               BIGINT PRIMARY KEY AUTO_INCREMENT,
+    anomaly_lot_id   BIGINT NOT NULL,
+    test_item_name   VARCHAR(100) NOT NULL,
+    site_id          INT UNSIGNED NOT NULL,
+    unit_id          VARCHAR(50) NOT NULL DEFAULT '',
+    detection_value  DECIMAL(18,9),
+    offset_value     DECIMAL(18,9),
     spec_upper_limit DECIMAL(18,9),
     spec_lower_limit DECIMAL(18,9),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE INDEX unq_lot_item (anomaly_lot_id, test_item_name),
-    CONSTRAINT fk_test_items_anomaly_lot
+    UNIQUE INDEX unq_lot_item_unit (anomaly_lot_id, test_item_name, unit_id),
+    CONSTRAINT fk_units_anomaly_lot
         FOREIGN KEY (anomaly_lot_id)
         REFERENCES anomaly_lots(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. 異常 Unit 明細表
-CREATE TABLE anomaly_units (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    anomaly_test_item_id BIGINT NOT NULL,
-    unit_id VARCHAR(50) NOT NULL,
-    detection_value DECIMAL(18,9),
-    offset_value DECIMAL(18,9),
-    spec_upper_limit DECIMAL(18,9),
-    spec_lower_limit DECIMAL(18,9),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE INDEX unq_item_unit (anomaly_test_item_id, unit_id),
-    CONSTRAINT fk_units_test_item
-        FOREIGN KEY (anomaly_test_item_id)
-        REFERENCES anomaly_test_items(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 5. 批號 Process Mapping（廠區、站點、機台、人員）
+-- 4. 批號 Process Mapping（廠區、站點、機台、人員）
 CREATE TABLE anomaly_lot_process_mapping (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     anomaly_lot_id BIGINT NOT NULL,
@@ -108,7 +92,7 @@ CREATE TABLE anomaly_lot_process_mapping (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Unit Process Mapping（Boat / Wafer / Substrate 座標追溯）
+-- 5. Unit Process Mapping（Boat / Wafer / Substrate 座標追溯）
 CREATE TABLE anomaly_unit_process_mapping (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     anomaly_unit_id BIGINT NOT NULL,
@@ -137,7 +121,7 @@ CREATE TABLE anomaly_unit_process_mapping (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Spec 規格表
+-- 6. Spec 規格表
 CREATE TABLE detection_specs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     program VARCHAR(100) NOT NULL,
@@ -161,7 +145,7 @@ CREATE TABLE detection_specs (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. Site 測項統計值表
+-- 7. Site 測項統計值表
 CREATE TABLE site_test_statistics (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
@@ -186,7 +170,7 @@ CREATE TABLE site_test_statistics (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 9. 好批批號記錄表（數值偏差偵測模組）
+-- 8. 好批批號記錄表（數值偏差偵測模組）
 CREATE TABLE good_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
@@ -210,10 +194,8 @@ CREATE TABLE good_lots (
 -- anomaly_lots:
 --   ALTER TABLE anomaly_lots ADD INDEX idx_created_at (created_at);
 --
--- anomaly_test_items:
---   ALTER TABLE anomaly_test_items ADD INDEX idx_test_item_name (test_item_name);
---
 -- anomaly_units:
+--   ALTER TABLE anomaly_units ADD INDEX idx_test_item_name (test_item_name);
 --   ALTER TABLE anomaly_units ADD INDEX idx_unit (unit_id);
 --
 -- anomaly_lot_process_mapping:

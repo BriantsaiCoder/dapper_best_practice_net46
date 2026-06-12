@@ -5,12 +5,17 @@ using System.Linq;
 using Dapper;
 using DapperMySqlCrudExample.Infrastructure;
 using DapperMySqlCrudExample.Models;
+using DapperMySqlCrudExample.Models.QueryModels;
 using NLog;
 
 namespace DapperMySqlCrudExample.Repositories
 {
     /// <summary>
     /// AnomalyUnitRepository — anomaly_units 資料表的 Dapper 資料存取。
+    /// <para>
+    /// anomaly_units 為合併測項與 Unit 層的異常明細表：
+    /// unit_id = "" 表示無 Unit 的測項層異常；unit_id 有值表示 Unit 層異常。
+    /// </para>
     /// </summary>
     public sealed class AnomalyUnitRepository
     {
@@ -26,15 +31,17 @@ namespace DapperMySqlCrudExample.Repositories
 
         private const string SelectColumns =
             @"
-            id                    AS Id,
-            anomaly_test_item_id  AS AnomalyTestItemId,
-            unit_id               AS UnitId,
-            detection_value       AS DetectionValue,
-            offset_value          AS OffsetValue,
-            spec_upper_limit      AS SpecUpperLimit,
-            spec_lower_limit      AS SpecLowerLimit,
-            created_at            AS CreatedAt,
-            updated_at            AS UpdatedAt";
+            id                AS Id,
+            anomaly_lot_id    AS AnomalyLotId,
+            test_item_name    AS TestItemName,
+            site_id           AS SiteId,
+            unit_id           AS UnitId,
+            detection_value   AS DetectionValue,
+            offset_value      AS OffsetValue,
+            spec_upper_limit  AS SpecUpperLimit,
+            spec_lower_limit  AS SpecLowerLimit,
+            created_at        AS CreatedAt,
+            updated_at        AS UpdatedAt";
 
         /// <summary>依主鍵查詢單筆資料。</summary>
         public AnomalyUnit GetById(long id)
@@ -46,16 +53,83 @@ namespace DapperMySqlCrudExample.Repositories
             }
         }
 
-        /// <summary>依 anomaly_test_item_id 查詢多筆資料。</summary>
-        public IReadOnlyList<AnomalyUnit> GetByAnomalyTestItemId(long anomalyTestItemId)
+        /// <summary>依 anomaly_lot_id 查詢多筆異常明細。</summary>
+        public IReadOnlyList<AnomalyUnit> GetByAnomalyLotId(long anomalyLotId)
         {
             const string sql =
                 "SELECT "
                 + SelectColumns
-                + " FROM anomaly_units WHERE anomaly_test_item_id = @AnomalyTestItemId ORDER BY id";
+                + " FROM anomaly_units WHERE anomaly_lot_id = @AnomalyLotId ORDER BY id";
             using (var conn = _factory.Create())
             {
-                return conn.Query<AnomalyUnit>(sql, new { AnomalyTestItemId = anomalyTestItemId })
+                return conn.Query<AnomalyUnit>(sql, new { AnomalyLotId = anomalyLotId }).ToList();
+            }
+        }
+
+        /// <summary>依 anomaly_lot_id 與 test_item_name 查詢多筆異常明細。</summary>
+        public IReadOnlyList<AnomalyUnit> GetByAnomalyLotIdAndTestItemName(
+            long anomalyLotId,
+            string testItemName
+        )
+        {
+            const string sql =
+                "SELECT "
+                + SelectColumns
+                + " FROM anomaly_units"
+                + " WHERE anomaly_lot_id = @AnomalyLotId AND test_item_name = @TestItemName"
+                + " ORDER BY id";
+            using (var conn = _factory.Create())
+            {
+                return conn.Query<AnomalyUnit>(
+                        sql,
+                        new { AnomalyLotId = anomalyLotId, TestItemName = testItemName }
+                    )
+                    .ToList();
+            }
+        }
+
+        /// <summary>
+        /// 依 anomaly_lot_id 查詢有 Unit 的異常明細及其製程追溯（unit_id 非空字串）。
+        /// 回傳結果為 anomaly_units INNER JOIN anomaly_unit_process_mapping 的複合資料。
+        /// </summary>
+        public IReadOnlyList<AnomalyUnitWithMapping> GetWithMappingByAnomalyLotId(long anomalyLotId)
+        {
+            const string sql =
+                @"SELECT
+                    au.id                AS Id,
+                    au.anomaly_lot_id    AS AnomalyLotId,
+                    au.test_item_name    AS TestItemName,
+                    au.site_id           AS SiteId,
+                    au.unit_id           AS UnitId,
+                    au.detection_value   AS DetectionValue,
+                    au.offset_value      AS OffsetValue,
+                    au.spec_upper_limit  AS SpecUpperLimit,
+                    au.spec_lower_limit  AS SpecLowerLimit,
+                    m.id                 AS MappingId,
+                    m.boat_id            AS BoatId,
+                    m.boat_x             AS BoatX,
+                    m.boat_y             AS BoatY,
+                    m.wafer_barcode      AS WaferBarcode,
+                    m.wafer_id           AS WaferId,
+                    m.wafer_x            AS WaferX,
+                    m.wafer_y            AS WaferY,
+                    m.substrate_id       AS SubstrateId,
+                    m.substrate_x        AS SubstrateX,
+                    m.substrate_y        AS SubstrateY,
+                    m.wafer_max_x        AS WaferMaxX,
+                    m.wafer_max_y        AS WaferMaxY,
+                    m.boat_max_x         AS BoatMaxX,
+                    m.boat_max_y         AS BoatMaxY,
+                    m.plant_name         AS MappingPlantName,
+                    m.station_name       AS MappingStationName,
+                    m.equipment_id       AS EquipmentId
+                FROM anomaly_units au
+                INNER JOIN anomaly_unit_process_mapping m ON m.anomaly_unit_id = au.id
+                WHERE au.anomaly_lot_id = @AnomalyLotId AND au.unit_id <> ''
+                ORDER BY au.id";
+            using (var conn = _factory.Create())
+            {
+                return conn.Query<AnomalyUnitWithMapping>(sql, new { AnomalyLotId = anomalyLotId })
                     .ToList();
             }
         }
@@ -77,11 +151,11 @@ namespace DapperMySqlCrudExample.Repositories
             const string insertSql =
                 @"
                 INSERT INTO anomaly_units
-                    (anomaly_test_item_id, unit_id, detection_value, offset_value,
-                     spec_upper_limit, spec_lower_limit)
+                    (anomaly_lot_id, test_item_name, site_id, unit_id,
+                     detection_value, offset_value, spec_upper_limit, spec_lower_limit)
                 VALUES
-                    (@AnomalyTestItemId, @UnitId, @DetectionValue, @OffsetValue,
-                     @SpecUpperLimit, @SpecLowerLimit)";
+                    (@AnomalyLotId, @TestItemName, @SiteId, @UnitId,
+                     @DetectionValue, @OffsetValue, @SpecUpperLimit, @SpecLowerLimit)";
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
 
@@ -107,8 +181,9 @@ namespace DapperMySqlCrudExample.Repositories
             {
                 _logger.Error(
                     ex,
-                    "Insert anomaly_units 失敗 | AnomalyTestItemId={AnomalyTestItemId} | UnitId={UnitId}",
-                    entity.AnomalyTestItemId,
+                    "Insert anomaly_units 失敗 | AnomalyLotId={AnomalyLotId} | TestItemName={TestItemName} | UnitId={UnitId}",
+                    entity.AnomalyLotId,
+                    entity.TestItemName,
                     entity.UnitId
                 );
                 throw;
@@ -126,12 +201,14 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 UPDATE anomaly_units
-                SET    anomaly_test_item_id  = @AnomalyTestItemId,
-                       unit_id               = @UnitId,
-                       detection_value       = @DetectionValue,
-                       offset_value          = @OffsetValue,
-                       spec_upper_limit      = @SpecUpperLimit,
-                       spec_lower_limit      = @SpecLowerLimit
+                SET    anomaly_lot_id   = @AnomalyLotId,
+                       test_item_name   = @TestItemName,
+                       site_id          = @SiteId,
+                       unit_id          = @UnitId,
+                       detection_value  = @DetectionValue,
+                       offset_value     = @OffsetValue,
+                       spec_upper_limit = @SpecUpperLimit,
+                       spec_lower_limit = @SpecLowerLimit
                 WHERE  id = @Id";
 
             try

@@ -70,7 +70,6 @@ dapper_best_practice_net46.sln
     ├── Models/
     │   ├── AnomalyLot.cs
     │   ├── AnomalyLotProcessMapping.cs
-    │   ├── AnomalyTestItem.cs
     │   ├── AnomalyUnit.cs
     │   ├── AnomalyUnitProcessMapping.cs
     │   ├── DetectionMethod.cs
@@ -83,7 +82,6 @@ dapper_best_practice_net46.sln
     ├── Repositories/
     │   ├── AnomalyLotProcessMappingRepository.cs
     │   ├── AnomalyLotRepository.cs
-    │   ├── AnomalyTestItemRepository.cs
     │   ├── AnomalyUnitProcessMappingRepository.cs
     │   ├── AnomalyUnitRepository.cs
     │   ├── DetectionMethodRepository.cs
@@ -422,7 +420,7 @@ public byte Insert(DetectionMethod entity, IDbTransaction transaction = null)
 
 ## Schema 重點
 
-[schema.sql](DapperMySqlCrudExample/Sql/schema.sql) 包含 9 張核心表；[schema-legacy.sql](DapperMySqlCrudExample/Sql/schema-legacy.sql) 提供 `lots_info` 相依表。
+[schema.sql](DapperMySqlCrudExample/Sql/schema.sql) 包含 8 張核心表；[schema-legacy.sql](DapperMySqlCrudExample/Sql/schema-legacy.sql) 提供 `lots_info` 相依表。
 
 ### 資料表關聯圖
 
@@ -434,13 +432,12 @@ erDiagram
     detection_methods ||--o{ anomaly_lots : ""
     detection_methods ||--o{ detection_specs : ""
     detection_methods ||--o{ good_lots : ""
-    anomaly_lots ||--o{ anomaly_test_items : ""
+    anomaly_lots ||--o{ anomaly_units : ""
     anomaly_lots ||--o{ anomaly_lot_process_mapping : ""
-    anomaly_test_items ||--o{ anomaly_units : ""
     anomaly_units ||--o{ anomaly_unit_process_mapping : ""
 ```
 
-> `lots_info` 來自 schema-legacy.sql（既有系統），其餘 9 張表由 schema.sql 定義。
+> `lots_info` 來自 schema-legacy.sql（既有系統），其餘 8 張表由 schema.sql 定義。
 > 所有 FK 均設定 `ON DELETE CASCADE ON UPDATE CASCADE`。
 
 ### 重要索引
@@ -460,7 +457,7 @@ erDiagram
 | 資料表 | 建議索引 | 對應查詢場景 |
 |--------|---------|-------------|
 | `anomaly_lots` | `idx_created_at (created_at)` | 依時間區間查詢近期異常批次（日報 / 週報） |
-| `anomaly_test_items` | `idx_test_item_name (test_item_name)` | 跨批號搜尋特定測項（如 IDD_STANDBY）的異常記錄 |
+| `anomaly_units` | `idx_test_item_name (test_item_name)` | 跨批號搜尋特定測項（如 IDD_STANDBY）的異常記錄 |
 | `anomaly_units` | `idx_unit (unit_id)` | 依 Unit ID 反查追溯（顆粒級不良分析） |
 | `anomaly_lot_process_mapping` | `idx_machine (machine_id)` | 依機台 ID 篩選，用於特定機台的異常批次關聯分析 |
 | `anomaly_lot_process_mapping` | `idx_plant_station (plant_name, station_name)` | 依廠區 + 站點篩選異常批號（製程站點根因分析） |

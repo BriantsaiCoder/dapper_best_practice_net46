@@ -3,20 +3,36 @@ using System;
 namespace DapperMySqlCrudExample.Models
 {
     /// <summary>
-    /// 異常 Unit 明細，記錄批號中各 Unit 的偵測值與規格範圍。
+    /// 異常明細，合併測項層與 Unit 層的異常記錄。
+    /// <para>
+    /// <b>UnitId = ""（空字串）</b>：無 Unit 的測項層異常，
+    /// DetectionValue 儲存測項整體偵測值。
+    /// </para>
+    /// <para>
+    /// <b>UnitId 有值</b>：Unit 層異常，
+    /// DetectionValue 儲存該 Unit 的量測值。
+    /// </para>
     /// </summary>
     public sealed class AnomalyUnit
     {
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }
 
-        /// <summary>關聯的異常測項 ID（外鍵 anomaly_test_items.id）。</summary>
-        public long AnomalyTestItemId { get; set; }
+        /// <summary>關聯的異常批號 ID（外鍵 anomaly_lots.id）。</summary>
+        public long AnomalyLotId { get; set; }
 
-        /// <summary>Unit 識別碼。</summary>
+        /// <summary>測試項目名稱。</summary>
+        public string TestItemName { get; set; }
+
+        /// <summary>測試 Site 編號（INT UNSIGNED）。</summary>
+        public uint SiteId { get; set; }
+
+        /// <summary>
+        /// Unit 識別碼。空字串（""）表示無 Unit 的測項層異常；有值表示 Unit 層異常。
+        /// </summary>
         public string UnitId { get; set; }
 
-        /// <summary>Unit 實際偵測值；允許 Null。</summary>
+        /// <summary>實際偵測值；允許 Null。</summary>
         public decimal? DetectionValue { get; set; }
 
         /// <summary>偵測值與規格的偏移量；允許 Null。</summary>
