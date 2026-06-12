@@ -125,7 +125,7 @@ namespace DapperMySqlCrudExample.Repositories
                     m.equipment_id       AS EquipmentId
                 FROM anomaly_units au
                 INNER JOIN anomaly_unit_process_mapping m ON m.anomaly_unit_id = au.id
-                WHERE au.anomaly_lot_id = @AnomalyLotId AND au.unit_id <> ''
+                WHERE au.anomaly_lot_id = @AnomalyLotId AND au.unit_id <> '' -- 排除測項層異常（unit_id = '' 的列）
                 ORDER BY au.id";
             using (var conn = _factory.Create())
             {
