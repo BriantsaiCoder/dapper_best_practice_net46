@@ -77,6 +77,7 @@ dapper_best_practice_net46.sln
     │   ├── GoodLot.cs
     │   ├── SiteTestStatistic.cs
     │   └── QueryModels/
+    │       ├── AnomalyUnitWithMapping.cs
     │       ├── SiteMeanCalcParams.cs
     │       └── SiteMeanRow.cs
     ├── Repositories/
@@ -171,7 +172,9 @@ using (var conn = _factory.Create())
 - 小型主檔表的 `GetAll()` 與 `GetCount()`，僅限 `DetectionMethodRepository`
 - `GetById`
 - `Exists`
-- 依外鍵或業務條件查詢，例如 `GetByLotsInfoId`、`GetByKey`
+- 依外鍵或業務條件查詢（`GetByLotsInfoId`、`GetByKey`、`GetByProgramAndMethodId` 等）
+- 跨表 JOIN 查詢：回傳合併多表欄位的複合 DTO（放在 `Models/QueryModels/`），僅在業務上確實需要聯查時才加入，不預設所有表都提供
+- 計算用精簡取樣查詢：僅 SELECT 計算所需的最少欄位，減少不必要的資料傳輸
 
 ### 3. `method_key` 是程式用識別值
 
@@ -468,7 +471,7 @@ erDiagram
 | `site_test_statistics` | 已內建 `idx_program_site_item_time` | SITE_MEAN 規格計算核心查詢索引（非覆蓋索引，查詢仍需讀取 `mean_value`） |
 
 > **設計原則**：
-> 1. **UNIQUE INDEX 優先**：`unq_lot_method`、`unq_lot_item`、`unq_item_unit`、`unq_lot_site_item` 已涵蓋最常見的 upsert / 重複檢查場景。
+> 1. **UNIQUE INDEX 優先**：`unq_lot_method`（anomaly_lots、good_lots）、`unq_lot_item_unit`（anomaly_units）、`unq_lot_site_item`（site_test_statistics）已涵蓋最常見的 upsert / 重複檢查場景。
 > 2. **FK 隱式索引**：InnoDB 對 FK 欄位自動建立索引，不需手動重複建立（如 `anomaly_lot_id`、`anomaly_test_item_id`）。
 > 3. **延遲建立**：上表索引僅在實作對應 Repository 查詢方法時才加入 schema.sql，避免寫入熱點表上的索引維護開銷。
 
@@ -488,8 +491,9 @@ ALTER TABLE detection_methods
 1. 在 [schema.sql](DapperMySqlCrudExample/Sql/schema.sql) 補 DDL 與必要索引
 2. 在 `Models/` 新增對應 Entity
 3. 若查詢只回傳部分欄位或聚合結果，放在 `Models/QueryModels/`
-4. 在 `Repositories/` 新增 Repository，只實作真正需要的查詢
-5. 若流程跨多個 Repository，再新增 `Services/` 類別協調
+4. 若查詢需要跨表 JOIN 回傳複合結果，複合 DTO 同樣放在 `Models/QueryModels/`（例如 `AnomalyUnitWithMapping` 合併 anomaly_units 與 anomaly_unit_process_mapping 的欄位）
+5. 在 `Repositories/` 新增 Repository，只實作真正需要的查詢
+6. 若流程跨多個 Repository，再新增 `Services/` 類別協調
 
 > 📄 完整的程式碼範本與慣例規則請參閱 [`.github/copilot-instructions.md`](.github/copilot-instructions.md)。
 
@@ -534,7 +538,7 @@ ALTER TABLE detection_methods
 
 - [ ] `MYSQL_CONNECTION_STRING` 或 `DefaultConnection` 已正確設定
 - [ ] `schema-legacy.sql` 與 `schema.sql` 已依順序套用
-- [ ] `detection_methods` 種子資料已存在：`YIELD`、`SITE_STD`、`MEAN`、`SITE_MEAN`
+- [ ] `detection_methods` 種子資料已存在：`SITE_STD`、`SITE_MEAN`、`OPEN_PPM`、`SHORT_PPM`
 - [ ] `nuget restore dapper_best_practice_net46.sln` 成功
 - [ ] `msbuild dapper_best_practice_net46.sln` 成功
 - [ ] `DapperMySqlCrudExample\bin\Debug\DapperMySqlCrudExample.exe` 可成功連線
