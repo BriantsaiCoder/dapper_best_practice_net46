@@ -3,7 +3,7 @@
 -- =============================================================================
 -- ★ 執行順序：
 --   1. schema-legacy.sql  （建立 lots_info）
---   2. schema.sql          （建立 9 張核心表 + detection_methods 種子資料）
+--   2. schema.sql          （建立 8 張核心表 + detection_methods 種子資料）
 --   3. 本檔 sample-data.sql（插入範例資料）
 --
 -- ★ 本檔提供範例資料（lots_info 共 5 筆，批號 1-5），模擬以下半導體後段封測場景：
@@ -111,43 +111,36 @@ VALUES
  3.350000000, 3.150000000);
 
 -- =============================================================================
--- 層級 2：anomaly_test_items（異常測項明細）
+-- 層級 2：anomaly_units（異常明細 — 測項層 + Unit 層合併）
 -- =============================================================================
--- 記錄每個異常批號中具體哪些測試項目超出規格。
+-- unit_id = '' 表示無 Unit 的測項層異常（detection_value 儲存測項整體偵測值）。
+-- unit_id 有值表示 Unit 層異常（detection_value 儲存該 Unit 的量測值）。
 -- anomaly_lot_id 透過 (lots_info.db_key + detection_method_id) 子查詢取得。
 
--- anomaly_lot (BGA256/SITE_MEAN)：VOH_PIN12 輸出電壓 Site 2 偏差
-INSERT INTO anomaly_test_items
-    (anomaly_lot_id, test_item_name, site_id, detection_value, offset_value,
-     spec_upper_limit, spec_lower_limit)
+-- 測項層異常：anomaly_lot (BGA256/SITE_MEAN)，VOH_PIN12 Site 2 平均值偏移（無 Unit）
+INSERT INTO anomaly_units
+    (anomaly_lot_id, test_item_name, site_id, unit_id,
+     detection_value, offset_value, spec_upper_limit, spec_lower_limit)
 VALUES
 ((SELECT al.id FROM anomaly_lots al
   JOIN lots_info li ON al.lots_info_id = li.id
   WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2),
- 'VOH_PIN12', 2, 3.380000000, 0.030000000,
- 3.350000000, 3.150000000);
+ 'VOH_PIN12', 2, '',
+ 3.380000000, 0.030000000, 3.350000000, 3.150000000);
 
--- =============================================================================
--- 層級 3：anomaly_units（異常 Unit 明細）
--- =============================================================================
--- 記錄具體哪些 Unit（晶粒/顆粒）在該測項中超出規格。
--- anomaly_test_item_id 透過 (anomaly_lot 子查詢 + test_item_name) 取得。
-
--- test_item (BGA256/VOH_PIN12)：Unit 電壓 3.39V 超過 UCL 3.35V
+-- Unit 層異常：同批 VOH_PIN12，Unit U-BGA256-00587 量測值超過 UCL
 INSERT INTO anomaly_units
-    (anomaly_test_item_id, unit_id, detection_value, offset_value,
-     spec_upper_limit, spec_lower_limit)
+    (anomaly_lot_id, test_item_name, site_id, unit_id,
+     detection_value, offset_value, spec_upper_limit, spec_lower_limit)
 VALUES
-((SELECT ati.id FROM anomaly_test_items ati
-  JOIN anomaly_lots al ON ati.anomaly_lot_id = al.id
+((SELECT al.id FROM anomaly_lots al
   JOIN lots_info li ON al.lots_info_id = li.id
-  WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2
-    AND ati.test_item_name = 'VOH_PIN12'),
- 'U-BGA256-00587', 3.390000000, 0.040000000,
- 3.350000000, 3.150000000);
+  WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2),
+ 'VOH_PIN12', 2, 'U-BGA256-00587',
+ 3.390000000, 0.040000000, 3.350000000, 3.150000000);
 
 -- =============================================================================
--- 層級 2：anomaly_lot_process_mapping（批號製程追溯）
+-- 層級 3：anomaly_lot_process_mapping（批號製程追溯）
 -- =============================================================================
 -- 記錄異常批號流經的廠區、站點、機台與人員，用於異常根因分析。
 -- anomaly_lot_id 透過 (lots_info.db_key + detection_method_id) 子查詢取得。
@@ -165,7 +158,7 @@ VALUES
 -- 層級 4：anomaly_unit_process_mapping（Unit 製程追溯）
 -- =============================================================================
 -- 記錄異常 Unit 在各站的 Boat / Wafer / Substrate 座標追溯。
--- anomaly_unit_id 透過 (lots_info.db_key + detection_method_id + test_item_name + unit_id) 鏈式子查詢取得。
+-- anomaly_unit_id 透過 (lots_info.db_key + detection_method_id + test_item_name + unit_id) 子查詢取得。
 
 -- unit (U-BGA256-00587) 在 Final Test 站
 INSERT INTO anomaly_unit_process_mapping
@@ -176,11 +169,10 @@ INSERT INTO anomaly_unit_process_mapping
      plant_name, station_name, equipment_id)
 VALUES
 ((SELECT au.id FROM anomaly_units au
-  JOIN anomaly_test_items ati ON au.anomaly_test_item_id = ati.id
-  JOIN anomaly_lots al ON ati.anomaly_lot_id = al.id
+  JOIN anomaly_lots al ON au.anomaly_lot_id = al.id
   JOIN lots_info li ON al.lots_info_id = li.id
   WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2
-    AND ati.test_item_name = 'VOH_PIN12' AND au.unit_id = 'U-BGA256-00587'),
+    AND au.test_item_name = 'VOH_PIN12' AND au.unit_id = 'U-BGA256-00587'),
  'BOAT-FT-001', 5, 12,
  'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
  'SUB-BGA256-A01', 3, 6,
