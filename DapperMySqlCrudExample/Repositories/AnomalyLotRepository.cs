@@ -76,11 +76,11 @@ namespace DapperMySqlCrudExample.Repositories
             const string insertSql =
                 @"
                 INSERT INTO anomaly_lots
-                    (lots_info_id, detection_method_id, detection_value, offset_value,
-                     spec_upper_limit, spec_lower_limit)
+                    (lots_info_id, detection_method_id, detection_value, offset_value, spec_upper_limit,
+                     spec_lower_limit)
                 VALUES
-                    (@LotsInfoId, @DetectionMethodId, @DetectionValue, @OffsetValue,
-                     @SpecUpperLimit, @SpecLowerLimit)";
+                    (@LotsInfoId, @DetectionMethodId, @DetectionValue, @OffsetValue, @SpecUpperLimit,
+                     @SpecLowerLimit)";
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
 
