@@ -16,200 +16,257 @@
 --    8. good_lots                    — 好批批號記錄表
 -- =============================================================================
 
--- 1. 偵測方法主表
-CREATE TABLE detection_methods (
-    id TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    method_key VARCHAR(20) UNIQUE NOT NULL,
-    method_name VARCHAR(50) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create table detection_methods
+(
+    id          tinyint unsigned auto_increment
+        primary key,
+    method_key  varchar(20)                        not null,
+    method_name varchar(50)                        not null,
+    created_at  datetime default CURRENT_TIMESTAMP null,
+    updated_at  datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint method_key
+        unique (method_key)
+)
+    collate = utf8mb4_unicode_ci;
 
-INSERT INTO detection_methods (method_key, method_name) VALUES
-('SITE_STD',  'Site標準差偵測'),
-('SITE_MEAN', 'Site平均值偵測'),
-('OPEN_PPM',  'OPEN PPM偵測'),
-('SHORT_PPM', 'SHORT PPM偵測');
+-- Seed detection methods (idempotent)
+INSERT INTO detection_methods (method_key, method_name)
+VALUES
+    ('YIELD', '良率偵測'),
+    ('SITE_MEAN', 'Site平均值偵測'),
+    ('SITE_STD', 'Site標準差偵測'),
+    ('UNIT_MEAN', 'Unit平均值偵測') AS new
+ON DUPLICATE KEY UPDATE
+    method_name = new.method_name,
+    updated_at = CURRENT_TIMESTAMP;
 
--- 2. 異常批號主表
-CREATE TABLE anomaly_lots (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    lots_info_id INT NOT NULL,
-    detection_method_id TINYINT UNSIGNED NOT NULL,
-    detection_value DECIMAL(18,9),
-    offset_value DECIMAL(18,9),
-    spec_upper_limit DECIMAL(18,9),
-    spec_lower_limit DECIMAL(18,9),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
-    CONSTRAINT fk_anomaly_lots_info
-        FOREIGN KEY (lots_info_id) REFERENCES lots_info(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_anomaly_lots_detection_method
-        FOREIGN KEY (detection_method_id)
-        REFERENCES detection_methods(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create table detection_specs
+(
+    id                   bigint auto_increment
+        primary key,
+    program              varchar(100)                       not null,
+    test_item_name       varchar(100)                       null,
+    site_id              int unsigned                       not null,
+    detection_method_id  tinyint unsigned                   not null,
+    spec_upper_limit     double                     null,
+    spec_lower_limit     double                     null,
+    spec_calc_start_time datetime                           not null,
+    spec_calc_end_time   datetime                           not null,
+    spec_calc_mean       double                     null,
+    spec_calc_std        double                     null,
+    created_at           datetime default CURRENT_TIMESTAMP null,
+    updated_at           datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint fk_specs_detection_method
+        foreign key (detection_method_id) references detection_methods (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
 
--- 3. 異常明細表（測項 + Unit 合併）
--- unit_id = '' 表示無 Unit 的測項層異常（detection_value 儲存測項層偵測值）；
--- unit_id 有值表示 Unit 層異常（detection_value 儲存該 Unit 的量測值）。
-CREATE TABLE anomaly_units (
-    id               BIGINT PRIMARY KEY AUTO_INCREMENT,
-    anomaly_lot_id   BIGINT NOT NULL,
-    test_item_name   VARCHAR(100) NOT NULL,
-    site_id          INT UNSIGNED NOT NULL,
-    unit_id          VARCHAR(50) NOT NULL DEFAULT '',
-    detection_value  DECIMAL(18,9),
-    offset_value     DECIMAL(18,9),
-    spec_upper_limit DECIMAL(18,9),
-    spec_lower_limit DECIMAL(18,9),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE INDEX unq_lot_item_unit (anomaly_lot_id, test_item_name, unit_id),
-    CONSTRAINT fk_units_anomaly_lot
-        FOREIGN KEY (anomaly_lot_id)
-        REFERENCES anomaly_lots(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create index idx_program_item_method
+    on detection_specs (program, test_item_name, detection_method_id);
 
--- 4. 批號 Process Mapping（廠區、站點、機台、人員）
-CREATE TABLE anomaly_lot_process_mapping (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    anomaly_lot_id BIGINT NOT NULL,
-    plant_name VARCHAR(100),
-    station_name VARCHAR(100),
-    machine_id VARCHAR(50),
-    trackin_user VARCHAR(50),
-    trackout_user VARCHAR(50),
-    recipe VARCHAR(50),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_lot_process_anomaly_lot
-        FOREIGN KEY (anomaly_lot_id)
-        REFERENCES anomaly_lots(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create index idx_program_method
+    on detection_specs (program, detection_method_id);
 
--- 5. Unit Process Mapping（Boat / Wafer / Substrate 座標追溯）
-CREATE TABLE anomaly_unit_process_mapping (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    anomaly_unit_id BIGINT NOT NULL,
-    boat_id VARCHAR(50) NOT NULL,
-    boat_x SMALLINT NOT NULL,
-    boat_y SMALLINT NOT NULL,
-    wafer_barcode VARCHAR(50) NOT NULL,
-    wafer_id VARCHAR(50) NOT NULL,
-    wafer_x SMALLINT NOT NULL,
-    wafer_y SMALLINT NOT NULL,
-    substrate_id VARCHAR(50) NOT NULL,
-    substrate_x SMALLINT NOT NULL,
-    substrate_y SMALLINT NOT NULL,
-    wafer_max_x SMALLINT NOT NULL,
-    wafer_max_y SMALLINT NOT NULL,
-    boat_max_x SMALLINT NOT NULL,
-    boat_max_y SMALLINT NOT NULL,
-    plant_name VARCHAR(100),
-    station_name VARCHAR(100),
-    equipment_id VARCHAR(50),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_unit_process_anomaly_unit
-        FOREIGN KEY (anomaly_unit_id)
-        REFERENCES anomaly_units(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create table lots_info
+(
+    id                   int auto_increment
+        primary key,
+    version              varchar(255) null,
+    mac_address          varchar(255) null,
+    db_key               varchar(255) null,
+    customer             varchar(255) null,
+    package              varchar(255) null,
+    bonding_diagram      varchar(255) null,
+    program              varchar(255) null,
+    device               varchar(255) null,
+    control_lot          varchar(255) null,
+    ao_lot               varchar(255) null,
+    os_machine_id        varchar(255) null,
+    os_test_board_id     varchar(255) null,
+    user_id              varchar(255) null,
+    schedule_lot         varchar(255) null,
+    file_name            varchar(255) null,
+    yield                double       null,
+    total                int          null,
+    pass                 int          null,
+    open_pin_fail        int          null,
+    short_pin_fail       int          null,
+    leakage_pin_fail     int          null,
+    nvtep_pin_fail       int          null,
+    total_ppm            double       null,
+    open_pin_fail_ppm    double       null,
+    short_pin_fail_ppm   double       null,
+    leakage_pin_fail_ppm double       null,
+    nvtep_pin_fail_ppm   double       null,
+    total_test_items     int          null,
+    average_test_time    double       null,
+    clear_count          double       null,
+    start                datetime     null,
+    stop                 datetime     null,
+    pass_without_ocr     int          null,
+    open                 int          null,
+    open_without_ocr     int          null,
+    short_others         int          null,
+    pass_without_ocr_ppm double       null,
+    open_ppm             double       null,
+    open_without_ocr_ppm double       null,
+    short_others_ppm     double       null,
+    constraint file_name
+        unique (file_name)
+)
+    collate = utf8mb4_unicode_ci
+    row_format = DYNAMIC;
 
--- 6. Spec 規格表
-CREATE TABLE detection_specs (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    program VARCHAR(100) NOT NULL,
-    -- NULL when detection method does not use test items
-    test_item_name VARCHAR(100),
-    site_id INT UNSIGNED NOT NULL,
-    detection_method_id TINYINT UNSIGNED NOT NULL,
-    spec_upper_limit DECIMAL(18,9),
-    spec_lower_limit DECIMAL(18,9),
-    spec_calc_start_time DATETIME NOT NULL,
-    spec_calc_end_time DATETIME NOT NULL,
-    spec_calc_mean       DECIMAL(18,9) NULL,
-    spec_calc_std        DECIMAL(18,9) NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_program_method (program, detection_method_id),
-    INDEX idx_program_item_method (program, test_item_name, detection_method_id),
-    CONSTRAINT fk_specs_detection_method
-        FOREIGN KEY (detection_method_id)
-        REFERENCES detection_methods(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create table anomaly_lots
+(
+    id                  bigint auto_increment
+        primary key,
+    lots_info_id        int                                not null,
+    site_id        int unsigned                       not null,
+    detection_method_id tinyint unsigned                   not null,
+    detection_value     double                     null,
+    offset_value        double                     null,
+    spec_upper_limit    double                     null,
+    spec_lower_limit    double                     null,
+    created_at          datetime default CURRENT_TIMESTAMP null,
+    updated_at          datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint unq_lot_method
+        unique (lots_info_id, site_id, detection_method_id),
+    constraint fk_anomaly_lots_detection_method
+        foreign key (detection_method_id) references detection_methods (id)
+            on update cascade on delete cascade,
+    constraint fk_anomaly_lots_info
+        foreign key (lots_info_id) references lots_info (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
 
--- 7. Site 測項統計值表
-CREATE TABLE site_test_statistics (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    lots_info_id INT NOT NULL,
-    program VARCHAR(100) NOT NULL,
-    site_id INT UNSIGNED NOT NULL,
-    test_item_name VARCHAR(100) NOT NULL,
-    mean_value DECIMAL(18,9),
-    max_value DECIMAL(18,9),
-    min_value DECIMAL(18,9),
-    std_value DECIMAL(18,9),
-    tester_id VARCHAR(50),
-    start_time DATETIME NULL,
-    end_time   DATETIME NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_start_time (start_time),
-    INDEX idx_program_site_item_time (program, site_id, test_item_name, start_time),
-    UNIQUE INDEX unq_lot_site_item (lots_info_id, site_id, test_item_name),
-    CONSTRAINT fk_site_test_statistics_lots_info
-        FOREIGN KEY (lots_info_id)
-        REFERENCES lots_info(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create table anomaly_lot_process_mapping
+(
+    id            bigint auto_increment
+        primary key,
+    lots_info_id  int                                not null,
+    plant_name    varchar(100)                       null,
+    station_name  varchar(100)                       null,
+    machine_id    varchar(50)                        null,
+    trackin_user  varchar(50)                        null,
+    trackout_user varchar(50)                       null,
+    recipe        varchar(50)                        null,
+    created_at    datetime default CURRENT_TIMESTAMP null,
+    updated_at    datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint fk_lot_process_lots_info
+        foreign key (lots_info_id) references lots_info (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
 
--- 8. 好批批號記錄表（數值偏差偵測模組）
-CREATE TABLE good_lots (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    lots_info_id INT NOT NULL,
-    detection_method_id TINYINT UNSIGNED NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
-    CONSTRAINT fk_good_lots_info
-        FOREIGN KEY (lots_info_id)
-        REFERENCES lots_info(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_good_lots_detection_method
-        FOREIGN KEY (detection_method_id)
-        REFERENCES detection_methods(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create index anomaly_lot_process_mapping_lots_info_id
+    on anomaly_lot_process_mapping (lots_info_id);
 
--- =============================================================================
--- 常見擴充索引（新增對應 Repository 查詢方法時再加入）
--- =============================================================================
--- anomaly_lots:
---   ALTER TABLE anomaly_lots ADD INDEX idx_created_at (created_at);
---
--- anomaly_units:
---   ALTER TABLE anomaly_units ADD INDEX idx_test_item_name (test_item_name);
---   ALTER TABLE anomaly_units ADD INDEX idx_unit (unit_id);
---
--- anomaly_lot_process_mapping:
---   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_machine (machine_id);
---   ALTER TABLE anomaly_lot_process_mapping ADD INDEX idx_plant_station (plant_name, station_name);
---
--- anomaly_unit_process_mapping:
---   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_boat_position (boat_id, boat_x, boat_y);
---   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_plant_station (plant_name, station_name);
---   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_station_equipment (station_name, equipment_id);
---   ALTER TABLE anomaly_unit_process_mapping ADD INDEX idx_wafer_barcode (wafer_barcode);
---
--- =============================================================================
--- 欄位遷移（若既有環境仍使用舊欄位名稱）
--- =============================================================================
--- ALTER TABLE detection_methods
---   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
+create table anomaly_units
+(
+    id               bigint auto_increment
+        primary key,
+    anomaly_lot_id   bigint                                not null,
+    test_item_name   varchar(100)                          not null,
+    site_id          int unsigned                          not null,
+    unit_id          VARCHAR(50) NULL DEFAULT NULL,
+    detection_value  double                        null,
+    offset_value     double                       null,
+    spec_upper_limit double                        null,
+    spec_lower_limit double                        null,
+    created_at       datetime    default CURRENT_TIMESTAMP null,
+    updated_at       datetime    default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint unq_lot_item_unit
+        unique (anomaly_lot_id, test_item_name, unit_id),
+    constraint fk_units_anomaly_lot
+        foreign key (anomaly_lot_id) references anomaly_lots (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
+
+create table anomaly_unit_process_mapping
+(
+    id              bigint auto_increment
+        primary key,
+    anomaly_unit_id bigint                             not null,
+    boat_id         varchar(50)                        not null,
+    boat_x          smallint                           not null,
+    boat_y          smallint                           not null,
+    wafer_barcode   varchar(50)                        not null,
+    wafer_id        varchar(50)                        not null,
+    wafer_x         smallint                           not null,
+    wafer_y         smallint                           not null,
+    substrate_id    varchar(50)                        not null,
+    substrate_x     smallint                           not null,
+    substrate_y     smallint                           not null,
+    wafer_max_x     smallint                           not null,
+    wafer_max_y     smallint                           not null,
+    boat_max_x      smallint                           not null,
+    boat_max_y      smallint                           not null,
+    plant_name      varchar(100)                       null,
+    station_name    varchar(100)                       null,
+    equipment_id    varchar(50)                        null,
+    created_at      datetime default CURRENT_TIMESTAMP null,
+    updated_at      datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint fk_unit_process_anomaly_unit
+        foreign key (anomaly_unit_id) references anomaly_units (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
+
+create table good_lots
+(
+    id                  bigint auto_increment
+        primary key,
+    lots_info_id        int                                not null,
+    detection_method_id tinyint unsigned                   not null,
+    created_at          datetime default CURRENT_TIMESTAMP null,
+    updated_at          datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint unq_lot_method
+        unique (lots_info_id, detection_method_id),
+    constraint fk_good_lots_detection_method
+        foreign key (detection_method_id) references detection_methods (id)
+            on update cascade on delete cascade,
+    constraint fk_good_lots_info
+        foreign key (lots_info_id) references lots_info (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
+
+create index IDX_LOTS_INFO_DB_KEY
+    on lots_info (db_key);
+
+create table site_test_statistics
+(
+    id             bigint auto_increment
+        primary key,
+    lots_info_id   int                                not null,
+    program        varchar(100)                       not null,
+    site_id        int unsigned                       not null,
+    test_item_name varchar(100)                       not null,
+    mean_value     double                     null,
+    max_value      double                     null,
+    min_value      double                     null,
+    std_value      double                     null,
+    cp_value      double                     null,
+    cpk_value      double                     null,
+    tester_id      varchar(50)                        null,
+    start_time     datetime                           null,
+    end_time       datetime                           null,
+    created_at     datetime default CURRENT_TIMESTAMP null,
+    updated_at     datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint unq_lot_site_item
+        unique (lots_info_id, site_id, test_item_name),
+    constraint fk_site_test_statistics_lots_info
+        foreign key (lots_info_id) references lots_info (id)
+            on update cascade on delete cascade
+)
+    collate = utf8mb4_unicode_ci;
+
+create index idx_program_site_item_time
+    on site_test_statistics (program, site_id, test_item_name, start_time);
+
+create index idx_start_time
+    on site_test_statistics (start_time);
