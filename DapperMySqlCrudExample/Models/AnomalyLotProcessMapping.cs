@@ -11,7 +11,7 @@ namespace DapperMySqlCrudExample.Models
         public long Id { get; set; }
 
         /// <summary>關聯的批號資訊 ID（外鍵 lots_info.id）。</summary>
-        public long LotsInfoId { get; set; }
+        public int LotsInfoId { get; set; }
 
         /// <summary>廠區名稱；允許 Null。</summary>
         public string PlantName { get; set; }

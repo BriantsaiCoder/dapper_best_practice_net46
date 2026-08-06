@@ -50,7 +50,7 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>依 lots_info_id 查詢多筆資料。</summary>
-        public IReadOnlyList<AnomalyLotProcessMapping> GetByLotsInfoId(long lotsInfoId)
+        public IReadOnlyList<AnomalyLotProcessMapping> GetByLotsInfoId(int lotsInfoId)
         {
             const string sql =
                 "SELECT "
