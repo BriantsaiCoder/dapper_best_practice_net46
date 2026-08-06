@@ -25,10 +25,10 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- -----------------------------------------------------------------------------
 INSERT INTO detection_methods (method_key, method_name)
 VALUES
-    ('YIELD', '良率偵測'),
-    ('SITE_MEAN', 'Site平均值偵測'),
     ('SITE_STD', 'Site標準差偵測'),
-    ('UNIT_MEAN', 'Unit平均值偵測')
+    ('SITE_MEAN', 'Site平均值偵測'),
+    ('OPEN_PPM', 'OPEN PPM偵測'),
+    ('SHORT_PPM', 'SHORT PPM偵測')
 ON DUPLICATE KEY UPDATE
     method_name = VALUES(method_name),
     updated_at = CURRENT_TIMESTAMP;
