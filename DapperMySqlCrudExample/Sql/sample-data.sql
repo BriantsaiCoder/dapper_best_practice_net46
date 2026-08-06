@@ -1,36 +1,57 @@
 -- =============================================================================
 -- Dapper Best Practice (.NET 4.6 + MySQL) — 半導體封測業範例資料
--- =============================================================================
--- ★ 執行順序：
---   1. schema-legacy.sql  （建立 lots_info）
---   2. schema.sql          （建立 8 張核心表 + detection_methods 種子資料）
---   3. 本檔 sample-data.sql（插入範例資料）
---
--- ★ 本檔提供範例資料（lots_info 共 5 筆，批號 1-5），模擬以下半導體後段封測場景：
---   - 五個批號：QFN48 / BGA256(×3) / SOIC16，分屬不同客戶 / 封裝 / 程式
---   - 批號 2（BGA256）觸發 SITE_MEAN 異常偵測（Site 平均值偏移）
---   - 批號 4、5（BGA256）為同程式正常批，提供 SITE_MEAN 規格計算所需歷史樣本（≥2 筆）
---   - 測試項目使用真實 Final Test 參數（IDD_STANDBY、VOH、FREQ_OSC 等）
---   - Process Mapping 反映封測典型製程流程（Die Attach → Wire Bond → Molding → Final Test）
---
--- ★ 假設 detection_methods 已由 schema.sql 寫入 2 筆種子資料：
---   id=1 SITE_STD, id=2 SITE_MEAN
---
--- ★ 本檔不指定 lots_info.id，讓 AUTO_INCREMENT 自動產生。
---   後續資料表透過 db_key 子查詢取得 lots_info.id，
---   再透過各表的 UNIQUE KEY 鏈式查找上層 id。
+-- (Cross-Schema Compatible for server.sql & dct.sql)
 -- =============================================================================
 
--- =============================================================================
--- 層級 0：lots_info（外鍵根節點）
--- =============================================================================
--- 五個批號（批號 1-5）分別代表不同客戶 / 封裝型式 / 測試程式
--- 批號 1：QFN48 正常批（良率 98.5%）  → db_key = 'QFN48-20260401-001'
--- 批號 2：BGA256 低良率批（良率 95.2%，將觸發異常偵測） → db_key = 'BGA256-20260402-001'
--- 批號 3：SOIC16 正常批（良率 99.1%） → db_key = 'SOIC16-20260403-001'
--- 批號 4：BGA256 正常批（良率 97.8%，SITE_MEAN 計算用歷史樣本） → db_key = 'BGA256-20260405-001'
--- 批號 5：BGA256 正常批（良率 98.1%，SITE_MEAN 計算用歷史樣本） → db_key = 'BGA256-20260408-001'
+-- -----------------------------------------------------------------------------
+-- 0. 清空資料庫內容與重置計數器 (TRUNCATE ALL TABLES)
+-- -----------------------------------------------------------------------------
+SET FOREIGN_KEY_CHECKS = 0;
 
+TRUNCATE TABLE `good_lots`;
+TRUNCATE TABLE `anomaly_unit_process_mapping`;
+TRUNCATE TABLE `anomaly_units`;
+TRUNCATE TABLE `anomaly_lot_process_mapping`;
+TRUNCATE TABLE `anomaly_lots`;
+TRUNCATE TABLE `site_test_statistics`;
+TRUNCATE TABLE `detection_specs`;
+TRUNCATE TABLE `lots_statistic`;
+TRUNCATE TABLE `lots_result`;
+TRUNCATE TABLE `lots_info`;
+TRUNCATE TABLE `fail_pin_rate_test_result`;
+TRUNCATE TABLE `fail_pin_rate_list_pin_ball`;
+TRUNCATE TABLE `fail_pin_rate_list`;
+TRUNCATE TABLE `fail_pin_rate_info`;
+TRUNCATE TABLE `ieda_content`;
+TRUNCATE TABLE `ieda_title`;
+TRUNCATE TABLE `recovery_rate`;
+TRUNCATE TABLE `tester_production_analysis`;
+TRUNCATE TABLE `tester_status`;
+TRUNCATE TABLE `tester_sw_version`;
+TRUNCATE TABLE `tester_device_info`;
+TRUNCATE TABLE `db_key_ui_status`;
+TRUNCATE TABLE `db_key`;
+TRUNCATE TABLE `ui_status`;
+TRUNCATE TABLE `detection_methods`;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- -----------------------------------------------------------------------------
+-- 1. 確保 detection_methods 種子資料（冪等寫入）
+-- -----------------------------------------------------------------------------
+INSERT INTO detection_methods (method_key, method_name)
+VALUES
+    ('YIELD', '良率偵測'),
+    ('SITE_MEAN', 'Site平均值偵測'),
+    ('SITE_STD', 'Site標準差偵測'),
+    ('UNIT_MEAN', 'Unit平均值偵測')
+ON DUPLICATE KEY UPDATE
+    method_name = VALUES(method_name),
+    updated_at = CURRENT_TIMESTAMP;
+
+-- -----------------------------------------------------------------------------
+-- 2. 根表：lots_info
+-- -----------------------------------------------------------------------------
 INSERT INTO lots_info
     (version, mac_address, db_key, customer, package, bonding_diagram, program, device,
      control_lot, ao_lot, os_machine_id, os_test_board_id, user_id, schedule_lot, file_name,
@@ -93,74 +114,59 @@ VALUES
  19000.0, 6000.0, 4000.0, 5600.0, 3400.0,
  256, 1.48, 0, '2026-04-08 09:00:00', '2026-04-08 13:15:00',
  4910, 28, 25, 18,
- 18000.0, 5600.0, 5000.0, 3600.0);
+ 18000.0, 5600.0, 5000.0, 3600.0)
+ON DUPLICATE KEY UPDATE file_name = VALUES(file_name);
 
--- =============================================================================
--- 層級 1：anomaly_lots（異常批號主表）
--- =============================================================================
--- detection_methods 種子資料已由 schema.sql 寫入，此處不重複。
--- anomaly_lots 記錄哪些批號在哪種偵測方法中被判定為異常。
--- lots_info_id 透過 db_key 子查詢取得。
-
--- BGA256 低良率批 → SITE_MEAN 偵測異常（Site 平均值偏移）
+-- -----------------------------------------------------------------------------
+-- 3. anomaly_lots
+-- -----------------------------------------------------------------------------
 INSERT INTO anomaly_lots
-    (lots_info_id, detection_method_id, detection_value, offset_value,
-     spec_upper_limit, spec_lower_limit)
+    (lots_info_id, site_id, detection_method_id, detection_value, offset_value, spec_upper_limit, spec_lower_limit)
 VALUES
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'), 2, 3.380000000, 0.030000000,
- 3.350000000, 3.150000000);
+(
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
+    2,
+    (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN'),
+    3.380000000, 0.030000000, 3.350000000, 3.150000000
+)
+ON DUPLICATE KEY UPDATE detection_value = VALUES(detection_value);
 
--- =============================================================================
--- 層級 2：anomaly_units（異常明細 — 測項層 + Unit 層合併）
--- =============================================================================
--- unit_id = '' 表示無 Unit 的測項層異常（detection_value 儲存測項整體偵測值）。
--- unit_id 有值表示 Unit 層異常（detection_value 儲存該 Unit 的量測值）。
--- anomaly_lot_id 透過 (lots_info.db_key + detection_method_id) 子查詢取得。
-
--- 測項層異常：anomaly_lot (BGA256/SITE_MEAN)，VOH_PIN12 Site 2 平均值偏移（無 Unit）
+-- -----------------------------------------------------------------------------
+-- 4. anomaly_units
+-- -----------------------------------------------------------------------------
 INSERT INTO anomaly_units
-    (anomaly_lot_id, test_item_name, site_id, unit_id,
-     detection_value, offset_value, spec_upper_limit, spec_lower_limit)
+    (anomaly_lot_id, test_item_name, site_id, unit_id, detection_value, offset_value, spec_upper_limit, spec_lower_limit)
 VALUES
-((SELECT al.id FROM anomaly_lots al
-  JOIN lots_info li ON al.lots_info_id = li.id
-  WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2),
- 'VOH_PIN12', 2, '',
- 3.380000000, 0.030000000, 3.350000000, 3.150000000);
+(
+    (SELECT al.id FROM anomaly_lots al
+     JOIN lots_info li ON al.lots_info_id = li.id
+     JOIN detection_methods dm ON al.detection_method_id = dm.id
+     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'),
+    'VOH_PIN12', 2, '', 3.380000000, 0.030000000, 3.350000000, 3.150000000
+),
+(
+    (SELECT al.id FROM anomaly_lots al
+     JOIN lots_info li ON al.lots_info_id = li.id
+     JOIN detection_methods dm ON al.detection_method_id = dm.id
+     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'),
+    'VOH_PIN12', 2, 'U-BGA256-00587', 3.390000000, 0.040000000, 3.350000000, 3.150000000
+)
+ON DUPLICATE KEY UPDATE detection_value = VALUES(detection_value);
 
--- Unit 層異常：同批 VOH_PIN12，Unit U-BGA256-00587 量測值超過 UCL
-INSERT INTO anomaly_units
-    (anomaly_lot_id, test_item_name, site_id, unit_id,
-     detection_value, offset_value, spec_upper_limit, spec_lower_limit)
-VALUES
-((SELECT al.id FROM anomaly_lots al
-  JOIN lots_info li ON al.lots_info_id = li.id
-  WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2),
- 'VOH_PIN12', 2, 'U-BGA256-00587',
- 3.390000000, 0.040000000, 3.350000000, 3.150000000);
-
--- =============================================================================
--- 層級 3：anomaly_lot_process_mapping（批號製程追溯）
--- =============================================================================
--- 記錄異常批號流經的廠區、站點、機台與人員，用於異常根因分析。
--- anomaly_lot_id 透過 (lots_info.db_key + detection_method_id) 子查詢取得。
-
--- anomaly_lot (BGA256/SITE_MEAN) 流經 Molding 站
+-- -----------------------------------------------------------------------------
+-- 5. anomaly_lot_process_mapping (欄位: lots_info_id)
+-- -----------------------------------------------------------------------------
 INSERT INTO anomaly_lot_process_mapping
-    (anomaly_lot_id, plant_name, station_name, machine_id, trackin_user, trackout_user, recipe)
+    (lots_info_id, plant_name, station_name, machine_id, trackin_user, trackout_user, recipe)
 VALUES
-((SELECT al.id FROM anomaly_lots al
-  JOIN lots_info li ON al.lots_info_id = li.id
-  WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2),
- 'KH-FAB2', 'MOLDING', 'MD-TOWA-02', 'OP-KH-005', 'OP-KH-006', 'MD-BGA256-EMC-V3');
+(
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
+    'KH-FAB2', 'MOLDING', 'MD-TOWA-02', 'OP-KH-005', 'OP-KH-006', 'MD-BGA256-EMC-V3'
+);
 
--- =============================================================================
--- 層級 4：anomaly_unit_process_mapping（Unit 製程追溯）
--- =============================================================================
--- 記錄異常 Unit 在各站的 Boat / Wafer / Substrate 座標追溯。
--- anomaly_unit_id 透過 (lots_info.db_key + detection_method_id + test_item_name + unit_id) 子查詢取得。
-
--- unit (U-BGA256-00587) 在 Final Test 站
+-- -----------------------------------------------------------------------------
+-- 6. anomaly_unit_process_mapping
+-- -----------------------------------------------------------------------------
 INSERT INTO anomaly_unit_process_mapping
     (anomaly_unit_id, boat_id, boat_x, boat_y,
      wafer_barcode, wafer_id, wafer_x, wafer_y,
@@ -168,108 +174,63 @@ INSERT INTO anomaly_unit_process_mapping
      wafer_max_x, wafer_max_y, boat_max_x, boat_max_y,
      plant_name, station_name, equipment_id)
 VALUES
-((SELECT au.id FROM anomaly_units au
-  JOIN anomaly_lots al ON au.anomaly_lot_id = al.id
-  JOIN lots_info li ON al.lots_info_id = li.id
-  WHERE li.db_key = 'BGA256-20260402-001' AND al.detection_method_id = 2
-    AND au.test_item_name = 'VOH_PIN12' AND au.unit_id = 'U-BGA256-00587'),
- 'BOAT-FT-001', 5, 12,
- 'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
- 'SUB-BGA256-A01', 3, 6,
- 30, 40, 8, 16,
- 'KH-FAB1', 'FINAL_TEST', 'FT-J750-01');
+(
+    (SELECT au.id FROM anomaly_units au
+     JOIN anomaly_lots al ON au.anomaly_lot_id = al.id
+     JOIN lots_info li ON al.lots_info_id = li.id
+     JOIN detection_methods dm ON al.detection_method_id = dm.id
+     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'
+       AND au.test_item_name = 'VOH_PIN12' AND au.unit_id = 'U-BGA256-00587'),
+    'BOAT-FT-001', 5, 12,
+    'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
+    'SUB-BGA256-A01', 3, 6,
+    30, 40, 8, 16,
+    'KH-FAB1', 'FINAL_TEST', 'FT-J750-01'
+);
 
--- =============================================================================
--- 獨立表：detection_specs（偵測規格）
--- =============================================================================
--- 記錄各程式 / 測項 / Site 的偵測規格上下限與統計參數。
--- 這些規格用於判斷批號是否異常。
-
+-- -----------------------------------------------------------------------------
+-- 7. detection_specs
+-- -----------------------------------------------------------------------------
 INSERT INTO detection_specs
     (program, test_item_name, site_id, detection_method_id,
      spec_upper_limit, spec_lower_limit, spec_calc_start_time, spec_calc_end_time,
      spec_calc_mean, spec_calc_std)
 VALUES
--- BGA256 程式 / VOH_PIN12 / Site 1 / SITE_MEAN 偵測
-('BGA256_PROD_V1', 'VOH_PIN12', 1, 2,
- 3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59',
- 3.248000000, 0.034000000);
+(
+    'BGA256_PROD_V1', 'VOH_PIN12', 1,
+    (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN'),
+    3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59',
+    3.248000000, 0.034000000
+);
 
--- =============================================================================
--- 獨立表：site_test_statistics（Site 測項統計值）
--- =============================================================================
--- 記錄每個批號在各 Site 的量測統計數據。
--- lots_info_id 透過 db_key 子查詢取得。
-
--- 批號 2 (BGA256) / Site 1 / VOH_PIN12
+-- -----------------------------------------------------------------------------
+-- 8. site_test_statistics
+-- -----------------------------------------------------------------------------
 INSERT INTO site_test_statistics
-    (lots_info_id, program, site_id, test_item_name,
-     mean_value, max_value, min_value, std_value,
-     tester_id, start_time, end_time)
+    (lots_info_id, program, site_id, test_item_name, mean_value, max_value, min_value, std_value, tester_id, start_time, end_time)
 VALUES
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
- 'BGA256_PROD_V1', 1, 'VOH_PIN12',
- 3.268000000, 3.380000000, 3.162000000, 0.035000000,
- 'FT-J750-01', '2026-04-02 14:10:22', '2026-04-02 18:35:48');
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.268000000, 3.380000000, 3.162000000, 0.035000000, 'FT-J750-01', '2026-04-02 14:10:22', '2026-04-02 18:35:48'),
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.252000000, 3.345000000, 3.170000000, 0.031000000, 'FT-J750-01', '2026-04-05 10:00:00', '2026-04-05 14:30:00'),
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.241000000, 3.338000000, 3.158000000, 0.029000000, 'FT-J750-01', '2026-04-08 09:00:00', '2026-04-08 13:15:00'),
+((SELECT id FROM lots_info WHERE db_key = 'QFN48-20260401-001'), 'QFN48_PROD_V3', 1, 'FREQ_OSC', 2.500200000, 2.509800000, 2.490500000, 0.003100000, 'FT-J750-02', '2026-04-01 09:30:15', '2026-04-01 12:45:30'),
+((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'), 'SOIC16_PROD_V2', 1, 'IDD_STANDBY', 1.250000000, 1.890000000, 0.820000000, 0.180000000, 'FT-93K-01', '2026-04-03 08:05:30', '2026-04-03 14:20:15')
+ON DUPLICATE KEY UPDATE mean_value = VALUES(mean_value);
 
--- 批號 4 (BGA256) / Site 1 / VOH_PIN12（SITE_MEAN 計算用歷史樣本）
-INSERT INTO site_test_statistics
-    (lots_info_id, program, site_id, test_item_name,
-     mean_value, max_value, min_value, std_value,
-     tester_id, start_time, end_time)
-VALUES
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'),
- 'BGA256_PROD_V1', 1, 'VOH_PIN12',
- 3.252000000, 3.345000000, 3.170000000, 0.031000000,
- 'FT-J750-01', '2026-04-05 10:00:00', '2026-04-05 14:30:00');
-
--- 批號 5 (BGA256) / Site 1 / VOH_PIN12（SITE_MEAN 計算用歷史樣本）
-INSERT INTO site_test_statistics
-    (lots_info_id, program, site_id, test_item_name,
-     mean_value, max_value, min_value, std_value,
-     tester_id, start_time, end_time)
-VALUES
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'),
- 'BGA256_PROD_V1', 1, 'VOH_PIN12',
- 3.241000000, 3.338000000, 3.158000000, 0.029000000,
- 'FT-J750-01', '2026-04-08 09:00:00', '2026-04-08 13:15:00');
-
--- 批號 1 (QFN48) / Site 1 / FREQ_OSC
-INSERT INTO site_test_statistics
-    (lots_info_id, program, site_id, test_item_name,
-     mean_value, max_value, min_value, std_value,
-     tester_id, start_time, end_time)
-VALUES
-((SELECT id FROM lots_info WHERE db_key = 'QFN48-20260401-001'),
- 'QFN48_PROD_V3', 1, 'FREQ_OSC',
- 2.500200000, 2.509800000, 2.490500000, 0.003100000,
- 'FT-J750-02', '2026-04-01 09:30:15', '2026-04-01 12:45:30');
-
--- 批號 3 (SOIC16) / Site 1 / IDD_STANDBY
-INSERT INTO site_test_statistics
-    (lots_info_id, program, site_id, test_item_name,
-     mean_value, max_value, min_value, std_value,
-     tester_id, start_time, end_time)
-VALUES
-((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'),
- 'SOIC16_PROD_V2', 1, 'IDD_STANDBY',
- 1.250000000, 1.890000000, 0.820000000, 0.180000000,
- 'FT-93K-01', '2026-04-03 08:05:30', '2026-04-03 14:20:15');
-
--- =============================================================================
--- 獨立表：good_lots（好批批號記錄）
--- =============================================================================
--- 記錄通過偵測的好批，作為下一輪 Spec 計算的採樣來源。
--- lots_info_id 透過 db_key 子查詢取得。
-
--- 批號 3 (SOIC16) 通過 SITE_MEAN 偵測 → 列為好批
+-- -----------------------------------------------------------------------------
+-- 9. good_lots
+-- -----------------------------------------------------------------------------
 INSERT INTO good_lots (lots_info_id, detection_method_id)
-VALUES ((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'), 2);
-
--- 批號 4 (BGA256) 通過 SITE_MEAN 偵測 → 列為好批（SITE_MEAN 計算用歷史樣本）
-INSERT INTO good_lots (lots_info_id, detection_method_id)
-VALUES ((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'), 2);
-
--- 批號 5 (BGA256) 通過 SITE_MEAN 偵測 → 列為好批（SITE_MEAN 計算用歷史樣本）
-INSERT INTO good_lots (lots_info_id, detection_method_id)
-VALUES ((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'), 2);
+VALUES
+(
+    (SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'),
+    (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN')
+),
+(
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'),
+    (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN')
+),
+(
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'),
+    (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN')
+)
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;

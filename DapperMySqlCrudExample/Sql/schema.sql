@@ -35,6 +35,7 @@ INSERT INTO detection_methods (method_key, method_name) VALUES
 CREATE TABLE anomaly_lots (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     lots_info_id INT NOT NULL,
+    site_id INT UNSIGNED NOT NULL DEFAULT 0,
     detection_method_id TINYINT UNSIGNED NOT NULL,
     detection_value DECIMAL(18,9),
     offset_value DECIMAL(18,9),
@@ -42,7 +43,7 @@ CREATE TABLE anomaly_lots (
     spec_lower_limit DECIMAL(18,9),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE INDEX unq_lot_method (lots_info_id, detection_method_id),
+    UNIQUE INDEX unq_lot_method_site (lots_info_id, detection_method_id, site_id),
     CONSTRAINT fk_anomaly_lots_info
         FOREIGN KEY (lots_info_id) REFERENCES lots_info(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
@@ -77,7 +78,7 @@ CREATE TABLE anomaly_units (
 -- 4. 批號 Process Mapping（廠區、站點、機台、人員）
 CREATE TABLE anomaly_lot_process_mapping (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    anomaly_lot_id BIGINT NOT NULL,
+    lots_info_id INT NOT NULL,
     plant_name VARCHAR(100),
     station_name VARCHAR(100),
     machine_id VARCHAR(50),
@@ -86,9 +87,9 @@ CREATE TABLE anomaly_lot_process_mapping (
     recipe VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_lot_process_anomaly_lot
-        FOREIGN KEY (anomaly_lot_id)
-        REFERENCES anomaly_lots(id)
+    CONSTRAINT fk_lot_process_lots_info
+        FOREIGN KEY (lots_info_id)
+        REFERENCES lots_info(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -213,3 +214,14 @@ CREATE TABLE good_lots (
 -- =============================================================================
 -- ALTER TABLE detection_methods
 --   CHANGE COLUMN method_code method_key VARCHAR(20) NOT NULL;
+--
+-- anomaly_lots（新增 site_id 欄位，更新 UNIQUE KEY）：
+--   ALTER TABLE anomaly_lots ADD COLUMN site_id INT UNSIGNED NOT NULL DEFAULT 0 AFTER lots_info_id;
+--   ALTER TABLE anomaly_lots DROP INDEX unq_lot_method;
+--   ALTER TABLE anomaly_lots ADD UNIQUE INDEX unq_lot_method_site (lots_info_id, detection_method_id, site_id);
+--
+-- anomaly_lot_process_mapping（外鍵由 anomaly_lot_id 改為 lots_info_id）：
+--   ALTER TABLE anomaly_lot_process_mapping DROP FOREIGN KEY fk_lot_process_anomaly_lot;
+--   ALTER TABLE anomaly_lot_process_mapping CHANGE COLUMN anomaly_lot_id lots_info_id INT NOT NULL;
+--   ALTER TABLE anomaly_lot_process_mapping ADD CONSTRAINT fk_lot_process_lots_info
+--       FOREIGN KEY (lots_info_id) REFERENCES lots_info(id) ON DELETE CASCADE ON UPDATE CASCADE;

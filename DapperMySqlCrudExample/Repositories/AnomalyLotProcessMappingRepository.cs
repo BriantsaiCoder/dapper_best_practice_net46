@@ -28,7 +28,7 @@ namespace DapperMySqlCrudExample.Repositories
         private const string SelectColumns =
             @"
             id               AS Id,
-            anomaly_lot_id   AS AnomalyLotId,
+            lots_info_id     AS LotsInfoId,
             plant_name       AS PlantName,
             station_name     AS StationName,
             machine_id       AS MachineId,
@@ -49,18 +49,18 @@ namespace DapperMySqlCrudExample.Repositories
             }
         }
 
-        /// <summary>依 anomaly_lot_id 查詢多筆資料。</summary>
-        public IReadOnlyList<AnomalyLotProcessMapping> GetByAnomalyLotId(long anomalyLotId)
+        /// <summary>依 lots_info_id 查詢多筆資料。</summary>
+        public IReadOnlyList<AnomalyLotProcessMapping> GetByLotsInfoId(long lotsInfoId)
         {
             const string sql =
                 "SELECT "
                 + SelectColumns
-                + " FROM anomaly_lot_process_mapping WHERE anomaly_lot_id = @AnomalyLotId ORDER BY id";
+                + " FROM anomaly_lot_process_mapping WHERE lots_info_id = @LotsInfoId ORDER BY id";
             using (var conn = _factory.Create())
             {
                 return conn.Query<AnomalyLotProcessMapping>(
                         sql,
-                        new { AnomalyLotId = anomalyLotId }
+                        new { LotsInfoId = lotsInfoId }
                     )
                     .ToList();
             }
@@ -83,10 +83,10 @@ namespace DapperMySqlCrudExample.Repositories
             const string insertSql =
                 @"
                 INSERT INTO anomaly_lot_process_mapping
-                    (anomaly_lot_id, plant_name, station_name, machine_id,
+                    (lots_info_id, plant_name, station_name, machine_id,
                      trackin_user, trackout_user, recipe)
                 VALUES
-                    (@AnomalyLotId, @PlantName, @StationName, @MachineId,
+                    (@LotsInfoId, @PlantName, @StationName, @MachineId,
                      @TrackinUser, @TrackoutUser, @Recipe)";
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
@@ -113,8 +113,8 @@ namespace DapperMySqlCrudExample.Repositories
             {
                 _logger.Error(
                     ex,
-                    "Insert anomaly_lot_process_mapping 失敗 | AnomalyLotId={AnomalyLotId}",
-                    entity.AnomalyLotId
+                    "Insert anomaly_lot_process_mapping 失敗 | LotsInfoId={LotsInfoId}",
+                    entity.LotsInfoId
                 );
                 throw;
             }
@@ -131,7 +131,7 @@ namespace DapperMySqlCrudExample.Repositories
             const string sql =
                 @"
                 UPDATE anomaly_lot_process_mapping
-                SET    anomaly_lot_id = @AnomalyLotId,
+                SET    lots_info_id   = @LotsInfoId,
                        plant_name     = @PlantName,
                        station_name   = @StationName,
                        machine_id     = @MachineId,
