@@ -34,6 +34,12 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>本批 Site 量測值的標準差；允許 Null。</summary>
         public decimal? StdValue { get; set; }
 
+        /// <summary>製程能力指標 Cp；允許 Null。</summary>
+        public decimal? CpValue { get; set; }
+
+        /// <summary>製程能力指標 Cpk；允許 Null。</summary>
+        public decimal? CpkValue { get; set; }
+
         /// <summary>測試機台 ID。</summary>
         public string TesterId { get; set; }
 
