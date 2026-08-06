@@ -105,11 +105,10 @@ ON DUPLICATE KEY UPDATE file_name = VALUES(file_name);
 -- 3. anomaly_lots
 -- -----------------------------------------------------------------------------
 INSERT INTO anomaly_lots
-    (lots_info_id, site_id, detection_method_id, detection_value, offset_value, spec_upper_limit, spec_lower_limit)
+    (lots_info_id, detection_method_id, detection_value, offset_value, spec_upper_limit, spec_lower_limit)
 VALUES
 (
     (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
-    2,
     (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN'),
     3.380000000, 0.030000000, 3.350000000, 3.150000000
 )
@@ -138,13 +137,16 @@ VALUES
 ON DUPLICATE KEY UPDATE detection_value = VALUES(detection_value);
 
 -- -----------------------------------------------------------------------------
--- 5. anomaly_lot_process_mapping (欄位: lots_info_id)
+-- 5. anomaly_lot_process_mapping (欄位: anomaly_lot_id)
 -- -----------------------------------------------------------------------------
 INSERT INTO anomaly_lot_process_mapping
-    (lots_info_id, plant_name, station_name, machine_id, trackin_user, trackout_user, recipe)
+    (anomaly_lot_id, plant_name, station_name, machine_id, trackin_user, trackout_user, recipe)
 VALUES
 (
-    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
+    (SELECT al.id FROM anomaly_lots al
+     JOIN lots_info li ON al.lots_info_id = li.id
+     JOIN detection_methods dm ON al.detection_method_id = dm.id
+     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'),
     'KH-FAB2', 'MOLDING', 'MD-TOWA-02', 'OP-KH-005', 'OP-KH-006', 'MD-BGA256-EMC-V3'
 );
 
