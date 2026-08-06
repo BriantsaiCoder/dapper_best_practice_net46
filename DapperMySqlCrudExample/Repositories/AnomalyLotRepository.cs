@@ -28,6 +28,7 @@ namespace DapperMySqlCrudExample.Repositories
             @"
             id                   AS Id,
             lots_info_id         AS LotsInfoId,
+            site_id              AS SiteId,
             detection_method_id  AS DetectionMethodId,
             detection_value      AS DetectionValue,
             offset_value         AS OffsetValue,
@@ -76,10 +77,10 @@ namespace DapperMySqlCrudExample.Repositories
             const string insertSql =
                 @"
                 INSERT INTO anomaly_lots
-                    (lots_info_id, detection_method_id, detection_value, offset_value, spec_upper_limit,
+                    (lots_info_id, site_id, detection_method_id, detection_value, offset_value, spec_upper_limit,
                      spec_lower_limit)
                 VALUES
-                    (@LotsInfoId, @DetectionMethodId, @DetectionValue, @OffsetValue, @SpecUpperLimit,
+                    (@LotsInfoId, @SiteId, @DetectionMethodId, @DetectionValue, @OffsetValue, @SpecUpperLimit,
                      @SpecLowerLimit)";
 
             const string identitySql = "SELECT LAST_INSERT_ID()";
@@ -106,8 +107,9 @@ namespace DapperMySqlCrudExample.Repositories
             {
                 _logger.Error(
                     ex,
-                    "Insert anomaly_lots 失敗 | LotsInfoId={LotsInfoId} | DetectionMethodId={DetectionMethodId}",
+                    "Insert anomaly_lots 失敗 | LotsInfoId={LotsInfoId} | SiteId={SiteId} | DetectionMethodId={DetectionMethodId}",
                     entity.LotsInfoId,
+                    entity.SiteId,
                     entity.DetectionMethodId
                 );
                 throw;
@@ -126,6 +128,7 @@ namespace DapperMySqlCrudExample.Repositories
                 @"
                 UPDATE anomaly_lots
                 SET    lots_info_id         = @LotsInfoId,
+                       site_id              = @SiteId,
                        detection_method_id  = @DetectionMethodId,
                        detection_value      = @DetectionValue,
                        offset_value         = @OffsetValue,

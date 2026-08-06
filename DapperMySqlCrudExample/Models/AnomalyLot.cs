@@ -13,6 +13,9 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>關聯的批號資訊 ID（外鍵 lots_info.id）。</summary>
         public int LotsInfoId { get; set; }
 
+        /// <summary>測試 Site 編號（INT UNSIGNED）。</summary>
+        public uint SiteId { get; set; }
+
         /// <summary>偵測方法 ID（外鍵 detection_methods.id）。</summary>
         public byte DetectionMethodId { get; set; }
 

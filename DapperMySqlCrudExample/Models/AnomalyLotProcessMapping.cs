@@ -10,8 +10,8 @@ namespace DapperMySqlCrudExample.Models
         /// <summary>主鍵（自動遞增）。</summary>
         public long Id { get; set; }
 
-        /// <summary>關聯的異常批號 ID（外鍵 anomaly_lots.id）。</summary>
-        public long AnomalyLotId { get; set; }
+        /// <summary>關聯的批號資訊 ID（外鍵 lots_info.id）。</summary>
+        public int LotsInfoId { get; set; }
 
         /// <summary>廠區名稱；允許 Null。</summary>
         public string PlantName { get; set; }
