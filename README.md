@@ -204,19 +204,19 @@ Repository 保持單一職責：
 
 Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而離開 `using` 範圍時（包含例外），`MySqlTransaction.Dispose()` 會自動執行 Rollback，無需顯式呼叫 `tx.Rollback()`。目前 [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs) 仍保留 `try/catch`，用於業務例外分類與錯誤記錄；Rollback 則仍由 `Dispose()` 隱式完成。這是 ADO.NET 的標準行為，同樣適用於 `DbTransaction` 的所有實作。
 
-### 5. SITE_MEAN 取樣策略已做固定上限
+### 5. SITE_MEAN 取樣策略採前一個月時間窗
 
-[SiteTestStatisticRepository.cs](DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 策略為取最新 30 筆有效資料（`mean_value IS NOT NULL` 且 `start_time IS NOT NULL`），以單一查詢完成。
+[SiteTestStatisticRepository.cs](DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs) 的 `QuerySiteMeanRows()` 會讀取前一個月內的有效資料（`mean_value IS NOT NULL` 且 `start_time IS NOT NULL`）。
 
-若近期資料充足，結果自然全為近期；若不足則涵蓋更早的歷史。
+時間起點由 `DetectionSpecService` 在 C# 端以 `DateTime.Now.AddMonths(-1)` 計算後，透過參數傳入 Repository，避免在 SQL 端直接寫時間運算。
 
 `DetectionSpecService` 設定 `MinimumSampleCount = 2`：樣本不足兩筆時直接拋出例外，不嘗試計算。當只有一筆資料時標準差為 0，會導致 UCL = LCL = mean，過度敏感而產生誤報。
 
 這樣做的目的：
 
-- 避免一次把整個月的資料全部撈進記憶體
-- 讓查詢筆數上限固定，只需一次 DB round-trip
-- 搭配 `(program, site_id, test_item_name, start_time)` 索引更容易吃到效能優勢
+- 明確讓規格計算只根據近一個月資料
+- 時間規則集中在 Service 層，符合業務邏輯與資料存取分層
+- 搭配 `(program, site_id, test_item_name, start_time)` 索引仍可利用時間排序與過濾
 
 ## 交易（Transaction）使用指南
 
@@ -275,8 +275,9 @@ using (var conn = _factory.Create())
     conn.Open();  // 交易前必須明確開啟
     using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
     {
-        // 步驟 1：在交易中讀取歷史資料
-        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+        // 步驟 1：在交易中讀取前一個月的歷史資料
+        var sinceTime = DateTime.Now.AddMonths(-1);
+        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, sinceTime, tx);
 
         // 步驟 2：記憶體內計算
         var (mean, std) = CalculateMeanAndStd(rows);
@@ -333,8 +334,9 @@ using (var conn = _factory.Create())
     conn.Open();  // 交易前必須明確開啟
     using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
     {
-        // 步驟 1：在交易中讀取 30 筆歷史統計資料
-        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, tx);
+        // 步驟 1：在交易中讀取前一個月歷史統計資料
+        var sinceTime = DateTime.Now.AddMonths(-1);
+        var rows = _siteTestStatRepo.QuerySiteMeanRows(programName, siteId, testItemName, sinceTime, tx);
 
         // 步驟 2：記憶體內計算平均值、標準差、管制上下限
         var (mean, std) = CalculateMeanAndStd(rows);
@@ -356,7 +358,7 @@ using (var conn = _factory.Create())
 
 ```
 時間軸         交易 A（本計算）           交易 B（外部寫入）
-  t1     讀取 30 筆歷史資料
+  t1     讀取前一個月歷史資料
   t2                                   修改了其中 5 筆資料 ← 問題！
   t3     根據 t1 的資料計算 UCL/LCL
   t4     寫入計算結果
@@ -364,7 +366,7 @@ using (var conn = _factory.Create())
 
 若不使用 `RepeatableRead`：交易 B 在 t2 修改的資料會導致 t3 的計算基礎與實際資料不一致，寫入的規格值可能是錯的。
 
-`RepeatableRead` 保證：**t1 讀取的 30 筆資料在整個交易期間不會被其他交易修改**，確保「讀取→計算→寫入」三步驟基於一致的資料快照。
+`RepeatableRead` 保證：**t1 讀取的前一個月資料在整個交易期間不會被其他交易修改**，確保「讀取→計算→寫入」三步驟基於一致的資料快照。
 
 ### Repository 的交易參數設計模式
 

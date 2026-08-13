@@ -33,6 +33,7 @@ namespace DapperMySqlCrudExample.Services
         private readonly DetectionMethodRepository _detectionMethodRepo;
 
         private const string SiteMeanMethodKey = "SITE_MEAN";
+        private const int SiteMeanHistoryMonths = 1;
 
         /// <summary>SITE_MEAN 計算所需的最小樣本數。僅 1 筆時 std=0，UCL=LCL=mean 會造成誤判。</summary>
         private const int MinimumSampleCount = 2;
@@ -55,7 +56,7 @@ namespace DapperMySqlCrudExample.Services
 
         /// <summary>
         /// 依歷史 site_test_statistics 資料計算 SITE_MEAN 規格並插入 detection_specs。
-        /// 取樣策略為取最新 30 筆有效資料進行統計。
+        /// 取樣策略為取前一個月內的有效資料進行統計。
         /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
         /// </summary>
         /// <remarks>
@@ -114,18 +115,20 @@ namespace DapperMySqlCrudExample.Services
                 {
                     try
                     {
+                        var sinceTime = DateTime.Now.AddMonths(-SiteMeanHistoryMonths);
                         var rows = _siteTestStatRepo.QuerySiteMeanRows(
                             programName,
                             siteId,
                             testItemName,
+                            sinceTime,
                             tx
                         );
 
                         if (rows.Count < MinimumSampleCount)
                         {
                             throw new InvalidOperationException(
-                                $"site_test_statistics 中符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
-                                    + $"program={programName}, siteId={siteId}, testItem={testItemName}）。"
+                                $"site_test_statistics 中前 {SiteMeanHistoryMonths} 個月內符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
+                                    + $"program={programName}, siteId={siteId}, testItem={testItemName}, sinceTime={sinceTime:yyyy-MM-dd HH:mm:ss}）。"
                             );
                         }
 
