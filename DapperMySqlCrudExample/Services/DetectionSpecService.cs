@@ -35,8 +35,11 @@ namespace DapperMySqlCrudExample.Services
         private const string SiteMeanMethodKey = "SITE_MEAN";
         private const int SiteMeanHistoryMonths = 1;
 
-        /// <summary>SITE_MEAN 計算所需的最小樣本數。僅 1 筆時 std=0，UCL=LCL=mean 會造成誤判。</summary>
-        private const int MinimumSampleCount = 2;
+        /// <summary>SITE_MEAN 計算所需的最小樣本數。樣本過少時統計量不穩定，±nσ 管制限易失真。</summary>
+        private const int MinimumSampleCount = 30;
+
+        /// <summary>管制上下限預設的標準差倍數（±6σ）。可由呼叫端依測項或客戶需求覆寫（例如 3σ、4.5σ）。</summary>
+        public const double DefaultSigmaMultiplier = 6.0;
 
         public DetectionSpecService(
             DbConnectionFactory factory,
@@ -55,37 +58,37 @@ namespace DapperMySqlCrudExample.Services
         }
 
         /// <summary>
-        /// 依歷史 site_test_statistics 資料計算 SITE_MEAN 規格並插入 detection_specs。
-        /// 取樣策略為取前一個月內的有效資料進行統計。
-        /// 使用 RepeatableRead 隔離層級確保計算期間讀取一致性。
+        /// 依歷史 site_test_statistics 資料計算 SITE_MEAN 規格並寫入 detection_specs，回傳規格主鍵。
+        /// 取樣策略為取前一個月內（以 <see cref="DateTime.Now"/> 為基準）的有效資料進行統計。
         /// </summary>
+        /// <param name="programName">程式名稱。</param>
+        /// <param name="siteId">Site 編號。</param>
+        /// <param name="testItemName">測項名稱。</param>
+        /// <param name="sigmaMultiplier">
+        /// 管制上下限使用的標準差倍數，預設 <see cref="DefaultSigmaMultiplier"/>（±6σ）。
+        /// 不同測項或客戶要求可傳入 3、4.5 等值。
+        /// </param>
         /// <remarks>
+        /// 【交易範圍設計】
+        /// 歷史統計查詢與計算（可能掃描大量列）刻意放在交易之外，避免長時間持有讀鎖；
+        /// 僅在「重複規格檢查 + 寫入」這段短暫的區間才開啟交易，確保
+        /// 「查既有規格 → 決定 Insert 或 Update」不會與其他同時執行的計算互相插隊。
+        ///
+        /// 【重複規格處理策略】
+        /// 相同 (program, test_item_name, site_id, detection_method_id) 且計算區間
+        /// (spec_calc_start_time, spec_calc_end_time) 完全相同者，視為同一份規格，
+        /// 改以 Update 覆寫既有列並回傳其既有 Id，不再新增重複資料。
+        ///
         /// 【Rollback 機制說明】
-        /// 本方法不使用顯式 try/catch + tx.Rollback()，而是依賴 using 區塊的隱式 Rollback：
-        ///
-        ///   using (var tx = conn.BeginTransaction(...))
-        ///   {
-        ///       // ... 多個 Repository 操作 ...
-        ///       tx.Commit();   ← 只有走到這行，資料才會真正寫入資料庫
-        ///       return newId;
-        ///   }
-        ///
-        /// 若在 tx.Commit() 之前的任何一步發生例外（例如樣本數不足拋出 InvalidOperationException、
-        /// detection_methods 找不到 SITE_MEAN、或 Insert 時 SQL 錯誤），例外會直接往上拋出，
-        /// 程式流程跳過 tx.Commit()，離開 using 區塊時 C# 會自動呼叫 tx.Dispose()。
-        ///
-        /// IDbTransaction.Dispose() 的行為：
-        /// - 若交易已 Commit → Dispose 不做額外動作。
-        /// - 若交易未 Commit（即本情境）→ Dispose 會自動執行 Rollback，
-        ///   撤銷此交易中所有已執行的 SQL 操作（包含已 Execute 但未 Commit 的 INSERT）。
-        ///
-        /// 這種「隱式 Rollback」模式比顯式 try/catch + tx.Rollback() 更簡潔，
-        /// 且效果完全相同，是本專案 Service 層的慣用寫法。
+        /// 本方法不使用顯式 tx.Rollback()，而是依賴 using 區塊的隱式 Rollback：
+        /// 若在 tx.Commit() 之前的任何一步發生例外，程式流程會跳過 Commit()，
+        /// 離開 using 區塊時 tx.Dispose() 會自動 Rollback 此交易中所有未提交的操作。
         /// </remarks>
         public long ComputeAndInsertSiteMeanSpec(
             string programName,
             uint siteId,
-            string testItemName
+            string testItemName,
+            double sigmaMultiplier = DefaultSigmaMultiplier
         )
         {
             if (string.IsNullOrWhiteSpace(programName))
@@ -101,76 +104,114 @@ namespace DapperMySqlCrudExample.Services
                 );
             }
 
+            if (double.IsNaN(sigmaMultiplier) || double.IsInfinity(sigmaMultiplier) || sigmaMultiplier <= 0.0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(sigmaMultiplier),
+                    sigmaMultiplier,
+                    "標準差倍數必須為大於 0 的有限數值。"
+                );
+            }
+
+            // ── 第一階段：查詢與計算（不開交易，避免長時間持有讀鎖）──────────────
+            var sinceTime = DateTime.Now.AddMonths(-SiteMeanHistoryMonths);
+            var rows = _siteTestStatRepo.QuerySiteMeanRows(
+                programName,
+                siteId,
+                testItemName,
+                sinceTime
+            );
+
+            if (rows.Count < MinimumSampleCount)
+            {
+                throw new InvalidOperationException(
+                    $"site_test_statistics 中前 {SiteMeanHistoryMonths} 個月內符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
+                        + $"program={programName}, siteId={siteId}, testItem={testItemName}, sinceTime={sinceTime:yyyy-MM-dd HH:mm:ss}）。"
+                );
+            }
+
+            var (mean, std) = CalculateMeanAndStd(rows);
+            var (ucl, lcl) = CalculateControlLimits(mean, std, sigmaMultiplier);
+            var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
+            byte methodId = GetRequiredSiteMeanMethodId();
+
+            _logger.Info(
+                "SITE_MEAN 計算完成 | Program={Program}, SiteId={SiteId}, TestItem={TestItem}, SampleCount={SampleCount}, "
+                    + "Mean={Mean}, Std={Std}, Sigma={Sigma}, UCL={Ucl}, LCL={Lcl}, CalcStart={CalcStart}, CalcEnd={CalcEnd}",
+                programName,
+                siteId,
+                testItemName,
+                rows.Count,
+                mean,
+                std,
+                sigmaMultiplier,
+                ucl,
+                lcl,
+                specCalcStart,
+                specCalcEnd
+            );
+
+            var spec = BuildDetectionSpec(
+                programName,
+                siteId,
+                testItemName,
+                methodId,
+                ucl,
+                lcl,
+                specCalcStart,
+                specCalcEnd,
+                mean,
+                std
+            );
+
+            // ── 第二階段：寫入（短交易，涵蓋「重複檢查 → Insert/Update」）─────────
             // 【新手導讀】雙層 using 管理連線與交易的生命週期：
             // 外層 using 管理連線（conn），內層 using 管理交易（tx）。
             // 離開區塊時會依反序 Dispose：先 tx（自動 Rollback 未 Commit 的交易），再 conn（歸還連線池）。
             using (var conn = _factory.Create())
             {
                 // 【新手導讀】BeginTransaction() 要求連線已開啟，因此交易場景需手動 Open()。
-                // 一般不需交易的 Repository 方法由 Dapper 自動管理開關連線，不須手動 Open()。
                 conn.Open();
-                // 【新手導讀】IsolationLevel.RepeatableRead 確保在交易期間，已讀取的資料不會被其他交易修改。
-                // 這對統計計算很重要：避免「查詢歷史資料」與「寫入計算結果」之間資料被外部異動導致不一致。
                 using (var tx = conn.BeginTransaction(IsolationLevel.RepeatableRead))
                 {
                     try
                     {
-                        var sinceTime = DateTime.Now.AddMonths(-SiteMeanHistoryMonths);
-                        var rows = _siteTestStatRepo.QuerySiteMeanRows(
+                        var existing = _detectionSpecRepo.GetByKeyAndCalcRange(
                             programName,
-                            siteId,
                             testItemName,
-                            sinceTime,
+                            siteId,
+                            methodId,
+                            specCalcStart,
+                            specCalcEnd,
                             tx
                         );
 
-                        if (rows.Count < MinimumSampleCount)
+                        long specId;
+                        if (existing != null)
                         {
-                            throw new InvalidOperationException(
-                                $"site_test_statistics 中前 {SiteMeanHistoryMonths} 個月內符合條件的資料筆數不足（需要 {MinimumSampleCount} 筆，實際 {rows.Count} 筆；"
-                                    + $"program={programName}, siteId={siteId}, testItem={testItemName}, sinceTime={sinceTime:yyyy-MM-dd HH:mm:ss}）。"
+                            spec.Id = existing.Id;
+                            _detectionSpecRepo.Update(spec, tx);
+                            specId = existing.Id;
+                            _logger.Info(
+                                "已存在相同計算區間的 SITE_MEAN 規格，改為更新 | Id={Id}",
+                                specId
                             );
                         }
+                        else
+                        {
+                            specId = _detectionSpecRepo.Insert(spec, tx);
+                            _logger.Info("新增 SITE_MEAN 規格 | Id={Id}", specId);
+                        }
 
-                        var (mean, std) = CalculateMeanAndStd(rows);
-                        Console.WriteLine($"計算結果：mean={mean:F4}, std={std:F4}，樣本數={rows.Count}");
-                        var (ucl, lcl) = CalculateControlLimits(mean, std);
-                        Console.WriteLine($"計算結果：ucl={ucl:F4}, lcl={lcl:F4}");
-                        var (specCalcStart, specCalcEnd) = ExtractTimeRange(rows);
-                        Console.WriteLine($"計算結果：specCalcStart={specCalcStart}, specCalcEnd={specCalcEnd}");
-                        byte methodId = GetRequiredSiteMeanMethodId(tx);
-                        Console.WriteLine($"計算結果：methodId={methodId}");
-                        var spec = BuildDetectionSpec(
-                            programName,
-                            siteId,
-                            testItemName,
-                            methodId,
-                            ucl,
-                            lcl,
-                            specCalcStart,
-                            specCalcEnd,
-                            mean,
-                            std
-                        );
-                        Console.WriteLine($"建立 DetectionSpec 實體：{spec}");
-                        long newId = _detectionSpecRepo.Insert(spec, tx);
-                        Console.WriteLine($"Insert 成功，newId={newId}");
                         // ★ 只有成功走到此行，資料才會真正寫入資料庫。
-                        // 若上方任何步驟拋出例外，程式流程會跳過 Commit()，
-                        // 離開 using 區塊時 tx.Dispose() 自動 Rollback 所有未提交的操作。
                         tx.Commit();
-                        return newId;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        // 業務邏輯例外（樣本不足、找不到 SITE_MEAN 設定），不額外紀錄，直接往上拋出。
-                        throw;
+                        return specId;
                     }
                     catch (Exception ex)
                     {
                         _logger.Error(
                             ex,
-                            "ComputeAndInsertSiteMeanSpec 交易失敗（將自動 Rollback） | Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
+                            "ComputeAndInsertSiteMeanSpec 寫入交易失敗（將自動 Rollback） | Program={Program}, SiteId={SiteId}, TestItem={TestItem}",
                             programName,
                             siteId,
                             testItemName
@@ -200,13 +241,17 @@ namespace DapperMySqlCrudExample.Services
         }
 
         /// <summary>
-        /// 計算管制上下限（UCL/LCL）。使用 ±6σ 規則。
+        /// 計算管制上下限（UCL/LCL）。使用 ±<paramref name="sigmaMultiplier"/>σ 規則，預設 6σ。
         /// double → decimal 轉換同 <see cref="CalculateMeanAndStd"/> 的精度說明。
         /// </summary>
-        private static (decimal ucl, decimal lcl) CalculateControlLimits(double mean, double std)
+        private static (decimal ucl, decimal lcl) CalculateControlLimits(
+            double mean,
+            double std,
+            double sigmaMultiplier = DefaultSigmaMultiplier
+        )
         {
-            var ucl = (decimal)(mean + 6.0 * std);
-            var lcl = (decimal)(mean - 6.0 * std);
+            var ucl = (decimal)(mean + sigmaMultiplier * std);
+            var lcl = (decimal)(mean - sigmaMultiplier * std);
             return (ucl, lcl);
         }
 
@@ -222,7 +267,7 @@ namespace DapperMySqlCrudExample.Services
             return (times.Min(), times.Max());
         }
 
-        private byte GetRequiredSiteMeanMethodId(IDbTransaction tx)
+        private byte GetRequiredSiteMeanMethodId(IDbTransaction tx = null)
         {
             var methodId = _detectionMethodRepo.GetIdByKey(SiteMeanMethodKey, tx);
             if (!methodId.HasValue)

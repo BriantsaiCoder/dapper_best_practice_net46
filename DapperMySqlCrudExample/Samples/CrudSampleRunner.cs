@@ -140,7 +140,7 @@ namespace DapperMySqlCrudExample.Samples
         /// 若目前資料庫尚無可用的 site_test_statistics 樣本資料，則會顯示略過訊息。
         /// </summary>
         /// <remarks>
-        /// ★ 前置條件：site_test_statistics 中需有至少 2 筆符合條件的資料
+        /// ★ 前置條件：site_test_statistics 中需有至少 30 筆「前一個月內」符合條件的資料
         ///   （program + site_id + test_item_name 相同，且 mean_value、start_time 非 NULL），
         ///   且 lots_info 外鍵依賴表須已建立（參見 Sql/schema-legacy.sql）。
         ///   空資料庫執行時本範例會自動略過，不影響範例一。
@@ -163,7 +163,7 @@ namespace DapperMySqlCrudExample.Samples
                     "  [Skip] site_test_statistics 尚無 mean_value 與 start_time 俱全的樣本資料，略過規格計算示範。"
                 );
                 Console.WriteLine(
-                    "         若要執行本範例，請先匯入測試資料（至少 2 筆相同 program/site/testItem 的統計記錄）。"
+                    "         若要執行本範例，請先匯入測試資料（至少 30 筆前一個月內、相同 program/site/testItem 的統計記錄）。"
                 );
                 return;
             }
