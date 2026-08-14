@@ -1,10 +1,15 @@
 -- =============================================================================
--- Dapper Best Practice (.NET 4.6 + MySQL) — 半導體封測業範例資料
+-- Dapper Best Practice (.NET 4.6 + MySQL) — 半導體封測業範例資料（最近三個月）
 -- 請於 schema-legacy.sql 與 schema.sql 建立資料表後再執行本檔
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- 0. 清空資料庫內容與重置計數器 (TRUNCATE ALL TABLES)
+-- 0. 清空資料庫內容與重置計數器（依外鍵關聯完整重置）
+--
+-- 說明：
+-- - 本專案核心表之間存在 lots_info / detection_methods / anomaly_lots / anomaly_units 等外鍵關聯
+-- - 匯入新的三個月測試資料前，先暫時關閉 FOREIGN_KEY_CHECKS 並依整包樣本資料重置所有核心表
+-- - 執行完畢後重新開啟 FOREIGN_KEY_CHECKS，避免留下不一致狀態
 -- -----------------------------------------------------------------------------
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -45,70 +50,70 @@ INSERT INTO lots_info
      pass_without_ocr, `open`, open_without_ocr, short_others,
      pass_without_ocr_ppm, open_ppm, open_without_ocr_ppm, short_others_ppm)
 VALUES
--- 批號 1：QFN48 — MediaTek MT6985，正常批
-('V3.2.1', '00:1A:2B:3C:4D:01', 'QFN48-20260401-001', 'MediaTek', 'QFN48',
+-- 批號 1：QFN48 — MediaTek MT6985，正常批（約 85 天前）
+('V3.2.1', '00:1A:2B:3C:4D:01', 'QFN48-SAMPLE-085D-001', 'MediaTek', 'QFN48',
  'BD-QFN48-A01', 'QFN48_PROD_V3', 'MT6985',
- 'CL-2026040101', 'AO-2026040101', 'T5381-01', 'TB-QFN48-003', 'OP-KH-012', 'SL-20260401-A',
- 'QFN48_PROD_V3_20260401_093015.stdf',
+ 'CL-QFN48-0001', 'AO-QFN48-0001', 'T5381-01', 'TB-QFN48-003', 'OP-KH-012', 'SL-QFN48-085D-A',
+ 'QFN48_PROD_V3_SAMPLE_085D_001.stdf',
  98.5, 10000, 9850, 50, 30, 40, 30,
  15000.0, 5000.0, 3000.0, 4000.0, 3000.0,
- 128, 0.85, 0, '2026-04-01 09:30:15', '2026-04-01 12:45:30',
+ 128, 0.85, 0, DATE_SUB(NOW(), INTERVAL 85 DAY), DATE_SUB(NOW(), INTERVAL 85 DAY) + INTERVAL 3 HOUR + INTERVAL 15 MINUTE,
  9860, 45, 42, 28,
  14000.0, 4500.0, 4200.0, 2800.0),
 
--- 批號 2：BGA256 — Qualcomm SM8650，低良率批（觸發異常偵測）
-('V1.0.5', '00:1A:2B:3C:4D:02', 'BGA256-20260402-001', 'Qualcomm', 'BGA256',
+-- 批號 2：BGA256 — Qualcomm SM8650，低良率批（約 70 天前，觸發異常偵測）
+('V1.0.5', '00:1A:2B:3C:4D:02', 'BGA256-SAMPLE-070D-001', 'Qualcomm', 'BGA256',
  'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
- 'CL-2026040201', 'AO-2026040201', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-20260402-A',
- 'BGA256_PROD_V1_20260402_141022.stdf',
+ 'CL-BGA256-0002', 'AO-BGA256-0002', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-BGA256-070D-A',
+ 'BGA256_PROD_V1_SAMPLE_070D_001.stdf',
  95.2, 5000, 4760, 80, 60, 55, 45,
  48000.0, 16000.0, 12000.0, 11000.0, 9000.0,
- 256, 1.52, 0, '2026-04-02 14:10:22', '2026-04-02 18:35:48',
+ 256, 1.52, 0, DATE_SUB(NOW(), INTERVAL 70 DAY), DATE_SUB(NOW(), INTERVAL 70 DAY) + INTERVAL 4 HOUR + INTERVAL 25 MINUTE,
  4770, 75, 70, 55,
  46000.0, 15000.0, 14000.0, 11000.0),
 
--- 批號 3：SOIC16 — Realtek RTL8125，正常批
-('V2.1.0', '00:1A:2B:3C:4D:03', 'SOIC16-20260403-001', 'Realtek', 'SOIC16',
+-- 批號 3：SOIC16 — Realtek RTL8125，正常批（約 67 天前）
+('V2.1.0', '00:1A:2B:3C:4D:03', 'SOIC16-SAMPLE-067D-001', 'Realtek', 'SOIC16',
  'BD-SOIC16-C01', 'SOIC16_PROD_V2', 'RTL8125',
- 'CL-2026040301', 'AO-2026040301', 'T5381-03', 'TB-SOIC16-002', 'OP-KH-015', 'SL-20260403-A',
- 'SOIC16_PROD_V2_20260403_080530.stdf',
+ 'CL-SOIC16-0003', 'AO-SOIC16-0003', 'T5381-03', 'TB-SOIC16-002', 'OP-KH-015', 'SL-SOIC16-067D-A',
+ 'SOIC16_PROD_V2_SAMPLE_067D_001.stdf',
  99.1, 20000, 19820, 60, 40, 50, 30,
  9000.0, 3000.0, 2000.0, 2500.0, 1500.0,
- 64, 0.42, 0, '2026-04-03 08:05:30', '2026-04-03 14:20:15',
+ 64, 0.42, 0, DATE_SUB(NOW(), INTERVAL 67 DAY), DATE_SUB(NOW(), INTERVAL 67 DAY) + INTERVAL 6 HOUR + INTERVAL 15 MINUTE,
  19830, 55, 50, 35,
  8500.0, 2750.0, 2500.0, 1750.0),
 
--- 批號 4：BGA256 — Qualcomm SM8650，正常批（SITE_MEAN 規格計算用歷史樣本）
-('V1.0.5', '00:1A:2B:3C:4D:04', 'BGA256-20260405-001', 'Qualcomm', 'BGA256',
+-- 批號 4：BGA256 — Qualcomm SM8650，正常批（約 28 天前，SITE_MEAN 最近一個月樣本）
+('V1.0.5', '00:1A:2B:3C:4D:04', 'BGA256-SAMPLE-028D-001', 'Qualcomm', 'BGA256',
  'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
- 'CL-2026040501', 'AO-2026040501', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-20260405-A',
- 'BGA256_PROD_V1_20260405_100000.stdf',
+ 'CL-BGA256-0004', 'AO-BGA256-0004', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-BGA256-028D-A',
+ 'BGA256_PROD_V1_SAMPLE_028D_001.stdf',
  97.8, 5000, 4890, 35, 25, 30, 20,
  22000.0, 7000.0, 5000.0, 6000.0, 4000.0,
- 256, 1.50, 0, '2026-04-05 10:00:00', '2026-04-05 14:30:00',
+ 256, 1.50, 0, DATE_SUB(NOW(), INTERVAL 28 DAY), DATE_SUB(NOW(), INTERVAL 28 DAY) + INTERVAL 4 HOUR + INTERVAL 30 MINUTE,
  4895, 30, 28, 22,
  21000.0, 6000.0, 5600.0, 4400.0),
 
--- 批號 5：BGA256 — Qualcomm SM8650，正常批（SITE_MEAN 規格計算用歷史樣本）
-('V1.0.5', '00:1A:2B:3C:4D:05', 'BGA256-20260408-001', 'Qualcomm', 'BGA256',
+-- 批號 5：BGA256 — Qualcomm SM8650，正常批（約 21 天前，SITE_MEAN 最近一個月樣本）
+('V1.0.5', '00:1A:2B:3C:4D:05', 'BGA256-SAMPLE-021D-001', 'Qualcomm', 'BGA256',
  'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
- 'CL-2026040801', 'AO-2026040801', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-20260408-A',
- 'BGA256_PROD_V1_20260408_090000.stdf',
+ 'CL-BGA256-0005', 'AO-BGA256-0005', 'T5381-02', 'TB-BGA256-007', 'OP-KH-008', 'SL-BGA256-021D-A',
+ 'BGA256_PROD_V1_SAMPLE_021D_001.stdf',
  98.1, 5000, 4905, 30, 20, 28, 17,
  19000.0, 6000.0, 4000.0, 5600.0, 3400.0,
- 256, 1.48, 0, '2026-04-08 09:00:00', '2026-04-08 13:15:00',
+ 256, 1.48, 0, DATE_SUB(NOW(), INTERVAL 21 DAY), DATE_SUB(NOW(), INTERVAL 21 DAY) + INTERVAL 4 HOUR + INTERVAL 15 MINUTE,
  4910, 28, 25, 18,
  18000.0, 5600.0, 5000.0, 3600.0)
 ON DUPLICATE KEY UPDATE file_name = VALUES(file_name);
 
 -- -----------------------------------------------------------------------------
--- 2-1. 根表：lots_info — SITE_MEAN 歷史樣本（以 NOW() 為基準的相對時間，橫跨最近 100 天）
+-- 2-1. 根表：lots_info — SITE_MEAN 歷史樣本（以 NOW() 為基準的相對時間，橫跨最近三個月）
 --
 -- 【設計說明】
 -- ComputeAndInsertSiteMeanSpec() 以 C# 端的 DateTime.Now.AddMonths(-1) 為取樣起點，
 -- 若測試資料使用固定日期，隨著時間推移就會全部落在一個月之外導致樣本數不足。
--- 因此本段一律以 DATE_SUB(NOW(), INTERVAL n ...) 產生相對時間，讓資料永遠橫跨最近約 100 天（>3 個月）：
---   - HIST 段（41 ~ 107 天前，共 12 筆）：一個月之外的歷史資料，用於驗證取樣區間確實有生效
+-- 因此本段一律以 DATE_SUB(NOW(), INTERVAL n ...) 產生相對時間，讓資料永遠落在最近約 83 天內（< 3 個月）：
+--   - HIST 段（39 ~ 83 天前，共 12 筆）：一個月之外、但仍在最近三個月內的歷史資料，用於驗證取樣區間確實有生效
 --   - RECENT 段（20 小時 ~ 約 26.7 天前，共 32 筆）：一個月之內的資料，即 SITE_MEAN 實際採用的樣本
 --     筆數 32 > DetectionSpecService.MinimumSampleCount(=30)，可滿足最小樣本數門檻
 -- db_key / file_name 以「相對天/時數」命名（非絕對日期），確保重複執行本檔時鍵值穩定且唯一。
@@ -121,13 +126,13 @@ INSERT INTO lots_info
 SELECT
     'V1.0.5',
     CONCAT('00:1A:2B:3C:4E:', LPAD(HEX(s.n), 2, '0')),
-    CONCAT('BGA256-HIST-D', LPAD(35 + s.n * 6, 3, '0')),
+    CONCAT('BGA256-HIST-D', LPAD(35 + s.n * 4, 3, '0')),
     'Qualcomm', 'BGA256', 'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
     'T5381-02', 'TB-BGA256-007',
-    CONCAT('BGA256_PROD_V1_HIST_D', LPAD(35 + s.n * 6, 3, '0'), '.stdf'),
+    CONCAT('BGA256_PROD_V1_HIST_D', LPAD(35 + s.n * 4, 3, '0'), '.stdf'),
     98.0, 5000, 4900, 256, 1.50,
-    DATE_SUB(NOW(), INTERVAL (35 + s.n * 6) DAY),
-    DATE_SUB(NOW(), INTERVAL (35 + s.n * 6) DAY) + INTERVAL 4 HOUR
+    DATE_SUB(NOW(), INTERVAL (35 + s.n * 4) DAY),
+    DATE_SUB(NOW(), INTERVAL (35 + s.n * 4) DAY) + INTERVAL 4 HOUR
 FROM (
     SELECT  1 AS n UNION ALL SELECT  2 UNION ALL SELECT  3 UNION ALL SELECT  4
     UNION ALL SELECT  5 UNION ALL SELECT  6 UNION ALL SELECT  7 UNION ALL SELECT  8
@@ -173,7 +178,7 @@ INSERT INTO anomaly_lots
     (lots_info_id, site_id, detection_method_id, detection_value, offset_value, spec_upper_limit, spec_lower_limit)
 VALUES
 (
-    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-070D-001'),
     2,
     (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN'),
     3.380000000, 0.030000000, 3.350000000, 3.150000000
@@ -190,14 +195,14 @@ VALUES
     (SELECT al.id FROM anomaly_lots al
      JOIN lots_info li ON al.lots_info_id = li.id
      JOIN detection_methods dm ON al.detection_method_id = dm.id
-     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'),
+     WHERE li.db_key = 'BGA256-SAMPLE-070D-001' AND dm.method_key = 'SITE_MEAN'),
     'VOH_PIN12', 2, '', 3.380000000, 0.030000000, 3.350000000, 3.150000000
 ),
 (
     (SELECT al.id FROM anomaly_lots al
      JOIN lots_info li ON al.lots_info_id = li.id
      JOIN detection_methods dm ON al.detection_method_id = dm.id
-     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'),
+     WHERE li.db_key = 'BGA256-SAMPLE-070D-001' AND dm.method_key = 'SITE_MEAN'),
     'VOH_PIN12', 2, 'U-BGA256-00587', 3.390000000, 0.040000000, 3.350000000, 3.150000000
 )
 ON DUPLICATE KEY UPDATE detection_value = VALUES(detection_value);
@@ -209,7 +214,7 @@ INSERT INTO anomaly_lot_process_mapping
     (lots_info_id, plant_name, station_name, machine_id, trackin_user, trackout_user, recipe)
 VALUES
 (
-    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'),
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-070D-001'),
     'KH-FAB2', 'MOLDING', 'MD-TOWA-02', 'OP-KH-005', 'OP-KH-006', 'MD-BGA256-EMC-V3'
 );
 
@@ -228,7 +233,7 @@ VALUES
      JOIN anomaly_lots al ON au.anomaly_lot_id = al.id
      JOIN lots_info li ON al.lots_info_id = li.id
      JOIN detection_methods dm ON al.detection_method_id = dm.id
-     WHERE li.db_key = 'BGA256-20260402-001' AND dm.method_key = 'SITE_MEAN'
+     WHERE li.db_key = 'BGA256-SAMPLE-070D-001' AND dm.method_key = 'SITE_MEAN'
        AND au.test_item_name = 'VOH_PIN12' AND au.unit_id = 'U-BGA256-00587'),
     'BOAT-FT-001', 5, 12,
     'WF-SM8650-LOT02-W05-BC', 'WF-SM8650-LOT02-W05', 8, 31,
@@ -248,7 +253,7 @@ VALUES
 (
     'BGA256_PROD_V1', 'VOH_PIN12', 1,
     (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN'),
-    3.350000000, 3.150000000, '2026-03-01 00:00:00', '2026-04-01 23:59:59',
+    3.350000000, 3.150000000, DATE_SUB(NOW(), INTERVAL 30 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY),
     3.248000000, 0.034000000
 );
 
@@ -258,15 +263,15 @@ VALUES
 INSERT INTO site_test_statistics
     (lots_info_id, program, site_id, test_item_name, mean_value, max_value, min_value, std_value, tester_id, start_time, end_time)
 VALUES
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260402-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.268000000, 3.380000000, 3.162000000, 0.035000000, 'FT-J750-01', '2026-04-02 14:10:22', '2026-04-02 18:35:48'),
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.252000000, 3.345000000, 3.170000000, 0.031000000, 'FT-J750-01', '2026-04-05 10:00:00', '2026-04-05 14:30:00'),
-((SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.241000000, 3.338000000, 3.158000000, 0.029000000, 'FT-J750-01', '2026-04-08 09:00:00', '2026-04-08 13:15:00'),
-((SELECT id FROM lots_info WHERE db_key = 'QFN48-20260401-001'), 'QFN48_PROD_V3', 1, 'FREQ_OSC', 2.500200000, 2.509800000, 2.490500000, 0.003100000, 'FT-J750-02', '2026-04-01 09:30:15', '2026-04-01 12:45:30'),
-((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'), 'SOIC16_PROD_V2', 1, 'IDD_STANDBY', 1.250000000, 1.890000000, 0.820000000, 0.180000000, 'FT-93K-01', '2026-04-03 08:05:30', '2026-04-03 14:20:15')
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-070D-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.268000000, 3.380000000, 3.162000000, 0.035000000, 'FT-J750-01', DATE_SUB(NOW(), INTERVAL 70 DAY), DATE_SUB(NOW(), INTERVAL 70 DAY) + INTERVAL 4 HOUR + INTERVAL 25 MINUTE),
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-028D-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.252000000, 3.345000000, 3.170000000, 0.031000000, 'FT-J750-01', DATE_SUB(NOW(), INTERVAL 28 DAY), DATE_SUB(NOW(), INTERVAL 28 DAY) + INTERVAL 4 HOUR + INTERVAL 30 MINUTE),
+((SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-021D-001'), 'BGA256_PROD_V1', 1, 'VOH_PIN12', 3.241000000, 3.338000000, 3.158000000, 0.029000000, 'FT-J750-01', DATE_SUB(NOW(), INTERVAL 21 DAY), DATE_SUB(NOW(), INTERVAL 21 DAY) + INTERVAL 4 HOUR + INTERVAL 15 MINUTE),
+((SELECT id FROM lots_info WHERE db_key = 'QFN48-SAMPLE-085D-001'), 'QFN48_PROD_V3', 1, 'FREQ_OSC', 2.500200000, 2.509800000, 2.490500000, 0.003100000, 'FT-J750-02', DATE_SUB(NOW(), INTERVAL 85 DAY), DATE_SUB(NOW(), INTERVAL 85 DAY) + INTERVAL 3 HOUR + INTERVAL 15 MINUTE),
+((SELECT id FROM lots_info WHERE db_key = 'SOIC16-SAMPLE-067D-001'), 'SOIC16_PROD_V2', 1, 'IDD_STANDBY', 1.250000000, 1.890000000, 0.820000000, 0.180000000, 'FT-93K-01', DATE_SUB(NOW(), INTERVAL 67 DAY), DATE_SUB(NOW(), INTERVAL 67 DAY) + INTERVAL 6 HOUR + INTERVAL 15 MINUTE)
 ON DUPLICATE KEY UPDATE mean_value = VALUES(mean_value);
 
 -- -----------------------------------------------------------------------------
--- 8-1. site_test_statistics — SITE_MEAN 規格計算用的相對時間樣本（橫跨最近約 100 天）
+-- 8-1. site_test_statistics — SITE_MEAN 規格計算用的相對時間樣本（橫跨最近三個月）
 --
 -- start_time / end_time 直接沿用 lots_info 的 start / stop，
 -- 使 QuerySiteMeanRows(@SinceTime) 的過濾條件與批號時間一致。
@@ -300,15 +305,15 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO good_lots (lots_info_id, detection_method_id)
 VALUES
 (
-    (SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'),
+    (SELECT id FROM lots_info WHERE db_key = 'SOIC16-SAMPLE-067D-001'),
     (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN')
 ),
 (
-    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260405-001'),
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-028D-001'),
     (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN')
 ),
 (
-    (SELECT id FROM lots_info WHERE db_key = 'BGA256-20260408-001'),
+    (SELECT id FROM lots_info WHERE db_key = 'BGA256-SAMPLE-021D-001'),
     (SELECT id FROM detection_methods WHERE method_key = 'SITE_MEAN')
 )
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
