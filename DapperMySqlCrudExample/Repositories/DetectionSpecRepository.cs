@@ -87,6 +87,75 @@ namespace DapperMySqlCrudExample.Repositories
             }
         }
 
+        /// <summary>
+        /// 依「規格識別鍵（program + test_item_name + site_id + detection_method_id）」
+        /// 與「規格計算區間（spec_calc_start_time + spec_calc_end_time）」查詢既有規格。
+        /// 查無資料時回傳 null。
+        /// </summary>
+        /// <remarks>
+        /// 供 Service 層做重複規格判斷：相同識別鍵且相同計算區間視為同一份規格，
+        /// 應改為更新既有資料而非新增，避免 detection_specs 累積重複列。
+        /// 索引命中：idx_program_item_method (program, test_item_name, detection_method_id)。
+        /// </remarks>
+        public DetectionSpec GetByKeyAndCalcRange(
+            string program,
+            string testItemName,
+            uint siteId,
+            byte detectionMethodId,
+            DateTime specCalcStartTime,
+            DateTime specCalcEndTime,
+            IDbTransaction transaction = null
+        )
+        {
+            if (string.IsNullOrWhiteSpace(program))
+            {
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(program));
+            }
+
+            if (string.IsNullOrWhiteSpace(testItemName))
+            {
+                throw new ArgumentException("參數不可為 null、空字串或空白。", nameof(testItemName));
+            }
+
+            const string sql =
+                "SELECT "
+                + SelectColumns
+                + @"
+                   FROM   detection_specs
+                   WHERE  program              = @Program
+                     AND  test_item_name       = @TestItemName
+                     AND  site_id              = @SiteId
+                     AND  detection_method_id  = @DetectionMethodId
+                     AND  spec_calc_start_time = @SpecCalcStartTime
+                     AND  spec_calc_end_time   = @SpecCalcEndTime
+                   ORDER BY id
+                   LIMIT 1";
+
+            var p = new
+            {
+                Program = program,
+                TestItemName = testItemName,
+                SiteId = siteId,
+                DetectionMethodId = detectionMethodId,
+                SpecCalcStartTime = specCalcStartTime,
+                SpecCalcEndTime = specCalcEndTime,
+            };
+
+            if (transaction != null)
+            {
+                return transaction.Connection.QueryFirstOrDefault<DetectionSpec>(
+                    sql,
+                    p,
+                    transaction
+                );
+            }
+
+            using (var conn = _factory.Create())
+            {
+                return conn.QueryFirstOrDefault<DetectionSpec>(sql, p);
+            }
+        }
+
         /// <summary>新增一筆資料並回傳自動遞增主鍵。</summary>
         /// <remarks>
         /// INSERT 與 SELECT LAST_INSERT_ID() 拆為兩步驟執行：

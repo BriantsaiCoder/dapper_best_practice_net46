@@ -102,6 +102,71 @@ VALUES
 ON DUPLICATE KEY UPDATE file_name = VALUES(file_name);
 
 -- -----------------------------------------------------------------------------
+-- 2-1. 根表：lots_info — SITE_MEAN 歷史樣本（以 NOW() 為基準的相對時間，橫跨最近 100 天）
+--
+-- 【設計說明】
+-- ComputeAndInsertSiteMeanSpec() 以 C# 端的 DateTime.Now.AddMonths(-1) 為取樣起點，
+-- 若測試資料使用固定日期，隨著時間推移就會全部落在一個月之外導致樣本數不足。
+-- 因此本段一律以 DATE_SUB(NOW(), INTERVAL n ...) 產生相對時間，讓資料永遠橫跨最近約 100 天（>3 個月）：
+--   - HIST 段（41 ~ 107 天前，共 12 筆）：一個月之外的歷史資料，用於驗證取樣區間確實有生效
+--   - RECENT 段（20 小時 ~ 約 26.7 天前，共 32 筆）：一個月之內的資料，即 SITE_MEAN 實際採用的樣本
+--     筆數 32 > DetectionSpecService.MinimumSampleCount(=30)，可滿足最小樣本數門檻
+-- db_key / file_name 以「相對天/時數」命名（非絕對日期），確保重複執行本檔時鍵值穩定且唯一。
+-- 序號以 derived table（UNION ALL 數列）產生，避免逐筆手寫造成維護困難。
+-- -----------------------------------------------------------------------------
+INSERT INTO lots_info
+    (version, mac_address, db_key, customer, package, bonding_diagram, program, device,
+     os_machine_id, os_test_board_id, file_name,
+     yield, total, pass, total_test_items, average_test_time, start, stop)
+SELECT
+    'V1.0.5',
+    CONCAT('00:1A:2B:3C:4E:', LPAD(HEX(s.n), 2, '0')),
+    CONCAT('BGA256-HIST-D', LPAD(35 + s.n * 6, 3, '0')),
+    'Qualcomm', 'BGA256', 'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
+    'T5381-02', 'TB-BGA256-007',
+    CONCAT('BGA256_PROD_V1_HIST_D', LPAD(35 + s.n * 6, 3, '0'), '.stdf'),
+    98.0, 5000, 4900, 256, 1.50,
+    DATE_SUB(NOW(), INTERVAL (35 + s.n * 6) DAY),
+    DATE_SUB(NOW(), INTERVAL (35 + s.n * 6) DAY) + INTERVAL 4 HOUR
+FROM (
+    SELECT  1 AS n UNION ALL SELECT  2 UNION ALL SELECT  3 UNION ALL SELECT  4
+    UNION ALL SELECT  5 UNION ALL SELECT  6 UNION ALL SELECT  7 UNION ALL SELECT  8
+    UNION ALL SELECT  9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+) AS s
+ON DUPLICATE KEY UPDATE
+    start = VALUES(start),
+    stop  = VALUES(stop);
+
+-- RECENT 段：一個月之內的 32 筆樣本（每筆相隔 20 小時，最舊者約 26.7 天前）
+INSERT INTO lots_info
+    (version, mac_address, db_key, customer, package, bonding_diagram, program, device,
+     os_machine_id, os_test_board_id, file_name,
+     yield, total, pass, total_test_items, average_test_time, start, stop)
+SELECT
+    'V1.0.5',
+    CONCAT('00:1A:2B:3C:4F:', LPAD(HEX(s.n), 2, '0')),
+    CONCAT('BGA256-RECENT-H', LPAD(s.n * 20, 3, '0')),
+    'Qualcomm', 'BGA256', 'BD-BGA256-B02', 'BGA256_PROD_V1', 'SM8650',
+    'T5381-02', 'TB-BGA256-007',
+    CONCAT('BGA256_PROD_V1_RECENT_H', LPAD(s.n * 20, 3, '0'), '.stdf'),
+    98.1, 5000, 4905, 256, 1.49,
+    DATE_SUB(NOW(), INTERVAL s.n * 20 HOUR),
+    DATE_SUB(NOW(), INTERVAL s.n * 20 HOUR) + INTERVAL 4 HOUR
+FROM (
+    SELECT  1 AS n UNION ALL SELECT  2 UNION ALL SELECT  3 UNION ALL SELECT  4
+    UNION ALL SELECT  5 UNION ALL SELECT  6 UNION ALL SELECT  7 UNION ALL SELECT  8
+    UNION ALL SELECT  9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+    UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16
+    UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
+    UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24
+    UNION ALL SELECT 25 UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28
+    UNION ALL SELECT 29 UNION ALL SELECT 30 UNION ALL SELECT 31 UNION ALL SELECT 32
+) AS s
+ON DUPLICATE KEY UPDATE
+    start = VALUES(start),
+    stop  = VALUES(stop);
+
+-- -----------------------------------------------------------------------------
 -- 3. anomaly_lots
 -- -----------------------------------------------------------------------------
 INSERT INTO anomaly_lots
@@ -199,6 +264,35 @@ VALUES
 ((SELECT id FROM lots_info WHERE db_key = 'QFN48-20260401-001'), 'QFN48_PROD_V3', 1, 'FREQ_OSC', 2.500200000, 2.509800000, 2.490500000, 0.003100000, 'FT-J750-02', '2026-04-01 09:30:15', '2026-04-01 12:45:30'),
 ((SELECT id FROM lots_info WHERE db_key = 'SOIC16-20260403-001'), 'SOIC16_PROD_V2', 1, 'IDD_STANDBY', 1.250000000, 1.890000000, 0.820000000, 0.180000000, 'FT-93K-01', '2026-04-03 08:05:30', '2026-04-03 14:20:15')
 ON DUPLICATE KEY UPDATE mean_value = VALUES(mean_value);
+
+-- -----------------------------------------------------------------------------
+-- 8-1. site_test_statistics — SITE_MEAN 規格計算用的相對時間樣本（橫跨最近約 100 天）
+--
+-- start_time / end_time 直接沿用 lots_info 的 start / stop，
+-- 使 QuerySiteMeanRows(@SinceTime) 的過濾條件與批號時間一致。
+-- 一個月內共 32 筆（RECENT 段），高於 DetectionSpecService.MinimumSampleCount(=30)；
+-- mean_value 以 CRC32(db_key) 產生 3.235 ~ 3.265 之間的離散值，
+-- 確保計算出的 std 不為 0，UCL/LCL 才具意義。
+-- -----------------------------------------------------------------------------
+INSERT INTO site_test_statistics
+    (lots_info_id, program, site_id, test_item_name, mean_value, max_value, min_value, std_value, tester_id, start_time, end_time)
+SELECT x.id, 'BGA256_PROD_V1', 1, 'VOH_PIN12',
+       x.mean_value, x.mean_value + 0.100, x.mean_value - 0.100, 0.034,
+       'FT-J750-01', x.start, x.stop
+FROM (
+    SELECT li.id, li.start, li.stop,
+           ROUND(3.250 + ((CAST(CRC32(li.db_key) AS SIGNED) % 11) - 5) * 0.003, 3) AS mean_value
+    FROM   lots_info li
+    WHERE  li.db_key LIKE 'BGA256-HIST-D%'
+       OR  li.db_key LIKE 'BGA256-RECENT-H%'
+) AS x
+ON DUPLICATE KEY UPDATE
+    mean_value = VALUES(mean_value),
+    max_value  = VALUES(max_value),
+    min_value  = VALUES(min_value),
+    std_value  = VALUES(std_value),
+    start_time = VALUES(start_time),
+    end_time   = VALUES(end_time);
 
 -- -----------------------------------------------------------------------------
 -- 9. good_lots

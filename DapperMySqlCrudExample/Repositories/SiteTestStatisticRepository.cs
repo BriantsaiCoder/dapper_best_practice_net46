@@ -18,8 +18,6 @@ namespace DapperMySqlCrudExample.Repositories
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly DbConnectionFactory _factory;
 
-        private const int PreferredHistoryCount = 30;
-
         /// <summary>建立 SiteTestStatisticRepository 實體。</summary>
         /// <param name="factory">資料庫連線工廠。</param>
         public SiteTestStatisticRepository(DbConnectionFactory factory)
@@ -97,20 +95,19 @@ namespace DapperMySqlCrudExample.Repositories
         }
 
         /// <summary>
-        /// 取最新 <see cref="PreferredHistoryCount"/> 筆有效資料用於 SITE_MEAN 規格計算。
-        /// 若近期資料充足，結果自然已全為近期；不足時則涵蓋更早的歷史，
-        /// 與分兩次查詢結果相同但只需一次 DB round-trip。
+        /// 取指定時間起點以後的有效資料用於 SITE_MEAN 規格計算。
+        /// 時間範圍由 Service 層先計算後以參數傳入，避免在 SQL 端直接做時間運算。
         /// 支援外部交易參與，遵循標準 Repository 模式。
         /// </summary>
         /// <remarks>
-        /// LIMIT 使用參數化（@Limit）而非內嵌常數：
-        /// MySQL 對參數化 LIMIT 不做常數折疊，但此查詢已有複合索引 idx_program_site_item_time
-        /// 支援 WHERE + ORDER BY，LIMIT 30 的差異可忽略。保留參數化以便未來可依情境動態調整筆數。
+        /// start_time 的時間範圍以參數化（@SinceTime）傳入，
+        /// 符合本專案「時間過濾由 C# 端計算後再傳入 SQL」的慣例。
         /// </remarks>
         public IReadOnlyList<SiteMeanRow> QuerySiteMeanRows(
             string programName,
             uint siteId,
             string testItemName,
+            DateTime sinceTime,
             IDbTransaction transaction = null
         )
         {
@@ -129,14 +126,14 @@ namespace DapperMySqlCrudExample.Repositories
 
             // 【新手導讀】多參數查詢時，將所有參數包進同一個匿名物件，
             // Dapper 會自動將每個屬性對應到 SQL 的 @參數（同 DetectionMethodRepository.GetById 說明）。
-            // @Limit 也是參數化的，雖然 MySQL 對參數化 LIMIT 不做常數折疊（效能微差），
-            // 但保留參數化可避免 SQL Injection 且未來可動態調整筆數。
+            // SinceTime 由 Service 先在 C# 端算好（例如 DateTime.Now.AddMonths(-1)），
+            // 再透過參數傳入 SQL，避免把時間運算邏輯散落在資料庫端。
             var p = new
             {
                 ProgramName = programName,
                 SiteId = siteId,
                 TestItemName = testItemName,
-                Limit = PreferredHistoryCount,
+                SinceTime = sinceTime,
             };
 
             // 【新手導讀】Query<SiteMeanRow> 使用專用 DTO（QueryModel）而非完整的 SiteTestStatistic Model，
@@ -148,10 +145,10 @@ namespace DapperMySqlCrudExample.Repositories
                   WHERE  program        = @ProgramName
                     AND  site_id        = @SiteId
                     AND  test_item_name = @TestItemName
+                    AND  start_time    >= @SinceTime
                     AND  start_time    IS NOT NULL
                     AND  mean_value    IS NOT NULL
-                  ORDER BY start_time DESC
-                  LIMIT @Limit";
+                  ORDER BY start_time DESC";
 
             if (transaction != null)
             {
