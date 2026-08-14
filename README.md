@@ -112,6 +112,41 @@ dapper_best_practice_net46.sln
 
 Sample 只是教學入口，不應直接視為正式工作流程實作。
 
+## 新手建議閱讀順序
+
+若是第一次接手這個專案，建議用「**先看整體、再看入口、再看單表、最後看跨表業務**」的順序閱讀：
+
+1. [README.md](README.md)
+   - 先建立整體地圖：專案定位、分層、執行流程、Repository / Service 的職責切分。
+2. [Program.cs](DapperMySqlCrudExample/Program.cs)
+   - 了解程式如何啟動、如何驗證資料庫連線、以及如何進入 sample 流程。
+3. [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs)
+   - 用兩個示範流程把 Repository 與 Service 的使用方式串起來。
+4. [DbConnectionFactory.cs](DapperMySqlCrudExample/Infrastructure/DbConnectionFactory.cs)
+   - 理解連線字串來源，以及為何 Repository 都是每次透過 `_factory.Create()` 取得短生命週期連線。
+5. [DetectionMethod.cs](DapperMySqlCrudExample/Models/DetectionMethod.cs) → [DetectionMethodRepository.cs](DapperMySqlCrudExample/Repositories/DetectionMethodRepository.cs)
+   - 先看最簡單的 Model / Repository 配對，理解欄位別名、基本 CRUD、`GetByKey()`、`Exists()`、`GetAll()`、`GetCount()` 等標準寫法。
+6. [DetectionSpec.cs](DapperMySqlCrudExample/Models/DetectionSpec.cs) → [DetectionSpecRepository.cs](DapperMySqlCrudExample/Repositories/DetectionSpecRepository.cs)
+   - 再看較貼近實務的查詢，例如 `GetByProgramAndMethodId()`、`GetByKeyAndCalcRange()`，建立「Repository 不只會有最陽春 CRUD」的概念。
+7. [QueryModels/](DapperMySqlCrudExample/Models/QueryModels/)
+   - 先看 [SiteMeanCalcParams.cs](DapperMySqlCrudExample/Models/QueryModels/SiteMeanCalcParams.cs) 與 [SiteMeanRow.cs](DapperMySqlCrudExample/Models/QueryModels/SiteMeanRow.cs)，理解查詢 DTO 與資料表 Model 的差異。
+8. [SiteTestStatisticRepository.cs](DapperMySqlCrudExample/Repositories/SiteTestStatisticRepository.cs)
+   - 理解為了計算只查必要欄位的做法，作為從單純 CRUD 進入業務查詢的過渡。
+9. [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs)
+   - 精讀跨 Repository 的業務流程：查歷史資料、做統計計算、決定 UCL / LCL、開交易、判斷更新或新增。
+10. [schema.sql](DapperMySqlCrudExample/Sql/schema.sql)
+    - 最後再回頭對照資料表欄位、索引與外鍵，確認程式中的 Model 與 Repository 查詢如何落地到資料庫。
+
+### 半天 onboarding 精簡路線
+
+如果目標是在半天內讓新人先上手主要概念，優先閱讀下列 5 個檔案即可：
+
+1. [README.md](README.md)
+2. [Program.cs](DapperMySqlCrudExample/Program.cs)
+3. [CrudSampleRunner.cs](DapperMySqlCrudExample/Samples/CrudSampleRunner.cs)
+4. [DetectionMethodRepository.cs](DapperMySqlCrudExample/Repositories/DetectionMethodRepository.cs)
+5. [DetectionSpecService.cs](DapperMySqlCrudExample/Services/DetectionSpecService.cs)
+
 ## 核心設計原則
 
 ### 1. 連線短生命週期
@@ -210,7 +245,7 @@ Service 中的交易由 `using` 區塊管理。當 `tx.Commit()` 未被呼叫而
 
 時間起點由 `DetectionSpecService` 在 C# 端以 `DateTime.Now.AddMonths(-1)` 計算後，透過參數傳入 Repository，避免在 SQL 端直接寫時間運算。
 
-`DetectionSpecService` 設定 `MinimumSampleCount = 2`：樣本不足兩筆時直接拋出例外，不嘗試計算。當只有一筆資料時標準差為 0，會導致 UCL = LCL = mean，過度敏感而產生誤報。
+`DetectionSpecService` 設定 `MinimumSampleCount = 30`：樣本不足 30 筆時直接拋出例外，不進行 SITE_MEAN 規格計算。這是因為樣本過少時統計量不穩定，使用 ±nσ 推導出的管制上下限容易失真，不適合作為正式規格依據。
 
 這樣做的目的：
 
